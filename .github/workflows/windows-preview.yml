@@ -2,7 +2,7 @@ name: Windows preview installer
 on:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   package:
     runs-on: windows-2022
@@ -29,3 +29,23 @@ jobs:
           path: artifacts/installer/*.exe
           if-no-files-found: error
           retention-days: 14
+
+      - name: Publish preview download
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $tag = 'v0.4.0-preview.1'
+          $zip = 'artifacts/VitekaUtilidades-0.4.0-win-x64-preview.zip'
+          Compress-Archive -Path 'artifacts/windows-x64/*' -DestinationPath $zip -Force
+          $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
+          "$hash  $([System.IO.Path]::GetFileName($zip))" | Set-Content -Encoding ascii "$zip.sha256"
+          gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title 'Viteka Utilidades 0.4.0 - Vista previa' --notes 'Vista previa local para Windows x64. Extrae todo el ZIP y abre Cliente/Viteka.Desktop.exe. Sin conexion real a NixFarma ni actualizacion automatica. Instalador sin firma digital; pendiente de prueba interactiva en Windows.'
+            if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
+          }
+          gh release upload $tag $zip "$zip.sha256" artifacts/installer/*.exe --repo $env:GITHUB_REPOSITORY --clobber
+          if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
+          gh release edit $tag --repo $env:GITHUB_REPOSITORY --draft=false --prerelease
+          if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
