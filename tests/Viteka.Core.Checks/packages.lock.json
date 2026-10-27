@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "dependencies": {
+    "net10.0": {
+      "viteka.contracts": {
+        "type": "Project"
+      },
+      "viteka.core": {
+        "type": "Project",
+        "dependencies": {
+          "Viteka.Contracts": "[0.4.0, )"
+        }
+      }
+    },
+    "net10.0/win-x64": {}
+  }
+}

@@ -1,0 +1,93 @@
+using System.Text.Json;
+using Viteka.Contracts;
+namespace Viteka.Core;
+
+public enum LocalAction { DemoStarted, ProposalOpened, FavoriteAdded, FavoriteRemoved }
+public sealed record ActivityEntry(DateTimeOffset At, LocalAction Action, string? UtilityId);
+public sealed record LocalState(int SchemaVersion, string[] FavoriteIds, ActivityEntry[] Activity, bool OpenFavoritesOnStart)
+{
+    public static LocalState Empty => new(1, [], [], false);
+}
+
+// Only known utility IDs and actions are recorded, never arbitrary text or pharmacy data.
+public sealed class LocalStateStore(string directory)
+{
+    public string DirectoryPath { get; } = Path.GetFullPath(directory);
+    public string StatePath => Path.Combine(DirectoryPath, "state.json");
+    private static readonly HashSet<string> KnownIds = DemoCatalog.Items.Select(x => x.Id).ToHashSet();
+    private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
+    public static LocalStateStore ForCurrentUser() => new(Path.Combine(
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Viteka", "Utilidades"));
+
+    public LocalState Load()
+    {
+        using var transaction = Lock();
+        return ReadState();
+    }
+
+    public LocalState SetFavorite(string utilityId, bool enabled) => Update(state =>
+    {
+        RequireKnownId(utilityId);
+        var favorites = state.FavoriteIds.ToHashSet();
+        if (enabled) favorites.Add(utilityId); else favorites.Remove(utilityId);
+        return AddActivity(state with { FavoriteIds = favorites.Order().ToArray() },
+            enabled ? LocalAction.FavoriteAdded : LocalAction.FavoriteRemoved, utilityId);
+    });
+    public LocalState Record(LocalAction action, string? utilityId = null) => Update(state =>
+    {
+        if (!Enum.IsDefined(action)) throw new ArgumentOutOfRangeException(nameof(action));
+        if (action == LocalAction.DemoStarted && utilityId is not null) throw new ArgumentException("Unexpected utility ID.");
+        if (action != LocalAction.DemoStarted) RequireKnownId(utilityId);
+        return AddActivity(state, action, utilityId);
+    });
+    public LocalState SetOpenFavorites(bool enabled) => Update(state => state with { OpenFavoritesOnStart = enabled });
+
+    private static LocalState AddActivity(LocalState state, LocalAction action, string? id) => state with
+    { Activity = new[] { new ActivityEntry(DateTimeOffset.UtcNow, action, id) }.Concat(state.Activity).Take(100).ToArray() };
+
+    private FileStream Lock()
+    {
+        Directory.CreateDirectory(DirectoryPath);
+        for (var attempt = 0; ; attempt++)
+        {
+            try { return new FileStream(Path.Combine(DirectoryPath, "state.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
+            catch (IOException) when (attempt < 10) { Thread.Sleep(40); }
+        }
+    }
+    private LocalState ReadState()
+    {
+        if (!File.Exists(StatePath)) return LocalState.Empty;
+        if (new FileInfo(StatePath).Length > 1_048_576) throw new InvalidDataException("El archivo local es demasiado grande.");
+        var state = JsonSerializer.Deserialize<LocalState>(File.ReadAllText(StatePath), JsonOptions)
+            ?? throw new InvalidDataException("El archivo local está vacío.");
+        if (state.SchemaVersion != 1) throw new InvalidDataException("Versión de configuración local no compatible.");
+        if (state.FavoriteIds is null || state.Activity is null || state.Activity.Length > 100 ||
+            state.FavoriteIds.Any(id => id is null || !KnownIds.Contains(id)) ||
+            state.Activity.Any(x => x is null || !Enum.IsDefined(x.Action) ||
+                (x.Action == LocalAction.DemoStarted ? x.UtilityId is not null : x.UtilityId is null || !KnownIds.Contains(x.UtilityId))))
+            throw new InvalidDataException("La configuración local no es válida.");
+        return state;
+    }
+    private LocalState Update(Func<LocalState, LocalState> change)
+    {
+        using var transaction = Lock();
+        // Preserve unreadable/corrupt/future state instead of silently replacing it.
+        var state = change(ReadState());
+        var temporary = Path.Combine(DirectoryPath, $".state-{Guid.NewGuid():N}.tmp");
+        try
+        {
+            using (var file = new FileStream(temporary, FileMode.CreateNew, FileAccess.Write, FileShare.None))
+            {
+                JsonSerializer.Serialize(file, state, JsonOptions);
+                file.Flush(flushToDisk: true);
+            }
+            File.Move(temporary, StatePath, overwrite: true);
+        }
+        finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        return state;
+    }
+    private static void RequireKnownId(string? id)
+    {
+        if (id is null || !KnownIds.Contains(id)) throw new ArgumentException("Utilidad desconocida.", nameof(id));
+    }
+}

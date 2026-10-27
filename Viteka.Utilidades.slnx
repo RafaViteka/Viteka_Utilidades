@@ -1,0 +1,11 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Viteka.Contracts/Viteka.Contracts.csproj" />
+    <Project Path="src/Viteka.Core/Viteka.Core.csproj" />
+    <Project Path="src/Viteka.Desktop/Viteka.Desktop.csproj" />
+    <Project Path="src/Viteka.Server/Viteka.Server.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Viteka.Core.Checks/Viteka.Core.Checks.csproj" />
+  </Folder>
+</Solution>
