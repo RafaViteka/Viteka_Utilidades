@@ -16,7 +16,16 @@ jobs:
           python-version: '3.12'
       - name: Build, check and package preview
         shell: pwsh
-        run: ./scripts/publish-windows.ps1 -BuildInstaller
+        run: |
+          $ErrorActionPreference = 'Continue'
+          & pwsh -NoProfile -File ./scripts/publish-windows.ps1 -BuildInstaller *> build-preview.log
+          $result = $LASTEXITCODE
+          if ($result -ne 0) {
+            $tail = (Get-Content build-preview.log -Tail 35) -join '%0A'
+            Write-Output "::error::$tail"
+            exit $result
+          }
+          Get-Content build-preview.log
       - name: HTTP authorization smoke check
         shell: pwsh
         run: |
