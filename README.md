@@ -1,4 +1,4 @@
-# Viteka Utilidades · Centro de accesos 0.8.1
+# Viteka Utilidades · Centro de accesos 0.9.0
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete, sin web alojada ni servidor requerido para abrir el MVP.
 
@@ -28,7 +28,7 @@ bash scripts/setup-cloud.sh
 python scripts/smoke-ui.py
 ```
 
-El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 30 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 32 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
 
 Para editar la interfaz en navegador:
 
@@ -55,3 +55,9 @@ El workflow manual windows-preview.yml compila/ejecuta pruebas del núcleo y ser
 [Alcance del MVP](docs/mvp.md) · [Arquitectura](docs/estructura.md) · [Distribución](docs/distribucion.md)
 
 [Centro de accesos y recursos autorizados](docs/portal.md). El HTML adjunto se utiliza como referencia de diseño y contenidos: no se ejecutan sus scripts de instalación, protocolo ni feed remoto.
+
+## Ventana, iconos y zoom (0.9)
+
+La ventana se ajusta al área útil de su monitor y respeta la barra de tareas al abrir y maximizar, con DPI por monitor. Se asignan explícitamente iconos Win32 grandes/pequeños y una identidad estable Viteka.Utilidades, compartida con el acceso directo del instalador. Se incluye un icono físico transparente para el shell. Un acceso antiguo ya anclado puede conservar la caché anterior: desanclar y volver a anclar desde el acceso actualizado si ocurre.
+
+Ctrl + rueda aumenta/reduce el contenido; la rueda normal desplaza la página. La barra nativa muestra porcentaje y botones − / 100 % / + fuera del área escalada. Ctrl + 0 vuelve al 100 %. Rango 50–200 %, guardado por usuario. Se actualiza desde Configuración sin desinstalar. Las pruebas Windows comprueban iconos Win32, área útil y rueda de ratón con Ctrl mediante entrada real de prueba.

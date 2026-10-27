@@ -31,3 +31,11 @@ El horario mostrado es el habitual incluido en el archivo (lunes-viernes, 09:00�
 El esquema local mantiene compatibilidad con versiones anteriores y añade SidebarCollapsed/Theme con valores por defecto. El modo automático sigue el sistema; el anfitrión .NET adapta también la barra de título.
 
 Las pruebas del núcleo validan persistencia, migración y lista cerrada de recursos. Las del navegador validan portal, menú, temas, guías, mensajes de recursos/portapapeles y actualizador. El smoke Windows comprueba además maximizar/restaurar, icono y guardado del menú. Los tests no abren AnyDesk, no envían mensajes ni inician sesiones remotas. La revisión de los enlaces con sesión de usuario y de AnyDesk en su equipo queda para la prueba real.
+
+## Correcciones de integración Windows (0.9.0)
+
+La barra de tareas y el área inicial se respetan usando el monitor real, coordenadas físicas, WM_GETMINMAXINFO y un manifiesto PerMonitorV2; la ventana normal se limita al área disponible incluso cuando el tamaño lógico inicial excede la pantalla por DPI. No se modifica la configuración de la barra de tareas de Windows.
+
+La identidad de proceso y acceso directo es Viteka.Utilidades. Se aplica WM_SETICON para tamaños grande y pequeño desde el ICO transparente distribuido, además del recurso embebido. El instalador declara el icono y AppUserModelID del acceso directo. No se borra la caché global de iconos del usuario; un pin antiguo puede requerir desanclar y volver a anclar.
+
+El zoom real del WebView2 se controla mediante Ctrl+rueda, teclado y barra nativa con porcentaje visible. No se aplica zoom CSS en Windows; solo la vista web usa zoom CSS para revisar el comportamiento. La escala admitida y persistente es 50–200 %. El puente admite window.zoom con validación numérica, nunca comandos de sistema arbitrarios.

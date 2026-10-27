@@ -13,6 +13,7 @@ public partial class App : Application
             catch (WebView2RuntimeNotFoundException) { Shutdown(2); }
             return;
         }
+        WindowsShellIntegration.RegisterIdentity();
         base.OnStartup(e);
     }
 }

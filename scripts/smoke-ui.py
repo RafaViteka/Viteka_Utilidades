@@ -21,6 +21,12 @@ with sync_playwright() as p:
  assert page.locator('aside > img').count()==0
  assert 'MVP visual' not in page.locator('body').inner_text()
  page.screenshot(path=str(artifacts/'angular-desktop.png'),full_page=True)
+ page.keyboard.down('Control');page.mouse.wheel(0,-120);page.keyboard.up('Control')
+ page.get_by_role('button',name='Restablecer zoom',exact=True).get_by_text('110 %',exact=True).wait_for()
+ page.reload();page.get_by_role('button',name='Restablecer zoom',exact=True).get_by_text('110 %',exact=True).wait_for()
+ page.get_by_role('button',name='Restablecer zoom',exact=True).click()
+ page.get_by_role('button',name='Restablecer zoom',exact=True).get_by_text('100 %',exact=True).wait_for()
+ page.mouse.wheel(0,200);assert page.get_by_role('button',name='Restablecer zoom',exact=True).inner_text()=='100 %'
  page.get_by_role('button',name='Cerrar menú lateral',exact=True).click()
  page.wait_for_function("() => Math.round(document.querySelector('aside').getBoundingClientRect().width)===76")
  page.reload();page.get_by_role('button',name='Abrir menú lateral',exact=True).wait_for()
@@ -40,7 +46,7 @@ with sync_playwright() as p:
  page.set_viewport_size({'width':820,'height':600});assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
  page.close()
  native=browser.new_page(viewport={'width':1240,'height':820})
- native.add_init_script('''window.testCalls=[];window.chrome=window.chrome||{};let listener;window.chrome.webview={addEventListener:(name,fn)=>listener=fn,postMessage:msg=>{window.testCalls.push(msg);setTimeout(()=>{let result={};if(msg.command==='app.state')result={version:'0.8.0',openFavorites:false,sidebarCollapsed:false,theme:'auto'};if(msg.command==='update.check')result={available:true,version:'0.9.0'};if(msg.command==='update.install')result={cancelled:true};if(msg.command==='resource.open')result={opened:msg.payload.id!=='anydesk'};listener({data:{id:msg.id,ok:true,result}});},5);}};''')
+ native.add_init_script('''window.testCalls=[];window.chrome=window.chrome||{};let listener;window.chrome.webview={addEventListener:(name,fn)=>listener=fn,postMessage:msg=>{window.testCalls.push(msg);setTimeout(()=>{let result={};if(msg.command==='app.state')result={version:'0.8.0',openFavorites:false,sidebarCollapsed:false,theme:'auto'};if(msg.command==='window.zoom')result={percent:msg.payload.percent};if(msg.command==='update.check')result={available:true,version:'0.9.0'};if(msg.command==='update.install')result={cancelled:true};if(msg.command==='resource.open')result={opened:msg.payload.id!=='anydesk'};listener({data:{id:msg.id,ok:true,result}});},5);}};''')
  native.on('pageerror',lambda e:errors.append(str(e)))
  native.goto(url);native.get_by_role('heading',name='Portal de soporte',exact=True).wait_for()
  native.get_by_role('button',name='Crear o consultar una solicitud',exact=True).click()

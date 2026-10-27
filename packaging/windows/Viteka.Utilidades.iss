@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "0.8.1"
+#define AppVersion "0.9.0"
 #endif
 #define PublishRoot "..\..\artifacts\windows-x64"
 
@@ -8,6 +8,7 @@ AppId={{AAC03BF6-8845-4E96-AFC1-73AF54176983}
 AppName=Viteka Utilidades - Vista previa local
 AppVersion={#AppVersion}
 AppPublisher=Viteka
+ChangesAssociations=yes
 DefaultDirName={autopf}\Viteka\UtilidadesVistaPrevia
 DefaultGroupName=Viteka Utilidades - Vista previa
 UninstallDisplayIcon={app}\Cliente\Viteka.Desktop.exe
@@ -34,7 +35,7 @@ Source: "{#PublishRoot}\Servidor\*"; DestDir: "{app}\Servidor"; Flags: ignorever
 Source: "LEEME.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
-Name: "{group}\Viteka Utilidades"; Filename: "{app}\Cliente\Viteka.Desktop.exe"; WorkingDir: "{app}\Cliente"
+Name: "{group}\Viteka Utilidades"; Filename: "{app}\Cliente\Viteka.Desktop.exe"; WorkingDir: "{app}\Cliente"; IconFilename: "{app}\Cliente\viteka.ico"; AppUserModelID: "Viteka.Utilidades"
 Name: "{group}\Iniciar servidor de demostración"; Filename: "{app}\Servidor\Viteka.Server.exe"; WorkingDir: "{app}\Servidor"
 Name: "{group}\Leer antes de probar"; Filename: "{app}\LEEME.txt"
 

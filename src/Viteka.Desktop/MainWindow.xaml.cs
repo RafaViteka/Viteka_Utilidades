@@ -13,6 +13,7 @@ public partial class MainWindow : Window
 {
     private const string Origin = "https://app.viteka.local";
     private readonly LocalStateStore store = App.SmokeTest ? new LocalStateStore(Path.Combine(Path.GetTempPath(), "VitekaUiSmoke-" + Guid.NewGuid().ToString("N"))) : LocalStateStore.ForCurrentUser();
+    private readonly WindowsShellIntegration shell;
     private bool smokeStarted;
     private readonly CancellationTokenSource lifetime = new();
     private readonly HttpClient http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMinutes(10) };
@@ -22,9 +23,10 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        shell = new WindowsShellIntegration(this);
         StateChanged += (_, _) => MaximizeButton.Content = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
         Loaded += async (_, _) => await InitializeBrowser();
-        Closed += (_, _) => { closing = true; lifetime.Cancel(); Browser.Dispose(); http.Dispose(); lifetime.Dispose(); };
+        Closed += (_, _) => { closing = true; lifetime.Cancel(); Browser.Dispose(); shell.Dispose(); http.Dispose(); lifetime.Dispose(); };
     }
     private async Task InitializeBrowser()
     {
@@ -41,7 +43,14 @@ public partial class MainWindow : Window
             core.Settings.AreDefaultContextMenusEnabled = false;
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.IsStatusBarEnabled = false;
-            core.Settings.IsZoomControlEnabled = false;
+            core.Settings.IsZoomControlEnabled = false; // Angular handles Ctrl+wheel consistently; native toolbar remains outside page zoom.
+            Browser.ZoomFactorChanged += (_, _) => {
+                var percent = (int)Math.Round(Browser.ZoomFactor * 100);
+                ZoomLabel.Content = percent + " %";
+                if (!closing) core.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "zoom-changed", percent }));
+            };
+            try { SetZoom(store.Load().ZoomPercent, false); } catch (Exception ex) when (ex is IOException or InvalidDataException or JsonException or UnauthorizedAccessException) { SetZoom(100, false); }
+            ZoomBar.IsEnabled = true;
             core.NavigationStarting += (_, e) => { if (!Trusted(e.Uri)) e.Cancel = true; };
             core.FrameNavigationStarting += (_, e) => e.Cancel = true;
             core.NewWindowRequested += (_, e) => e.Handled = true;
@@ -85,13 +94,19 @@ public partial class MainWindow : Window
             await WaitForScript("document.querySelector('.priority-grid') !== null");
             await WaitForScript("Math.round(document.querySelector('aside').getBoundingClientRect().width) === 220");
             stage = "window-controls";
-            if (Icon is null) throw new InvalidOperationException();
+            if (Icon is null || !shell.HasNativeIcons || !shell.WithinWorkArea()) throw new InvalidOperationException();
             MaximizeWindow(this, new RoutedEventArgs());
             await Task.Delay(200);
-            if (WindowState != WindowState.Maximized) throw new InvalidOperationException();
+            if (WindowState != WindowState.Maximized || !shell.WithinWorkArea()) throw new InvalidOperationException();
             MaximizeWindow(this, new RoutedEventArgs());
             await Task.Delay(200);
             if (WindowState != WindowState.Normal) throw new InvalidOperationException();
+            stage = "zoom";
+            shell.SmokeCtrlWheel();
+            for (var attempt = 0; attempt < 50 && Math.Round(Browser.ZoomFactor * 100) != 110; attempt++) await Task.Delay(100);
+            if (Math.Round(Browser.ZoomFactor * 100) != 110 || !Equals(ZoomLabel.Content, "110 %") || store.Load().ZoomPercent != 110) throw new InvalidOperationException();
+            ResetZoom(this, new RoutedEventArgs());
+            if (Math.Round(Browser.ZoomFactor * 100) != 100) throw new InvalidOperationException();
             stage = "sidebar";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
             await WaitForScript("document.querySelector('.layout')?.classList.contains('collapsed') === true");
@@ -149,12 +164,18 @@ public partial class MainWindow : Window
             {
                 case "app.state":
                     var state = store.Load();
-                    Reply(id, new { version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3), openFavorites = state.OpenFavoritesOnStart, sidebarCollapsed = state.SidebarCollapsed, theme = state.Theme });
+                    Reply(id, new { version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3), openFavorites = state.OpenFavoritesOnStart, sidebarCollapsed = state.SidebarCollapsed, theme = state.Theme, zoomPercent = (int)Math.Round(Browser.ZoomFactor * 100) });
                     break;
                 case "settings.start":
                     var enabled = root.GetProperty("payload").GetProperty("enabled").GetBoolean();
                     store.SetOpenFavorites(enabled);
                     Reply(id, new { openFavorites = enabled });
+                    break;
+                case "window.zoom":
+                    var percent = root.GetProperty("payload").GetProperty("percent").GetInt32();
+                    if (percent is < 50 or > 200) { Reply(id, error: "El zoom debe estar entre 50 y 200 %."); break; }
+                    SetZoom(percent);
+                    Reply(id, new { percent });
                     break;
                 case "settings.sidebar":
                     store.SetSidebar(root.GetProperty("payload").GetProperty("collapsed").GetBoolean());
@@ -236,6 +257,21 @@ public partial class MainWindow : Window
         Reply(id, new { started = true });
         Application.Current.Shutdown();
     }
+    private void SetZoom(int percent, bool save = true)
+    {
+        percent = Math.Clamp(percent, 50, 200);
+        Browser.ZoomFactor = percent / 100d;
+        ZoomLabel.Content = percent + " %";
+        if (save) store.SetZoom(percent);
+    }
+    private void ChangeZoom(int percent)
+    {
+        try { SetZoom(percent); }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException) { MessageBox.Show(this, "El zoom se ha aplicado, pero no se pudo guardar la preferencia.", "Viteka Utilidades"); }
+    }
+    private void ZoomIn(object sender, RoutedEventArgs e) => ChangeZoom((int)Math.Round(Browser.ZoomFactor * 100) + 10);
+    private void ZoomOut(object sender, RoutedEventArgs e) => ChangeZoom((int)Math.Round(Browser.ZoomFactor * 100) - 10);
+    private void ResetZoom(object sender, RoutedEventArgs e) => ChangeZoom(100);
     private void MinimizeWindow(object sender, RoutedEventArgs e) => SystemCommands.MinimizeWindow(this);
     private void MaximizeWindow(object sender, RoutedEventArgs e) { if (WindowState == WindowState.Maximized) SystemCommands.RestoreWindow(this); else SystemCommands.MaximizeWindow(this); }
     private void CloseWindow(object sender, RoutedEventArgs e) => Close();

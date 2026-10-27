@@ -1,4 +1,4 @@
-VITEKA UTILIDADES 0.8.1 - CANAL DE PRUEBAS
+VITEKA UTILIDADES 0.9.0 - CANAL DE PRUEBAS
 
 Instala sobre la version anterior. No hace falta desinstalar; las preferencias
 se conservan en la carpeta local de tu usuario.
@@ -23,3 +23,10 @@ no dispone de firma digital del editor.
 Este paquete no habilita acceso LAN ni instala automaticamente el servicio
 opcional de desarrollo. Se mantiene la documentacion de ese servicio para una
 fase posterior, sin alterar el DSN de NixFarma.
+
+VENTANA Y ZOOM
+Ctrl + rueda amplia o reduce el contenido. La rueda normal desplaza la pagina.
+La barra superior muestra el porcentaje: botones menos/mas y 100 % para restablecer.
+Ctrl + 0 tambien vuelve al 100 %. La preferencia se conserva entre sesiones.
+Si un icono antiguo anclado no cambia, desanclalo y ancla de nuevo el acceso
+Viteka Utilidades del menu Inicio despues de actualizar.

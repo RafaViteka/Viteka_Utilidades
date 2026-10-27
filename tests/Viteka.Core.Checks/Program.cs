@@ -254,6 +254,19 @@ try
         Require(PortalResources.Target("anydesk") is null); // Native launcher has a separate fixed-path branch, without session arguments.
         Require(PortalResources.Email("support-email")=="soporte@viteka.es" && PortalResources.Email("arbitrary") is null);
     });
+    Check("Zoom persists and rejects out-of-range values", () =>
+    {
+        var local=Store(Path.Combine(root,"zoom"));local.SetZoom(125);
+        Require(Store(local.DirectoryPath).Load().ZoomPercent==125);
+        foreach(var invalid in new[]{49,201}) {try{local.SetZoom(invalid);throw new Exception("Expected rejection");}catch(ArgumentOutOfRangeException){}}
+        Require(Store(local.DirectoryPath).Load().ZoomPercent==125);
+    });
+    Check("Old preferences retain a 100 percent zoom default", () =>
+    {
+        var local=Store(Path.Combine(root,"old-zoom"));Directory.CreateDirectory(local.DirectoryPath);
+        File.WriteAllText(local.StatePath,"{\"SchemaVersion\":1,\"FavoriteIds\":[],\"Activity\":[],\"OpenFavoritesOnStart\":false}");
+        Require(local.Load().ZoomPercent==100);
+    });
     Console.WriteLine($"{passed} checks passed.");
 }
 finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
