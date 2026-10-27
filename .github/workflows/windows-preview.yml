@@ -32,6 +32,11 @@ jobs:
           $env:VITEKA_DOTNET = (Get-Command dotnet).Source
           python scripts/smoke-server.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Real preview download verification
+        shell: pwsh
+        run: |
+          dotnet run --project tests/Viteka.Core.Checks -c Release --no-build -- --download-smoke
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           name: Viteka-Utilidades-Windows-preview

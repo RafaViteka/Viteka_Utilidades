@@ -1,4 +1,4 @@
-# Viteka Utilidades · MVP visual 0.5.0
+# Viteka Utilidades · MVP visual 0.6.0
 
 Aplicación Windows para reunir futuras utilidades de farmacia. **Primero se revisará el MVP visual; las aplicaciones y vínculos a NixFarma se desarrollarán después.**
 
@@ -8,10 +8,10 @@ Aplicación Windows para reunir futuras utilidades de farmacia. **Primero se rev
 - Inicio, Utilidades, Favoritos, Actividad y Configuración con estilos propios de WPF.
 - Catálogo y actividad vacíos, sin ejemplos de stock, caducidades o compras.
 - Preferencia local de abrir Favoritos al iniciar.
-- Comprobación manual de versiones estables en GitHub; sin instalación automática.
+- Canal de pruebas de GitHub: búsqueda, descarga verificada y apertura del instalador con aprobación. No se instala nada sin confirmación.
 - Los formularios de conexión/vinculación están retirados de la interfaz. No hace falta iniciar un servidor para revisar el MVP.
 
-[Descargas de prueba en GitHub Releases](https://github.com/RafaViteka/Viteka_Utilidades/releases). Descargar el instalador o extraer **todo** el ZIP y abrir `Cliente/Viteka.Desktop.exe`. La versión nueva requiere descarga manual. Paquetes sin firma digital, todavía no listos para farmacia.
+[Descargas de prueba en GitHub Releases](https://github.com/RafaViteka/Viteka_Utilidades/releases). Descargar el instalador o extraer **todo** el ZIP y abrir `Cliente/Viteka.Desktop.exe`. Para incorporar el actualizador hay que instalar manualmente la 0.6.0 una vez sobre la anterior, sin desinstalarla. Las versiones posteriores podrán descargarse e instalarse desde Configuración. Paquetes sin firma digital, todavía no listos para farmacia.
 
 ## Desarrollo
 
@@ -21,7 +21,7 @@ En este entorno Linux, desde `/workspace/Viteka_Utilidades`:
 bash scripts/setup-cloud.sh
 ```
 
-Reutiliza/instala el SDK .NET 10.0.403, restaura con lockfiles, compila la solución, ejecuta 22 comprobaciones del núcleo y el smoke HTTP. Este último usa un registro temporal aislado y necesita libre el puerto 5187.
+Reutiliza/instala el SDK .NET 10.0.403, restaura con lockfiles, compila la solución, ejecuta 27 comprobaciones del núcleo y el smoke HTTP. Este último usa un registro temporal aislado y necesita libre el puerto 5187.
 
 WPF se compila en Linux, pero se ejecuta en Windows. Con el SDK indicado, desde la raíz del proyecto en Windows:
 

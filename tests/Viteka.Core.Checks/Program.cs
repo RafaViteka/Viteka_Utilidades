@@ -1,6 +1,21 @@
 using Viteka.Core;
 using System.Text.Json;
 
+if (args is ["--download-smoke"])
+{
+    using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMinutes(10) };
+    var checker = new PreviewUpdater(http);
+    var destination = Path.Combine(Path.GetTempPath(), "viteka-real-download-" + Guid.NewGuid().ToString("N"));
+    try
+    {
+        var offer = await checker.FindAsync(new Version(0, 0, 0)) ?? throw new Exception("No verifiable preview published");
+        using var installer = await checker.DownloadAsync(offer, destination);
+        Console.WriteLine("PASS: real GitHub preview downloaded and verified; installer was not executed.");
+    }
+    finally { if (Directory.Exists(destination)) Directory.Delete(destination, true); }
+    return;
+}
+
 var root = Path.Combine(Path.GetTempPath(), "viteka-checks-" + Guid.NewGuid().ToString("N"));
 var passed = 0;
 LocalStateStore Store(string path) => new(path, new[] {
@@ -169,6 +184,52 @@ try
         // Reading does not destroy the previous file; migration is applied on next save.
         Require(File.ReadAllText(legacy.StatePath).Contains("stock"));
     });
+    var installerBody = System.Text.Encoding.UTF8.GetBytes("MZ-verifiable-test-payload-not-executed");
+    var digest = Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(installerBody)).ToLowerInvariant();
+    var assetUrl = "https://github.com/RafaViteka/Viteka_Utilidades/releases/download/v0.6.0-preview.1/VitekaUtilidades-Setup-0.6.0-win-x64-preview.exe";
+    var previewJson = JsonSerializer.Serialize(new[] { new { draft = false, prerelease = true, tag_name = "v0.6.0-preview.1",
+        assets = new[] { new { name = "VitekaUtilidades-Setup-0.6.0-win-x64-preview.exe", browser_download_url = assetUrl,
+            digest = "sha256:" + digest, size = installerBody.Length } } } });
+    using var updateHttp = new HttpClient(new DownloadStub(request => request.RequestUri!.Host == "api.github.com"
+        ? new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new StringContent(previewJson) }
+        : new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(installerBody) }));
+    var updater = new PreviewUpdater(updateHttp);
+    PreviewUpdate? offer = null;
+    Check("Preview channel offers later verified installer", () =>
+    {
+        offer = updater.FindAsync(new Version(0, 5, 0)).GetAwaiter().GetResult();
+        Require(offer is not null && offer.Version == new Version(0, 6, 0));
+        Require(updater.FindAsync(new Version(0, 6, 0)).GetAwaiter().GetResult() is null);
+    });
+    Check("Download returns only after matching size and SHA256", () =>
+    {
+        using var verified = updater.DownloadAsync(offer!, Path.Combine(root, "downloads")).GetAwaiter().GetResult();
+        Require(File.ReadAllBytes(verified.Path).SequenceEqual(installerBody));
+    });
+    Check("Digest mismatch deletes the downloaded executable", () =>
+    {
+        var destination = Path.Combine(root, "bad-digest");
+        try { updater.DownloadAsync(offer! with { Sha256 = new string('0', 64) }, destination).GetAwaiter().GetResult(); throw new Exception("Expected rejection"); }
+        catch (InvalidDataException) { }
+        Require(!Directory.EnumerateFiles(destination, "*", SearchOption.AllDirectories).Any());
+    });
+    Check("Wrong length is rejected without retaining an installer", () =>
+    {
+        var destination = Path.Combine(root, "bad-length");
+        try { updater.DownloadAsync(offer! with { Size = installerBody.Length + 1 }, destination).GetAwaiter().GetResult(); throw new Exception("Expected rejection"); }
+        catch (InvalidDataException) { }
+        Require(!Directory.EnumerateFiles(destination, "*", SearchOption.AllDirectories).Any());
+    });
+    Check("Download never follows a redirect to an unrelated host", () =>
+    {
+        using var redirectedHttp = new HttpClient(new DownloadStub(_ => {
+            var response = new HttpResponseMessage(System.Net.HttpStatusCode.Found);
+            response.Headers.Location = new Uri("https://other.example/install.exe");
+            return response;
+        }));
+        try { new PreviewUpdater(redirectedHttp).DownloadAsync(offer!, Path.Combine(root, "bad-host")).GetAwaiter().GetResult(); throw new Exception("Expected rejection"); }
+        catch (InvalidDataException) { }
+    });
     Console.WriteLine($"{passed} checks passed.");
 }
 finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
@@ -187,5 +248,14 @@ sealed class ReleaseStub(string content, System.Net.HttpStatusCode status) : Htt
         if (request.RequestUri?.Host != "api.github.com" || request.Headers.Authorization is not null || !request.Headers.UserAgent.Any())
             throw new Exception("Unexpected destination, credentials or missing User-Agent");
         return Task.FromResult(new HttpResponseMessage(status) { Content = new StringContent(content) });
+    }
+}
+
+sealed class DownloadStub(Func<HttpRequestMessage, HttpResponseMessage> response) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken cancellationToken)
+    {
+        if (request.Headers.Authorization is not null) throw new Exception("Service credentials must never be sent to release hosts");
+        return Task.FromResult(response(request));
     }
 }

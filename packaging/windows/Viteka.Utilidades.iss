@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "0.5.0"
+#define AppVersion "0.6.0"
 #endif
 #define PublishRoot "..\..\artifacts\windows-x64"
 
@@ -36,6 +36,9 @@ Source: "LEEME.txt"; DestDir: "{app}"; Flags: ignoreversion
 Name: "{group}\Viteka Utilidades"; Filename: "{app}\Cliente\Viteka.Desktop.exe"; WorkingDir: "{app}\Cliente"
 Name: "{group}\Iniciar servidor de demostración"; Filename: "{app}\Servidor\Viteka.Server.exe"; WorkingDir: "{app}\Servidor"
 Name: "{group}\Leer antes de probar"; Filename: "{app}\LEEME.txt"
+
+[Run]
+Filename: "{app}\Cliente\Viteka.Desktop.exe"; Description: "Abrir Viteka Utilidades"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
 function InitializeSetup(): Boolean;

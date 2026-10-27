@@ -1,4 +1,4 @@
-VITEKA UTILIDADES - VISTA PREVIA LOCAL 0.5.0
+VITEKA UTILIDADES - VISTA PREVIA LOCAL 0.6.0
 
 Paquete Windows x64 autocontenido. No requiere instalar .NET en el puesto.
 
@@ -15,8 +15,10 @@ Preferencias y credenciales se guardan fuera del directorio de instalación.
 La desinstalación conserva esos datos locales; revoca las autorizaciones por
 separado cuando corresponda.
 
-No se han implementado las actualizaciones online. Antes de entregar versiones
-a farmacias se debe establecer un canal de distribución y firma de código.
+Este canal de pruebas permite buscar, descargar y verificar un instalador de
+GitHub y ejecutarlo con confirmacion. La version actual debe instalarse una
+vez manualmente para incorporar el actualizador. Para entregar a farmacias
+sigue pendiente la firma de codigo y la validacion del despliegue completo.
 Este instalador de evaluación puede no estar firmado digitalmente.
 
 Compatibilidad requerida: Windows 10/11 y Server 2022/2025. Validar la edición,

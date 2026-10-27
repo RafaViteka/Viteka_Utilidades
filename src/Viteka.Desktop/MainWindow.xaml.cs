@@ -13,6 +13,9 @@ public partial class MainWindow : Window
     private readonly LocalStateStore store = LocalStateStore.ForCurrentUser();
     private bool initializing = true;
     private Uri? availableRelease;
+    private PreviewUpdate? availableUpdate;
+    private readonly CancellationTokenSource lifetime = new();
+    private readonly HttpClient downloadHttp = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMinutes(10) };
     private readonly HttpClient releasesHttp = new(new HttpClientHandler { AllowAutoRedirect = false })
     { Timeout = TimeSpan.FromSeconds(10), MaxResponseContentBufferSize = 1_048_576 };
     public MainWindow()
@@ -24,7 +27,7 @@ public partial class MainWindow : Window
         catch (Exception ex) when (IsStorageError(ex)) { ShowStorageError(); }
         initializing = false;
         SetPage(OpenFavorites.IsChecked == true ? "Favoritos" : "Inicio");
-        Closed += (_, _) => releasesHttp.Dispose();
+        Closed += (_, _) => { lifetime.Cancel(); releasesHttp.Dispose(); downloadHttp.Dispose(); lifetime.Dispose(); };
     }
     private void Navigate(object sender, RoutedEventArgs e) => SetPage((string)((RadioButton)sender).Tag);
     private void OpenSection(object sender, RoutedEventArgs e) => SetPage((string)((Button)sender).Tag);
@@ -71,26 +74,49 @@ public partial class MainWindow : Window
     private async void CheckUpdates(object sender, RoutedEventArgs e)
     {
         UpdateCheckButton.IsEnabled = false;
+        InstallUpdateButton.Visibility = Visibility.Collapsed;
         OpenReleaseButton.Visibility = Visibility.Collapsed;
+        availableUpdate = null;
         availableRelease = null;
-        UpdateResult.Text = "Consultando publicaciones de GitHub…";
+        UpdateResult.Text = "Buscando versiones de prueba en GitHub…";
         try
         {
             var installed = typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 0, 0);
-            var result = await new GitHubReleaseChecker(releasesHttp).CheckAsync(installed);
-            UpdateResult.Text = result.Status switch
-            {
-                ReleaseCheckStatus.Available => $"Versión {result.Version} disponible. Revisa la publicación con el administrador. No se descargará ni instalará automáticamente.",
-                ReleaseCheckStatus.UpToDate => "No hay una versión estable posterior a la instalada.",
-                ReleaseCheckStatus.NoStableRelease => "La publicación recibida es de prueba; no se ofrece como actualización estable.",
-                ReleaseCheckStatus.MissingInstaller => $"La versión {result.Version} no incluye un instalador Windows x64 compatible. No se ofrece para actualizar.",
-                ReleaseCheckStatus.InvalidResponse => "La publicación no tiene el formato esperado. No se ofrece ninguna actualización.",
-                _ => "No se pudo comprobar el canal. Puede faltar una publicación estable o el repositorio puede requerir acceso. No significa que estés actualizado."
-            };
-            availableRelease = result.ReleasePage;
+            availableUpdate = await new PreviewUpdater(releasesHttp).FindAsync(installed, lifetime.Token);
+            availableRelease = availableUpdate?.ReleasePage;
+            UpdateResult.Text = availableUpdate is null ? "No hay una versión posterior con un instalador verificable disponible." :
+                $"Versión {availableUpdate.Version.ToString(3)} disponible. Puedes instalarla sobre la actual, sin desinstalar ni perder tus preferencias.";
+            InstallUpdateButton.Visibility = availableUpdate is null ? Visibility.Collapsed : Visibility.Visible;
             OpenReleaseButton.Visibility = availableRelease is null ? Visibility.Collapsed : Visibility.Visible;
         }
+        catch (Exception ex) when (ex is HttpRequestException or TaskCanceledException or OperationCanceledException or InvalidDataException or JsonException)
+        { UpdateResult.Text = "No se pudo comprobar el canal de actualizaciones. Puedes volver a intentarlo."; }
         finally { UpdateCheckButton.IsEnabled = true; }
+    }
+
+    private async void InstallUpdate(object sender, RoutedEventArgs e)
+    {
+        if (availableUpdate is not { } update) return;
+        if (MessageBox.Show(this, "Se descargará y verificará el instalador desde GitHub. Es una versión de prueba sin firma digital. Al aceptar la instalación, Viteka se cerrará y Windows podrá pedir permisos de administrador. Tus preferencias se conservarán. ¿Continuar?",
+            "Actualizar Viteka Utilidades", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes) return;
+        InstallUpdateButton.IsEnabled = false;
+        UpdateCheckButton.IsEnabled = false;
+        try
+        {
+            var progress = new Progress<int>(value => UpdateResult.Text = $"Descargando actualización… {value}%");
+            using var installer = await new PreviewUpdater(downloadHttp).DownloadAsync(update, Path.Combine(store.DirectoryPath, "Updates"), progress, lifetime.Token);
+            UpdateResult.Text = "Descarga verificada. Abriendo el instalador…";
+            // Keep the file guard until Windows has accepted the installer process.
+            var process = Process.Start(new ProcessStartInfo(installer.Path) { UseShellExecute = true, Verb = "runas" });
+            if (process is null) throw new InvalidOperationException("No se inició el instalador.");
+            process.Dispose();
+            Application.Current.Shutdown();
+        }
+        catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
+        { UpdateResult.Text = "Instalación cancelada. La versión actual sigue disponible."; }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or HttpRequestException or OperationCanceledException or Win32Exception or InvalidOperationException or UnauthorizedAccessException)
+        { UpdateResult.Text = "No se pudo verificar o iniciar la actualización. No se ha reemplazado la aplicación actual. Vuelve a intentarlo."; }
+        finally { InstallUpdateButton.IsEnabled = true; UpdateCheckButton.IsEnabled = true; }
     }
 
     private void OpenRelease(object sender, RoutedEventArgs e)

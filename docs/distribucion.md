@@ -55,3 +55,15 @@ La llamada a GitHub usa un cliente HTTP independiente, sin la credencial del ser
 Pruebas ejecutadas mediante respuestas HTTP controladas: nueva versión, misma/anterior versión, prerelease, instalador ausente o externo, acceso denegado y contenido inválido. La consulta real desde cloud fue rechazada por el proxy antes de alcanzar GitHub; el dominio `api.github.com` se solicita en el borrador de red. Guardar el borrador no aplica automáticamente la política de red al proceso actual. No hay una publicación real validada.
 
 El host también soporta instalación manual como servicio Windows; el instalador no la automatiza. Consultar [servicio Windows](servicio-windows.md). Antes de actualizar o desinstalar archivos, el instalador exige retirar ese registro de servicio; conserva el estado y requiere revisión administrativa antes de reinstalarlo.
+
+## Canal de pruebas local (0.6.0)
+
+El usuario solicita actualizar su único equipo desde el programa. Se incorpora un canal de pruebas que incluye prereleases del repositorio Viteka. Cada entrega deberá incrementar X.Y.Z: no se distinguen revisiones preview con igual versión base. No se ofrecen degradaciones.
+
+El usuario busca versiones, confirma la descarga y el inicio del instalador; se comprueba tamaño y SHA-256 contra el digest publicado por la API HTTPS de GitHub. Se siguen únicamente redirecciones HTTPS hacia github.com o release-assets.githubusercontent.com. Las credenciales del servidor no se envían a esos destinos. Descargas parciales o inválidas se eliminan. La app conserva un bloqueo de lectura del archivo verificado hasta que Windows acepta el lanzamiento, y se cierra únicamente después de iniciar el instalador. Si se cancela UAC o falla la descarga, la app actual sigue abierta.
+
+No hay firma Authenticode: la identidad de origen del canal de pruebas depende de TLS y del control del repositorio GitHub, y el hash de GitHub verifica la integridad del archivo. El usuario es informado antes de aceptar la instalación del paquete de prueba sin firma. No equiparar esto a la validación del editor requerida para distribución a farmacias.
+
+Se mantiene el AppId de Inno Setup, para instalar encima sin desinstalar ni borrar preferencias locales. El instalador ofrece abrir la app al terminar. Una instalación portátil ZIP no se convierte en actualización in situ del ZIP: el instalador crea/actualiza la instalación registrada. La versión 0.5 no contiene el actualizador; requiere una instalación manual de 0.6 una vez. No se reinician servicios ni puestos remotos automáticamente; el MVP permanece vacío.
+
+Pruebas: cinco casos nuevos del núcleo verifican canal preview, descarga íntegra, digest incorrecto, tamaño incorrecto y redirección externa. El workflow añade descarga real de una prerelease en Windows, sin ejecutar el instalador. El ciclo UAC/instalación interactiva debe probarse en el equipo del usuario.
