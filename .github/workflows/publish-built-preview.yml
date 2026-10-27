@@ -1,0 +1,31 @@
+name: Publish built visual MVP
+on:
+  workflow_dispatch:
+permissions:
+  contents: write
+  actions: read
+jobs:
+  publish:
+    runs-on: windows-2022
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: Viteka-Utilidades-Windows-preview
+          path: installers
+          run-id: 40502390343
+          github-token: ${{ github.token }}
+      - name: Publish tested installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          try {
+            $files = @(Get-ChildItem installers -Filter '*.exe' -Recurse | ForEach-Object { $_.FullName })
+            if ($files.Count -ne 1) { throw 'Expected exactly one built installer' }
+            gh release create v0.5.0-preview.1 @files --repo $env:GITHUB_REPOSITORY --target 60ac966 --prerelease --title 'Viteka Utilidades 0.5.0 - MVP visual' --notes 'MVP visual con identidad Viteka: navegacion B, catalogo vacio, sin datos ficticios ni formularios de conexion. Primero revisamos el MVP; despues crearemos utilidades y vinculos a NixFarma. Instalador sin firma digital. Compilacion y pruebas automaticas realizadas en Windows; pendiente revision visual en el equipo del usuario.'
+            if ($LASTEXITCODE -ne 0) { throw 'Publication failed' }
+          } catch {
+            $detail = ($_ | Out-String).Replace("`r", '').Replace("`n", '%0A')
+            Write-Output "::error::$detail"
+            exit 1
+          }
