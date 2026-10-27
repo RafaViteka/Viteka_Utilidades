@@ -1,17 +1,24 @@
-name: Read native diagnostics
+name: Read workflow diagnostics
 on:
   workflow_dispatch:
+    inputs:
+      run_id:
+        description: Numeric workflow run ID to inspect
+        type: string
+        required: true
 permissions:
   actions: read
 jobs:
   diagnostics:
     runs-on: ubuntu-latest
     steps:
-      - name: Read failed native check
+      - name: Read failed workflow steps
         env:
           GH_TOKEN: ${{ github.token }}
+          DIAGNOSTIC_RUN_ID: ${{ inputs.run_id }}
         run: |
-          gh run view 40519723368 --repo "$GITHUB_REPOSITORY" --log-failed > native.log
+          [[ "$DIAGNOSTIC_RUN_ID" =~ ^[0-9]+$ ]] || exit 1
+          gh run view "$DIAGNOSTIC_RUN_ID" --repo "$GITHUB_REPOSITORY" --log-failed > native.log
           python - <<'PY'
           from pathlib import Path
           import re
