@@ -84,6 +84,13 @@ internal sealed class WindowsShellIntegration : IDisposable
         if (DwmGetWindowAttribute(Handle, 9, out var visible, Marshal.SizeOf<RectI>()) != 0 && !GetWindowRect(Handle, out visible)) return false;
         return visible.Left >= work.Left - 2 && visible.Top >= work.Top - 2 && visible.Right <= work.Right + 2 && visible.Bottom <= work.Bottom + 2;
     }
+    internal string Diagnostics()
+    {
+        var work = Monitor().Work;
+        GetWindowRect(Handle, out var bounds);
+        DwmGetWindowAttribute(Handle, 9, out var visible, Marshal.SizeOf<RectI>());
+        return $"state={window.WindowState}; dpi={GetDpiForWindow(Handle)}; icons={largeIcon}/{smallIcon}; actual={SendMessage(Handle, 0x7F, new IntPtr(1), IntPtr.Zero)}/{SendMessage(Handle, 0x7F, IntPtr.Zero, IntPtr.Zero)}; work={work.Left},{work.Top},{work.Right},{work.Bottom}; bounds={bounds.Left},{bounds.Top},{bounds.Right},{bounds.Bottom}; visible={visible.Left},{visible.Top},{visible.Right},{visible.Bottom}";
+    }
     internal void SmokeCtrlWheel()
     {
         if (!App.SmokeTest) throw new InvalidOperationException();

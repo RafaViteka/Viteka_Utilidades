@@ -1,6 +1,11 @@
 name: Windows preview installer
 on:
   workflow_dispatch:
+    inputs:
+      validate_only:
+        description: Validate without packaging or publishing a release
+        type: boolean
+        default: false
 permissions:
   contents: write
 jobs:
@@ -76,9 +81,11 @@ jobs:
           dotnet run --project tests/Viteka.Core.Checks -c Release --no-build -- --download-smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Compile validated Windows installer
+        if: ${{ !inputs.validate_only }}
         shell: pwsh
         run: ./scripts/publish-windows.ps1 -InstallerOnly
       - uses: actions/upload-artifact@v4
+        if: ${{ !inputs.validate_only }}
         with:
           name: Viteka-Utilidades-Windows-preview
           path: artifacts/installer/*.exe
@@ -86,6 +93,7 @@ jobs:
           retention-days: 14
 
       - name: Publish preview download
+        if: ${{ !inputs.validate_only }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}

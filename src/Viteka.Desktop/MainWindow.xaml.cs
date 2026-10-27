@@ -94,10 +94,12 @@ public partial class MainWindow : Window
             await WaitForScript("document.querySelector('.priority-grid') !== null");
             await WaitForScript("Math.round(document.querySelector('aside').getBoundingClientRect().width) === 220");
             stage = "window-controls";
-            if (Icon is null || !shell.HasNativeIcons || !shell.WithinWorkArea()) throw new InvalidOperationException();
+            if (Icon is null) throw new InvalidOperationException("Missing WPF icon.");
+            if (!shell.HasNativeIcons) throw new InvalidOperationException("Missing native icons: " + shell.Diagnostics());
+            if (!shell.WithinWorkArea()) throw new InvalidOperationException("Initial work area: " + shell.Diagnostics());
             MaximizeWindow(this, new RoutedEventArgs());
             await Task.Delay(200);
-            if (WindowState != WindowState.Maximized || !shell.WithinWorkArea()) throw new InvalidOperationException();
+            if (WindowState != WindowState.Maximized || !shell.WithinWorkArea()) throw new InvalidOperationException("Maximized work area: " + shell.Diagnostics());
             MaximizeWindow(this, new RoutedEventArgs());
             await Task.Delay(200);
             if (WindowState != WindowState.Normal) throw new InvalidOperationException();
@@ -138,12 +140,12 @@ public partial class MainWindow : Window
             if (!string.IsNullOrEmpty(screenshot)) { using var file = File.Create(screenshot); await Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, file); }
             FinishSmoke(true, "complete");
         }
-        catch { FinishSmoke(false, stage); }
+        catch (Exception exception) { FinishSmoke(false, stage, exception.Message); }
     }
-    private void FinishSmoke(bool passed, string stage)
+    private void FinishSmoke(bool passed, string stage, string? error = null)
     {
         var report = Environment.GetEnvironmentVariable("VITEKA_UI_SMOKE_REPORT");
-        if (!string.IsNullOrEmpty(report)) File.WriteAllText(report, JsonSerializer.Serialize(new { passed, stage }));
+        if (!string.IsNullOrEmpty(report)) File.WriteAllText(report, JsonSerializer.Serialize(new { passed, stage, error }));
         if (passed) CloseWindow(this, new RoutedEventArgs()); else Application.Current.Shutdown(1);
     }
     private static bool Trusted(string source) => Uri.TryCreate(source, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.Host == "app.viteka.local" && uri.Port == 443 && uri.UserInfo.Length == 0;
