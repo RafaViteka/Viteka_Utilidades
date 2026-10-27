@@ -14,7 +14,8 @@ jobs:
           gh run view 40519723368 --repo "$GITHUB_REPOSITORY" --log-failed > native.log
           python - <<'PY'
           from pathlib import Path
-          text=Path('native.log').read_text()[-10000:]
+          import re
+          text=re.sub(r'\x1b\[[0-9;]*m','',Path('native.log').read_text())[-2500:]
           text=text.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
           print('::notice::'+text)
           PY
