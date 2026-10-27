@@ -1,11 +1,14 @@
-# Viteka Utilidades · MVP Angular 0.7.0
+# Viteka Utilidades · Centro de accesos 0.8.0
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete, sin web alojada ni servidor requerido para abrir el MVP.
 
 ## Incluido
 
-- Identidad Viteka y diseño B: isotipo junto a Utilidades, logotipo lateral, verdes, lima y marfil.
-- Inicio, Utilidades, Favoritos, Actividad y Configuración, con estados vacíos.
+- Diseño editorial del HTML Viteka Portal Estudio 2026 aplicado a toda la interfaz: marfil, verde petróleo, titulares y superficies de producto.
+- Inicio con portal de soporte, AnyDesk local, manuales, formación, web y contactos.
+- Menú lateral plegable, logotipo inferior sin eslogan y apariencia clara/oscura/automática persistente.
+- Isotipo bicolor transparente original en ventana, ejecutable e instalador.
+- Utilidades, Favoritos y Actividad conservan estados vacíos, sin acceso a datos de NixFarma.
 - Preferencias locales por usuario, conservadas entre versiones.
 - Canal de pruebas GitHub: búsqueda, descarga verificada y apertura del instalador con confirmación/UAC.
 - Instalador x64 autocontenido para .NET, con bootstrapper de WebView2 verificado como Microsoft. Si falta el runtime, su instalación inicial puede requerir internet.
@@ -25,7 +28,7 @@ bash scripts/setup-cloud.sh
 python scripts/smoke-ui.py
 ```
 
-El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 27 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 30 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
 
 Para editar la interfaz en navegador:
 
@@ -50,3 +53,5 @@ Requiere Node/npm, Python, SDK .NET e Inno Setup 6 en el equipo de desarrollo. E
 El workflow manual windows-preview.yml compila/ejecuta pruebas del núcleo y servidor, pruebas de interfaz en Chrome, prueba nativa WebView2 (arranque, navegación, guardado por puente y reapertura), y una descarga real de actualización verificada, sin ejecutar ese instalador. Revisar el resultado del run antes de afirmar que pasaron en Windows. La revisión gráfica y el ciclo interactivo de instalación/UAC requieren el equipo del usuario.
 
 [Alcance del MVP](docs/mvp.md) · [Arquitectura](docs/estructura.md) · [Distribución](docs/distribucion.md)
+
+[Centro de accesos y recursos autorizados](docs/portal.md). El HTML adjunto se utiliza como referencia de diseño y contenidos: no se ejecutan sus scripts de instalación, protocolo ni feed remoto.

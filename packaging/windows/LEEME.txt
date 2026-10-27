@@ -1,35 +1,25 @@
-VITEKA UTILIDADES - VISTA PREVIA LOCAL 0.7.0
+VITEKA UTILIDADES 0.8.0 - CANAL DE PRUEBAS
 
-Paquete Windows x64 autocontenido. No requiere instalar .NET en el puesto.
+Instala sobre la version anterior. No hace falta desinstalar; las preferencias
+se conservan en la carpeta local de tu usuario.
 
-1. Inicia el servidor de demostración desde el menú Inicio; deja su ventana abierta.
-2. Abre Viteka Utilidades desde el menú Inicio.
-3. Puedes revisar el MVP visual. El catálogo está vacío y la configuración de NixFarma queda para una fase posterior.
+Inicio ofrece acceso al portal de soporte, AnyDesk, manuales, formacion, web
+y contactos de Viteka. Las paginas se abren en tu navegador predeterminado.
+AnyDesk abre el programa instalado en Program Files, sin conectarse a terceros
+ni conceder acceso desatendido. Debes autorizar cada sesion.
 
-El servidor solo acepta conexiones del mismo equipo. Este paquete no conecta
-con Oracle, no instala un servicio de Windows ni permite usar el servidor desde
-otros puestos. El despliegue real necesita TLS, configuración de red y ODBC.
+El menu lateral se puede plegar y desplegar. Puedes elegir apariencia clara,
+oscura o automatica. Ambos ajustes se conservan entre sesiones.
 
-No contiene credenciales, registros de puestos ni datos reales de farmacia.
-Preferencias y credenciales se guardan fuera del directorio de instalación.
-La desinstalación conserva esos datos locales; revoca las autorizaciones por
-separado cuando corresponda.
+No hay utilidades de base de datos ni conexion a NixFarma. La interfaz Angular
+esta incluida en el paquete. No necesitas iniciar un servidor para abrirla.
+El instalador prepara Microsoft Edge WebView2 si falta: puede necesitar internet.
+No requiere instalar Node ni el SDK .NET en el equipo del usuario.
 
-Este canal de pruebas permite buscar, descargar y verificar un instalador de
-GitHub y ejecutarlo con confirmacion. La version actual debe instalarse una
-vez manualmente para incorporar el actualizador. Para entregar a farmacias
-sigue pendiente la firma de codigo y la validacion del despliegue completo.
-Este instalador de evaluación puede no estar firmado digitalmente.
+Configuracion permite buscar, descargar, verificar e iniciar una actualizacion
+de prueba desde GitHub, siempre con confirmacion. El instalador de Viteka aun
+no dispone de firma digital del editor.
 
-Compatibilidad requerida: Windows 10/11 y Server 2022/2025. Validar la edición,
-versión, parches y arquitectura concretos; no se ha certificado toda esa matriz.
-
-SERVICIO OPCIONAL DE VISTA PREVIA
-El servidor admite --service. El paquete incluye Servidor/manage-service.ps1
-para administrarlo con permisos elevados. Consultar docs/servicio-windows.md
-antes de instalarlo. El instalador no lo registra automaticamente.
-
-INTERFAZ ANGULAR + WEBVIEW2
-La interfaz se incluye localmente y no necesita iniciar el servidor.
-El instalador prepara Microsoft Edge WebView2 si falta (puede necesitar internet).
-Se conserva la instalacion anterior y las preferencias del usuario.
+Este paquete no habilita acceso LAN ni instala automaticamente el servicio
+opcional de desarrollo. Se mantiene la documentacion de ese servicio para una
+fase posterior, sin alterar el DSN de NixFarma.

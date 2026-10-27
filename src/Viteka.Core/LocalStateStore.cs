@@ -4,7 +4,7 @@ namespace Viteka.Core;
 
 public enum LocalAction { DemoStarted, ProposalOpened, FavoriteAdded, FavoriteRemoved }
 public sealed record ActivityEntry(DateTimeOffset At, LocalAction Action, string? UtilityId);
-public sealed record LocalState(int SchemaVersion, string[] FavoriteIds, ActivityEntry[] Activity, bool OpenFavoritesOnStart)
+public sealed record LocalState(int SchemaVersion, string[] FavoriteIds, ActivityEntry[] Activity, bool OpenFavoritesOnStart, bool SidebarCollapsed = false, string Theme = "auto")
 {
     public static LocalState Empty => new(1, [], [], false);
 }
@@ -43,6 +43,9 @@ public sealed class LocalStateStore(string directory, IReadOnlyList<UtilityDefin
     });
     public LocalState SetOpenFavorites(bool enabled) => Update(state => state with { OpenFavoritesOnStart = enabled });
 
+    public LocalState SetSidebar(bool collapsed) => Update(state => state with { SidebarCollapsed = collapsed });
+    public LocalState SetTheme(string theme) => Update(state => theme is "auto" or "light" or "dark" ? state with { Theme = theme } : throw new ArgumentException("Tema no válido."));
+
     private static LocalState AddActivity(LocalState state, LocalAction action, string? id) => state with
     { Activity = new[] { new ActivityEntry(DateTimeOffset.UtcNow, action, id) }.Concat(state.Activity).Take(100).ToArray() };
 
@@ -68,6 +71,7 @@ public sealed class LocalStateStore(string directory, IReadOnlyList<UtilityDefin
                 (x.Action == LocalAction.DemoStarted ? x.UtilityId is not null : x.UtilityId is null || !(KnownIds.Contains(x.UtilityId) || RetiredDemoIds.Contains(x.UtilityId)))))
             throw new InvalidDataException("La configuración local no es válida.");
         return state with {
+            Theme = state.Theme is "auto" or "light" or "dark" ? state.Theme : "auto",
             FavoriteIds = state.FavoriteIds.Where(KnownIds.Contains).ToArray(),
             Activity = state.Activity.Where(x => x.UtilityId is null || KnownIds.Contains(x.UtilityId)).ToArray()
         };

@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "0.7.0"
+#define AppVersion "0.8.0"
 #endif
 #define PublishRoot "..\..\artifacts\windows-x64"
 
@@ -42,11 +42,6 @@ Name: "{group}\Leer antes de probar"; Filename: "{app}\LEEME.txt"
 Filename: "{app}\Cliente\Viteka.Desktop.exe"; Description: "Abrir Viteka Utilidades"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
-function InitializeSetup(): Boolean;
-begin
-  Result := MsgBox('Esta es una vista previa local: no conecta con NixFarma ni permite acceso desde otros puestos. No instala el servicio definitivo ni actualizaciones online. ¿Quieres instalarla para evaluación?', mbConfirmation, MB_YESNO) = IDYES;
-end;
-
 function WebViewInstalled(): Boolean;
 var Version: String;
     Key: String;

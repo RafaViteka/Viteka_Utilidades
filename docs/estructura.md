@@ -171,3 +171,7 @@ Se rehacen los estilos nativos de WPF para acercarlos al diseño B: barra propia
 ## Decisión vigente: Angular + WebView2 (0.7.0)
 
 Migración de la interfaz autorizada por el usuario. El MVP se representa en frontend/ mediante Angular 22 y CSS. La ventana WPF se conserva solo como anfitrión WebView2 y barra nativa; ya no renderiza las pantallas de utilidades. Preferencias y actualización permanecen en .NET detrás de un puente de mensajes con acciones limitadas. Ver docs/mvp.md. No ampliar NixFarma ni las utilidades antes de revisar el MVP.
+
+## Centro de accesos editorial (0.8.0)
+
+El usuario solicita adoptar el diseño de Viteka_Portal_Estudio_2026.html en toda la aplicación y usar Inicio para soporte y recursos. Se añaden los accesos definidos por el archivo, menú plegable y temas persistentes, marca inferior e iconos bicolor transparentes. No se añaden utilidades Oracle. Detalles y límites en docs/portal.md.

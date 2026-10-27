@@ -230,6 +230,30 @@ try
         try { new PreviewUpdater(redirectedHttp).DownloadAsync(offer!, Path.Combine(root, "bad-host")).GetAwaiter().GetResult(); throw new Exception("Expected rejection"); }
         catch (InvalidDataException) { }
     });
+    Check("Sidebar and appearance persist without changing start preference", () =>
+    {
+        var local = Store(Path.Combine(root, "appearance"));
+        local.SetOpenFavorites(true);local.SetSidebar(true);local.SetTheme("dark");
+        var loaded = Store(local.DirectoryPath).Load();
+        Require(loaded.OpenFavoritesOnStart && loaded.SidebarCollapsed && loaded.Theme == "dark");
+        try { local.SetTheme("arbitrary"); throw new Exception("Expected rejection"); } catch (ArgumentException) { }
+        Require(Store(local.DirectoryPath).Load().Theme == "dark");
+    });
+    Check("Prior preferences upgrade with appearance defaults", () =>
+    {
+        var legacy = Store(Path.Combine(root, "old-appearance"));
+        Directory.CreateDirectory(legacy.DirectoryPath);
+        File.WriteAllText(legacy.StatePath, "{\"SchemaVersion\":1,\"FavoriteIds\":[],\"Activity\":[],\"OpenFavoritesOnStart\":true}");
+        var loaded=legacy.Load();Require(loaded.OpenFavoritesOnStart && !loaded.SidebarCollapsed && loaded.Theme=="auto");
+    });
+    Check("Portal only resolves approved resource identifiers", () =>
+    {
+        Require(PortalResources.Target("support")=="https://soporte.viteka.es/");
+        Require(PortalResources.Target("manuals")=="https://wiki.nixfarma.es/");
+        Require(PortalResources.Target("https://arbitrary.example") is null);
+        Require(PortalResources.Target("anydesk") is null); // Native launcher has a separate fixed-path branch, without session arguments.
+        Require(PortalResources.Email("support-email")=="soporte@viteka.es" && PortalResources.Email("arbitrary") is null);
+    });
     Console.WriteLine($"{passed} checks passed.");
 }
 finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
