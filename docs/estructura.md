@@ -161,3 +161,9 @@ GitHub Releases y aprobación del administrador antes de aplicar. Implementada l
 ## Soporte de servicio Windows
 
 Host integrado con Windows Service Control Manager mediante --service, estado separado bajo ProgramData y comandos de administración manual. Instalación/arranque con LocalService y permisos restringidos preparados en PowerShell; no ejecutados aún en Windows. Ver servicio-windows.md. La API continúa limitada a loopback.
+
+## Prioridad vigente: MVP visual vacío (0.5.0)
+
+Por indicación del usuario, antes de crear aplicaciones o vínculos a NixFarma se cerrará el MVP visual. El catálogo público está vacío; no hay tarjetas de stock/caducidades/compras ni actividad ficticia. La interfaz oculta los formularios de vinculación y conexión y deja la configuración de base de datos para una fase posterior. Se conserva el código backend existente sin ampliarlo.
+
+Se rehacen los estilos nativos de WPF para acercarlos al diseño B: barra propia con isotipo, navegación oscura con selección lima, controles redondeados, fondos marfil y estados vacíos. El HTML de referencia se actualiza al mismo contenido vacío. Se conservan los archivos locales anteriores; los favoritos/historial de utilidades retiradas no reaparecen en el MVP. No iniciar trabajos de conexión o utilidades hasta revisar el MVP con el usuario.

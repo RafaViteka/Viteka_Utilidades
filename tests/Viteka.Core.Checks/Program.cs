@@ -3,35 +3,40 @@ using System.Text.Json;
 
 var root = Path.Combine(Path.GetTempPath(), "viteka-checks-" + Guid.NewGuid().ToString("N"));
 var passed = 0;
+LocalStateStore Store(string path) => new(path, new[] {
+    new Viteka.Contracts.UtilityDefinition("stock", "Fixture", "", "", true),
+    new Viteka.Contracts.UtilityDefinition("expiry", "Fixture", "", "", true),
+    new Viteka.Contracts.UtilityDefinition("purchases", "Fixture", "", "", true)
+});
 void Check(string name, Action action) { action(); passed++; Console.WriteLine("PASS: " + name); }
 void Require(bool ok) { if (!ok) throw new Exception("Assertion failed"); }
 try
 {
-    var store = new LocalStateStore(Path.Combine(root, "user-a"));
+    var store = Store(Path.Combine(root, "user-a"));
     Check("Favorites and preferences survive reopening", () =>
     {
         store.SetFavorite("stock", true); store.SetOpenFavorites(true);
-        var loaded = new LocalStateStore(store.DirectoryPath).Load();
+        var loaded = Store(store.DirectoryPath).Load();
         Require(loaded.FavoriteIds.SequenceEqual(new[] { "stock" }) && loaded.OpenFavoritesOnStart);
         Require(loaded.Activity.Length == 1 && loaded.Activity[0].Action == LocalAction.FavoriteAdded);
     });
     Check("Different user directories remain isolated", () =>
     {
-        var other = new LocalStateStore(Path.Combine(root, "user-b"));
+        var other = Store(Path.Combine(root, "user-b"));
         other.SetFavorite("expiry", true);
         Require(!other.Load().FavoriteIds.Contains("stock"));
         Require(!store.Load().FavoriteIds.Contains("expiry"));
     });
     Check("Updates merge across separate store instances", () =>
     {
-        Parallel.Invoke(() => new LocalStateStore(store.DirectoryPath).SetFavorite("expiry", true),
-                        () => new LocalStateStore(store.DirectoryPath).SetFavorite("purchases", true));
+        Parallel.Invoke(() => Store(store.DirectoryPath).SetFavorite("expiry", true),
+                        () => Store(store.DirectoryPath).SetFavorite("purchases", true));
         Require(store.Load().FavoriteIds.Length == 3);
     });
     Check("Removing favorites persists", () =>
     {
         store.SetFavorite("stock", false);
-        Require(!new LocalStateStore(store.DirectoryPath).Load().FavoriteIds.Contains("stock"));
+        Require(!Store(store.DirectoryPath).Load().FavoriteIds.Contains("stock"));
     });
     Check("Activity retained at most 100 entries", () =>
     {
@@ -47,7 +52,7 @@ try
     });
     Check("Corrupt state remains untouched", () =>
     {
-        var broken = new LocalStateStore(Path.Combine(root, "broken"));
+        var broken = Store(Path.Combine(root, "broken"));
         Directory.CreateDirectory(broken.DirectoryPath); File.WriteAllText(broken.StatePath, "{broken");
         try { broken.SetFavorite("stock", true); throw new Exception("Expected rejection"); }
         catch (JsonException) { }
@@ -55,7 +60,7 @@ try
     });
     Check("Future schema remains untouched", () =>
     {
-        var future = new LocalStateStore(Path.Combine(root, "future"));
+        var future = Store(Path.Combine(root, "future"));
         Directory.CreateDirectory(future.DirectoryPath);
         const string content = "{\"SchemaVersion\":2,\"FavoriteIds\":[],\"Activity\":[]}";
         File.WriteAllText(future.StatePath, content);
@@ -153,6 +158,16 @@ try
         Require(CheckRelease("broken json").Status == ReleaseCheckStatus.InvalidResponse);
         Require(CheckRelease("[]").Status == ReleaseCheckStatus.InvalidResponse);
         Require(CheckRelease(ReleaseJson("v0.5.0-preview")).Status == ReleaseCheckStatus.InvalidResponse);
+    });
+    Check("MVP catalog is empty and retired demos do not reappear", () =>
+    {
+        Require(Viteka.Contracts.DemoCatalog.Items.Count == 0);
+        var legacy = Store(Path.Combine(root, "legacy"));
+        legacy.SetFavorite("stock", true);
+        var clean = new LocalStateStore(legacy.DirectoryPath).Load();
+        Require(clean.FavoriteIds.Length == 0 && clean.Activity.Length == 0);
+        // Reading does not destroy the previous file; migration is applied on next save.
+        Require(File.ReadAllText(legacy.StatePath).Contains("stock"));
     });
     Console.WriteLine($"{passed} checks passed.");
 }

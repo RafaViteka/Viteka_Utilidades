@@ -77,11 +77,8 @@ with tempfile.TemporaryDirectory(prefix='viteka-http-') as temporary, tempfile.T
         assert status['databaseConfigured'] is False
         assert status['databaseStatus'] == 'not_configured'
         catalog = request('/api/utilities', token=token)
-        assert {x['id'] for x in catalog} == {'stock', 'expiry', 'purchases'}
-        assert all(x['requiresDatabase'] for x in catalog)
-        for utility in catalog:
-            result = request('/api/utilities/' + utility['id'] + '/execute', 'POST', 503, token=token)
-            assert result['code'] == 'database_not_configured'
+        assert catalog == [], 'MVP must not expose demonstration utilities'
+        request('/api/utilities/stock/execute', 'POST', 404, token=token)
         request('/api/utilities/unknown/execute', 'POST', 404, token=token)
         request('/api/utilities/stock/execute', expected=405, token=token)
         request('/api/sql', 'POST', 404, token=token)
@@ -91,7 +88,7 @@ with tempfile.TemporaryDirectory(prefix='viteka-http-') as temporary, tempfile.T
         subprocess.run([DOTNET, str(DLL), '--admin-revoke-device', credential['deviceId']], cwd=ROOT,
                        env=env, stdout=subprocess.DEVNULL, check=True)
         request('/api/status', expected=401, token=token)
-        print('PASS: health; API authorization; one-use pairing; rate limit; revocation; catalog; 3 blocked executions; no arbitrary SQL endpoint.')
+        print('PASS: health; API authorization; one-use pairing; rate limit; revocation; catalog; empty MVP catalog; no arbitrary SQL endpoint.')
     finally:
         process.terminate()
         try:

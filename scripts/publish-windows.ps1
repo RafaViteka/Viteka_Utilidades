@@ -23,7 +23,8 @@ try {
         $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
         $iscc = if ($compiler) { $compiler.Source } else { Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe' }
         if (-not (Test-Path $iscc)) { throw 'Install Inno Setup 6 on Windows to build the installer.' }
-        & $iscc 'packaging/windows/Viteka.Utilidades.iss'
+        $version = ([xml](Get-Content 'Directory.Build.props' -Raw)).Project.PropertyGroup.Version
+        & $iscc "/DAppVersion=$version" 'packaging/windows/Viteka.Utilidades.iss'
         if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
     }
 }

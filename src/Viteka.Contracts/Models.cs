@@ -6,13 +6,8 @@ public sealed record UtilityExecutionResult(string Code, string Message);
 
 public static class DemoCatalog
 {
-    // Proposals only: no utility is operational and no pharmacy data is returned.
-    public static IReadOnlyList<UtilityDefinition> Items { get; } = Array.AsReadOnly(new[]
-    {
-        new UtilityDefinition("stock", "Analizar stock", "Consulta existencias y detecta oportunidades de mejora.", "Almacén", true),
-        new UtilityDefinition("expiry", "Revisar caducidades", "Localiza productos próximos a caducar.", "Almacén", true),
-        new UtilityDefinition("purchases", "Consultar compras", "Revisa compras y albaranes de proveedores.", "Compras", true)
-    });
+    // MVP shell only. Utilities will be added after visual approval.
+    public static IReadOnlyList<UtilityDefinition> Items { get; } = Array.Empty<UtilityDefinition>();
 }
 
 public sealed record PairingRequest(string Code, string DeviceName);

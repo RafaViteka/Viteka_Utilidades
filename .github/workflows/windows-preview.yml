@@ -44,14 +44,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $tag = 'v0.4.0-preview.1'
-          $zip = 'artifacts/VitekaUtilidades-0.4.0-win-x64-preview.zip'
+          $version = ([xml](Get-Content 'Directory.Build.props' -Raw)).Project.PropertyGroup.Version
+          $tag = "v$version-preview.1"
+          $zip = "artifacts/VitekaUtilidades-$version-win-x64-preview.zip"
           Compress-Archive -Path 'artifacts/windows-x64/*' -DestinationPath $zip -Force
           $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
           "$hash  $([System.IO.Path]::GetFileName($zip))" | Set-Content -Encoding ascii "$zip.sha256"
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title 'Viteka Utilidades 0.4.0 - Vista previa' --notes 'Vista previa local para Windows x64. Extrae todo el ZIP y abre Cliente/Viteka.Desktop.exe. Sin conexion real a NixFarma ni actualizacion automatica. Instalador sin firma digital; pendiente de prueba interactiva en Windows.'
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "Viteka Utilidades $version - MVP visual" --notes 'MVP visual: navegacion estilo B con identidad Viteka, catalogo y actividad vacios. Sin utilidades de ejemplo ni conexion real a NixFarma. Instalador sin firma digital; pendiente de revision visual en Windows.' 
             if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
           }
           gh release upload $tag $zip "$zip.sha256" artifacts/installer/*.exe --repo $env:GITHUB_REPOSITORY --clobber

@@ -1,10 +1,10 @@
-VITEKA UTILIDADES - VISTA PREVIA LOCAL 0.4.0
+VITEKA UTILIDADES - VISTA PREVIA LOCAL 0.5.0
 
 Paquete Windows x64 autocontenido. No requiere instalar .NET en el puesto.
 
 1. Inicia el servidor de demostración desde el menú Inicio; deja su ventana abierta.
 2. Abre Viteka Utilidades desde el menú Inicio.
-3. Puedes navegar y probar favoritos. Para comprobar la API debes vincular el usuario/equipo según docs/vinculacion.md del proyecto.
+3. Puedes revisar el MVP visual. El catálogo está vacío y la configuración de NixFarma queda para una fase posterior.
 
 El servidor solo acepta conexiones del mismo equipo. Este paquete no conecta
 con Oracle, no instala un servicio de Windows ni permite usar el servidor desde

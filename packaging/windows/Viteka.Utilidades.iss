@@ -1,4 +1,6 @@
-#define AppVersion "0.4.0"
+#ifndef AppVersion
+#define AppVersion "0.5.0"
+#endif
 #define PublishRoot "..\..\artifacts\windows-x64"
 
 [Setup]

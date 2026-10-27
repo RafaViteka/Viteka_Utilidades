@@ -10,11 +10,12 @@ public sealed record LocalState(int SchemaVersion, string[] FavoriteIds, Activit
 }
 
 // Only known utility IDs and actions are recorded, never arbitrary text or pharmacy data.
-public sealed class LocalStateStore(string directory)
+public sealed class LocalStateStore(string directory, IReadOnlyList<UtilityDefinition>? utilities = null)
 {
     public string DirectoryPath { get; } = Path.GetFullPath(directory);
     public string StatePath => Path.Combine(DirectoryPath, "state.json");
-    private static readonly HashSet<string> KnownIds = DemoCatalog.Items.Select(x => x.Id).ToHashSet();
+    private readonly HashSet<string> KnownIds = (utilities ?? DemoCatalog.Items).Select(x => x.Id).ToHashSet();
+    private static readonly HashSet<string> RetiredDemoIds = ["stock", "expiry", "purchases"];
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     public static LocalStateStore ForCurrentUser() => new(Path.Combine(
         Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Viteka", "Utilidades"));
@@ -62,11 +63,14 @@ public sealed class LocalStateStore(string directory)
             ?? throw new InvalidDataException("El archivo local está vacío.");
         if (state.SchemaVersion != 1) throw new InvalidDataException("Versión de configuración local no compatible.");
         if (state.FavoriteIds is null || state.Activity is null || state.Activity.Length > 100 ||
-            state.FavoriteIds.Any(id => id is null || !KnownIds.Contains(id)) ||
+            state.FavoriteIds.Any(id => id is null || !(KnownIds.Contains(id) || RetiredDemoIds.Contains(id))) ||
             state.Activity.Any(x => x is null || !Enum.IsDefined(x.Action) ||
-                (x.Action == LocalAction.DemoStarted ? x.UtilityId is not null : x.UtilityId is null || !KnownIds.Contains(x.UtilityId))))
+                (x.Action == LocalAction.DemoStarted ? x.UtilityId is not null : x.UtilityId is null || !(KnownIds.Contains(x.UtilityId) || RetiredDemoIds.Contains(x.UtilityId)))))
             throw new InvalidDataException("La configuración local no es válida.");
-        return state;
+        return state with {
+            FavoriteIds = state.FavoriteIds.Where(KnownIds.Contains).ToArray(),
+            Activity = state.Activity.Where(x => x.UtilityId is null || KnownIds.Contains(x.UtilityId)).ToArray()
+        };
     }
     private LocalState Update(Func<LocalState, LocalState> change)
     {
@@ -86,7 +90,7 @@ public sealed class LocalStateStore(string directory)
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
         return state;
     }
-    private static void RequireKnownId(string? id)
+    private void RequireKnownId(string? id)
     {
         if (id is null || !KnownIds.Contains(id)) throw new ArgumentException("Utilidad desconocida.", nameof(id));
     }

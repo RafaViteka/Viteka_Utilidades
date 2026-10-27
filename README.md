@@ -62,3 +62,7 @@ Comprobado en Linux: compilación completa, veintiuna comprobaciones de persiste
 Se publica para Windows x64 de forma autocontenida. [Empaquetado y plan de actualización online](docs/distribucion.md). El instalador preparado es una vista previa local; no es el instalador de producción para los puestos de la farmacia.
 
 [Preparación del servicio Windows](docs/servicio-windows.md).
+
+## MVP visual 0.5.0
+
+Prioridad actual: revisar la interfaz antes de desarrollar utilidades y conexión a NixFarma. El catálogo está vacío y la pantalla de configuración no pide credenciales ni conexiones. La navegación, estados vacíos, preferencias y consulta de actualizaciones forman la base visual. El backend anterior se conserva, sin ampliar su alcance.
