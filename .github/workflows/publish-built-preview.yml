@@ -22,8 +22,8 @@ jobs:
           try {
             $files = @(Get-ChildItem installers -Filter '*.exe' -Recurse | ForEach-Object { $_.FullName })
             if ($files.Count -ne 1) { throw 'Expected exactly one built installer' }
-            gh release create v0.5.0-preview.1 @files --repo $env:GITHUB_REPOSITORY --target 60ac966 --prerelease --title 'Viteka Utilidades 0.5.0 - MVP visual' --notes 'MVP visual con identidad Viteka: navegacion B, catalogo vacio, sin datos ficticios ni formularios de conexion. Primero revisamos el MVP; despues crearemos utilidades y vinculos a NixFarma. Instalador sin firma digital. Compilacion y pruebas automaticas realizadas en Windows; pendiente revision visual en el equipo del usuario.'
-            if ($LASTEXITCODE -ne 0) { throw 'Publication failed' }
+            $publishOutput = & gh release create v0.5.0-preview.1 @files --repo $env:GITHUB_REPOSITORY --target 60ac9665e7bec4267a72f999a9aa5c88f5d17925 --prerelease --title 'Viteka Utilidades 0.5.0 - MVP visual' --notes 'MVP visual con identidad Viteka: navegacion B, catalogo vacio, sin datos ficticios ni formularios de conexion. Primero revisamos el MVP; despues crearemos utilidades y vinculos a NixFarma. Instalador sin firma digital. Compilacion y pruebas automaticas realizadas en Windows; pendiente revision visual en el equipo del usuario.' 2>&1
+            if ($LASTEXITCODE -ne 0) { throw ($publishOutput -join '; ') }
           } catch {
             $detail = ($_ | Out-String).Replace("`r", '').Replace("`n", '%0A')
             Write-Output "::error::$detail"
