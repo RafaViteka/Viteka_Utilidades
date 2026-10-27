@@ -167,3 +167,7 @@ Host integrado con Windows Service Control Manager mediante --service, estado se
 Por indicación del usuario, antes de crear aplicaciones o vínculos a NixFarma se cerrará el MVP visual. El catálogo público está vacío; no hay tarjetas de stock/caducidades/compras ni actividad ficticia. La interfaz oculta los formularios de vinculación y conexión y deja la configuración de base de datos para una fase posterior. Se conserva el código backend existente sin ampliarlo.
 
 Se rehacen los estilos nativos de WPF para acercarlos al diseño B: barra propia con isotipo, navegación oscura con selección lima, controles redondeados, fondos marfil y estados vacíos. El HTML de referencia se actualiza al mismo contenido vacío. Se conservan los archivos locales anteriores; los favoritos/historial de utilidades retiradas no reaparecen en el MVP. No iniciar trabajos de conexión o utilidades hasta revisar el MVP con el usuario.
+
+## Decisión vigente: Angular + WebView2 (0.7.0)
+
+Migración de la interfaz autorizada por el usuario. El MVP se representa en frontend/ mediante Angular 22 y CSS. La ventana WPF se conserva solo como anfitrión WebView2 y barra nativa; ya no renderiza las pantallas de utilidades. Preferencias y actualización permanecen en .NET detrás de un puente de mensajes con acciones limitadas. Ver docs/mvp.md. No ampliar NixFarma ni las utilidades antes de revisar el MVP.

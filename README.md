@@ -1,52 +1,52 @@
-# Viteka Utilidades · MVP visual 0.6.0
+# Viteka Utilidades · MVP Angular 0.7.0
 
-Aplicación Windows para reunir futuras utilidades de farmacia. **Primero se revisará el MVP visual; las aplicaciones y vínculos a NixFarma se desarrollarán después.**
+Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete, sin web alojada ni servidor requerido para abrir el MVP.
 
-## Interfaz actual
+## Incluido
 
-- Diseño B con identidad Viteka: isotipo en la barra superior, logotipo en el lateral, verde oscuro, selección lima y fondos marfil.
-- Inicio, Utilidades, Favoritos, Actividad y Configuración con estilos propios de WPF.
-- Catálogo y actividad vacíos, sin ejemplos de stock, caducidades o compras.
-- Preferencia local de abrir Favoritos al iniciar.
-- Canal de pruebas de GitHub: búsqueda, descarga verificada y apertura del instalador con aprobación. No se instala nada sin confirmación.
-- Los formularios de conexión/vinculación están retirados de la interfaz. No hace falta iniciar un servidor para revisar el MVP.
+- Identidad Viteka y diseño B: isotipo junto a Utilidades, logotipo lateral, verdes, lima y marfil.
+- Inicio, Utilidades, Favoritos, Actividad y Configuración, con estados vacíos.
+- Preferencias locales por usuario, conservadas entre versiones.
+- Canal de pruebas GitHub: búsqueda, descarga verificada y apertura del instalador con confirmación/UAC.
+- Instalador x64 autocontenido para .NET, con bootstrapper de WebView2 verificado como Microsoft. Si falta el runtime, su instalación inicial puede requerir internet.
 
-[Descargas de prueba en GitHub Releases](https://github.com/RafaViteka/Viteka_Utilidades/releases). Descargar el instalador o extraer **todo** el ZIP y abrir `Cliente/Viteka.Desktop.exe`. Para incorporar el actualizador hay que instalar manualmente la 0.6.0 una vez sobre la anterior, sin desinstalarla. Las versiones posteriores podrán descargarse e instalarse desde Configuración. Paquetes sin firma digital, todavía no listos para farmacia.
+No hay utilidades operativas ni conexión a NixFarma. Se revisará primero el MVP visual. No se añaden ahora vínculos a la base de datos.
+
+[Descargar desde GitHub Releases](https://github.com/RafaViteka/Viteka_Utilidades/releases). Instalar sobre la versión anterior sin desinstalar. Desde 0.6 se puede actualizar desde Configuración; desde 0.5 hay que incorporar el actualizador mediante una descarga manual una vez. Paquetes de prueba sin firma digital del editor, no certificados para distribuir a farmacias.
 
 ## Desarrollo
 
-En este entorno Linux, desde `/workspace/Viteka_Utilidades`:
+Node 24.19.0, npm 11.9.0 y .NET SDK 10.0.403. Dependencias fijadas en frontend/package-lock.json y packages.lock.json.
+
+En cloud, desde `/workspace/Viteka_Utilidades`:
 
 ```bash
 bash scripts/setup-cloud.sh
+python scripts/smoke-ui.py
 ```
 
-Reutiliza/instala el SDK .NET 10.0.403, restaura con lockfiles, compila la solución, ejecuta 27 comprobaciones del núcleo y el smoke HTTP. Este último usa un registro temporal aislado y necesita libre el puerto 5187.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 27 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
 
-WPF se compila en Linux, pero se ejecuta en Windows. Con el SDK indicado, desde la raíz del proyecto en Windows:
+Para editar la interfaz en navegador:
 
-```powershell
-dotnet restore Viteka.Utilidades.slnx --locked-mode
-dotnet build Viteka.Utilidades.slnx -c Release --no-restore
-dotnet run --project src/Viteka.Desktop -c Release --no-build
+```bash
+cd frontend
+npm ci
+npm start
 ```
 
-La referencia HTML autónoma, también vacía, está en `prototipo/index.html`.
+En navegador las funciones nativas de actualización están deshabilitadas; las preferencias de vista previa usan almacenamiento local independiente.
 
-## Empaquetado
+Para ejecutar la aplicación en Windows, primero compilar/copy Angular y después `dotnet run --project src/Viteka.Desktop -c Release`. Para generar instalador:
 
 ```powershell
 ./scripts/publish-windows.ps1 -BuildInstaller
 ```
 
-Requiere Windows e Inno Setup 6. Publica cliente/servidor autocontenidos x64. El workflow manual `windows-preview.yml` ejecuta las pruebas, compila el instalador y publica una prerelease en GitHub. La versión se obtiene de `Directory.Build.props`.
+Requiere Node/npm, Python, SDK .NET e Inno Setup 6 en el equipo de desarrollo. Esos componentes no se exigen al usuario final.
 
-## Backend conservado, desarrollo aplazado
+## Validación
 
-El servidor previo y sus pruebas se conservan, pero no se amplían para esta revisión. No hay conexión real a Oracle ni utilidades operativas. El catálogo autenticado devuelve una lista vacía. La API mantiene autorización de puestos y el host está restringido a loopback. No exponerlo a la red ni cambiar el DSN de NixFarma.
+El workflow manual windows-preview.yml compila/ejecuta pruebas del núcleo y servidor, pruebas de interfaz en Chrome, prueba nativa WebView2 (arranque, navegación, guardado por puente y reapertura), y una descarga real de actualización verificada, sin ejecutar ese instalador. Revisar el resultado del run antes de afirmar que pasaron en Windows. La revisión gráfica y el ciclo interactivo de instalación/UAC requieren el equipo del usuario.
 
-Preferencias locales: `%LOCALAPPDATA%\Viteka\Utilidades`. No se borran archivos anteriores; los favoritos/historial de utilidades retiradas no reaparecen en el MVP. No guardar datos de pacientes ni contraseñas en el repositorio o disco compartido.
-
-[Decisiones y arquitectura](docs/estructura.md) · [Distribución](docs/distribucion.md) · [Servicio Windows pendiente de validar](docs/servicio-windows.md)
-
-La compilación y las pruebas automáticas no sustituyen la revisión gráfica ni la prueba de instalación en el equipo del usuario.
+[Alcance del MVP](docs/mvp.md) · [Arquitectura](docs/estructura.md) · [Distribución](docs/distribucion.md)

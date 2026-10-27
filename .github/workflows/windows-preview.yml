@@ -11,6 +11,9 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.403'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -26,6 +29,33 @@ jobs:
             exit $result
           }
           Get-Content build-preview.log
+      - name: Angular browser checks
+        shell: pwsh
+        run: |
+          python -m pip install -r requirements-ui.txt
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python scripts/smoke-ui.py
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Native Angular WebView2 integration
+        shell: pwsh
+        run: |
+          try {
+            $runtime = Start-Process artifacts/windows-x64/Cliente/Viteka.Desktop.exe -ArgumentList '--check-webview-runtime' -Wait -PassThru
+            if ($runtime.ExitCode -ne 0) { ./packaging/windows/prepare-webview.ps1 -Install }
+            $directory = New-Item -ItemType Directory -Force artifacts/ui
+            $env:VITEKA_UI_SMOKE_REPORT = Join-Path $directory.FullName 'native-report.json'
+            $env:VITEKA_UI_SMOKE_SCREENSHOT = Join-Path $directory.FullName 'native-angular.png'
+            $process = Start-Process artifacts/windows-x64/Cliente/Viteka.Desktop.exe -ArgumentList '--smoke-ui' -PassThru
+            if (-not $process.WaitForExit(90000)) { $process.Kill(); throw 'Native UI test timed out.' }
+            if ($process.ExitCode -ne 0) { throw "Native UI test failed: $(Get-Content $env:VITEKA_UI_SMOKE_REPORT -ErrorAction SilentlyContinue)" }
+            if (-not (Test-Path $env:VITEKA_UI_SMOKE_REPORT)) { throw 'Native UI did not produce a report.' }
+            $report = Get-Content $env:VITEKA_UI_SMOKE_REPORT -Raw | ConvertFrom-Json
+            if (-not $report.passed) { throw "Native UI did not pass: $($report.stage)" }
+            Get-Content $env:VITEKA_UI_SMOKE_REPORT
+          } catch {
+            Write-Output "::error::$($_.Exception.Message)"
+            exit 1
+          }
       - name: HTTP authorization smoke check
         shell: pwsh
         run: |

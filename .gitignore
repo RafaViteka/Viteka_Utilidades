@@ -4,3 +4,9 @@
 artifacts/
 *.user
 *.suo
+
+frontend/node_modules/
+frontend/dist/
+frontend/.angular/
+frontend/out-tsc/
+src/Viteka.Desktop/Web/

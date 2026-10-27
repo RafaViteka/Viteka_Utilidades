@@ -11,6 +11,9 @@ if ! "$DOTNET_ROOT/dotnet" --list-sdks 2>/dev/null | grep -q '^10\.0\.403 '; the
     bash /tmp/viteka-dotnet-install.sh --version 10.0.403 --azure-feed https://builds.dotnet.microsoft.com/dotnet --install-dir "$DOTNET_ROOT"
 fi
 cd /workspace/Viteka_Utilidades
+export npm_config_cache=/workspace/.cache/npm
+(cd frontend && npm ci --no-audit --no-fund && npm run build)
+python scripts/copy-ui.py
 dotnet restore Viteka.Utilidades.slnx --locked-mode
 dotnet build Viteka.Utilidades.slnx --configuration Release --no-restore
 dotnet run --project tests/Viteka.Core.Checks --configuration Release --no-build

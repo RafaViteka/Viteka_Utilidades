@@ -1,0 +1,17 @@
+import {Component,computed,inject,signal} from '@angular/core';
+import {DesktopBridge,AppState,UpdateState} from './bridge';import {IconComponent} from './icon';
+type Page='Inicio'|'Utilidades'|'Favoritos'|'Actividad'|'Configuración';
+@Component({selector:'viteka-app',standalone:true,imports:[IconComponent],templateUrl:'./app.html'})
+export class AppComponent{
+ readonly bridge=inject(DesktopBridge);readonly page=signal<Page>('Inicio');readonly version=signal('');readonly openFavorites=signal(false);readonly error=signal('');readonly status=signal('');readonly updating=signal(false);readonly checking=signal(false);readonly update=signal<UpdateState|null>(null);
+ readonly nav:{name:Page;icon:string}[]=[{name:'Inicio',icon:'home'},{name:'Utilidades',icon:'grid'},{name:'Favoritos',icon:'star'},{name:'Actividad',icon:'clock'},{name:'Configuración',icon:'settings'}];
+ readonly title=computed(()=>this.page()==='Inicio'?'Tu farmacia, más ágil':this.page());
+ readonly subtitle=computed(()=>({Inicio:'Todas tus herramientas, en un mismo lugar.',Utilidades:'Las herramientas de tu farmacia, organizadas para ti.',Favoritos:'Un acceso directo a lo que más utilizas.',Actividad:'El historial de tus operaciones, en un solo lugar.',Configuración:'Personaliza tu espacio de trabajo.'})[this.page()]);
+ readonly emptyTitle=computed(()=>({Inicio:'Tu espacio de trabajo empieza aquí',Utilidades:'Aún no hay utilidades disponibles',Favoritos:'Aún no tienes favoritos',Actividad:'Todavía no hay actividad',Configuración:''})[this.page()]);
+ readonly description=computed(()=>this.page()==='Favoritos'?'Cuando añadamos utilidades, podrás guardar aquí tus accesos habituales.':this.page()==='Actividad'?'Las operaciones aparecerán aquí cuando empecemos a utilizar las herramientas.':'Las nuevas utilidades aparecerán en este espacio. Estamos preparando la base de Viteka Utilidades.');
+ constructor(){void this.load();}async load(){try{const s=await this.bridge.call<AppState>('app.state');this.version.set(s.version);this.openFavorites.set(s.openFavorites);if(s.openFavorites)this.page.set('Favoritos');}catch{this.error.set('No se pudo recuperar la configuración. Puedes seguir revisando el MVP.');}}
+ go(p:Page){this.page.set(p);}async setStart(e:Event){const enabled=(e.target as HTMLInputElement).checked;try{await this.bridge.call('settings.start',{enabled});this.openFavorites.set(enabled);this.error.set('');}catch{(e.target as HTMLInputElement).checked=this.openFavorites();this.error.set('No se pudo guardar la preferencia.');}}
+ async checkUpdates(){this.checking.set(true);this.update.set(null);this.status.set('Buscando nuevas versiones…');try{const r=await this.bridge.call<UpdateState>('update.check');this.update.set(r);this.status.set(r.available?`Versión ${r.version} disponible.`:'No hay una versión posterior verificable disponible.');}catch{this.status.set('No se pudo comprobar el canal. Puedes volver a intentarlo.');}finally{this.checking.set(false);}}
+ async install(){this.updating.set(true);this.bridge.progress.set(null);try{const r=await this.bridge.call<{cancelled?:boolean}>('update.install');if(r?.cancelled)this.status.set('Instalación cancelada. Puedes seguir usando esta versión.');}catch{this.status.set('No se pudo completar la actualización. La aplicación actual se conserva.');}finally{this.updating.set(false);}}
+ async publication(){try{await this.bridge.call('update.publication');}catch{this.status.set('No se pudo abrir la publicación.');}}
+}

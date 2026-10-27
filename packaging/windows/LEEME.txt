@@ -1,4 +1,4 @@
-VITEKA UTILIDADES - VISTA PREVIA LOCAL 0.6.0
+VITEKA UTILIDADES - VISTA PREVIA LOCAL 0.7.0
 
 Paquete Windows x64 autocontenido. No requiere instalar .NET en el puesto.
 
@@ -28,3 +28,8 @@ SERVICIO OPCIONAL DE VISTA PREVIA
 El servidor admite --service. El paquete incluye Servidor/manage-service.ps1
 para administrarlo con permisos elevados. Consultar docs/servicio-windows.md
 antes de instalarlo. El instalador no lo registra automaticamente.
+
+INTERFAZ ANGULAR + WEBVIEW2
+La interfaz se incluye localmente y no necesita iniciar el servidor.
+El instalador prepara Microsoft Edge WebView2 si falta (puede necesitar internet).
+Se conserva la instalacion anterior y las preferencias del usuario.

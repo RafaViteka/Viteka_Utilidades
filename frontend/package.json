@@ -1,0 +1,28 @@
+{
+  "name": "viteka-ui",
+  "version": "0.7.0",
+  "private": true,
+  "scripts": {
+    "start": "ng serve --host 127.0.0.1",
+    "build": "ng build",
+    "check": "ng build --configuration development"
+  },
+  "dependencies": {
+    "@angular/common": "22.2.3",
+    "@angular/compiler": "22.2.3",
+    "@angular/core": "22.2.3",
+    "@angular/platform-browser": "22.2.3",
+    "rxjs": "7.8.2",
+    "tslib": "2.8.1"
+  },
+  "devDependencies": {
+    "@angular/build": "22.2.3",
+    "@angular/cli": "22.2.3",
+    "@angular/compiler-cli": "22.2.3",
+    "typescript": "6.0.3"
+  },
+  "engines": {
+    "node": ">=24.15.0 <25"
+  },
+  "packageManager": "npm@11.9.0"
+}

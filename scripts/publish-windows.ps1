@@ -9,6 +9,15 @@ try {
         & dotnet @Arguments
         if ($LASTEXITCODE -ne 0) { throw "dotnet failed with exit code $LASTEXITCODE" }
     }
+    Push-Location 'frontend'
+    try {
+        & npm ci --no-audit --no-fund
+        if ($LASTEXITCODE -ne 0) { throw 'Angular dependency installation failed.' }
+        & npm run build
+        if ($LASTEXITCODE -ne 0) { throw 'Angular production build failed.' }
+    } finally { Pop-Location }
+    & python scripts/copy-ui.py
+    if ($LASTEXITCODE -ne 0) { throw 'UI packaging failed.' }
     Invoke-Dotnet -Arguments @('restore', 'Viteka.Utilidades.slnx', '--locked-mode')
     Invoke-Dotnet -Arguments @('build', 'Viteka.Utilidades.slnx', '-c', 'Release', '--no-restore')
     Invoke-Dotnet -Arguments @('run', '--project', 'tests/Viteka.Core.Checks', '-c', 'Release', '--no-build')
@@ -20,6 +29,8 @@ try {
         if (-not (Test-Path (Join-Path 'artifacts/windows-x64' $exe))) { throw "Executable missing: $exe" }
     }
     if ($BuildInstaller) {
+        & ./packaging/windows/prepare-webview.ps1
+
         $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
         $iscc = if ($compiler) { $compiler.Source } else { Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe' }
         if (-not (Test-Path $iscc)) { throw 'Install Inno Setup 6 on Windows to build the installer.' }
