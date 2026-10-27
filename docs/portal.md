@@ -1,4 +1,4 @@
-# Centro de accesos Viteka · 0.10.0
+# Centro de accesos Viteka · 0.10.1
 
 Diseño adaptado de Viteka_Portal_Estudio_2026.html aportado por el usuario: fondo marfil, héroe editorial centrado, bloque prioritario petróleo, tarjetas claras de recursos, temas claro/oscuro/automático y contactos. El lenguaje visual se aplica también a estados vacíos y configuración. Se elimina el distintivo «MVP visual».
 
@@ -40,7 +40,7 @@ La identidad de proceso y acceso directo es Viteka.Utilidades. Se aplica WM_SETI
 
 El zoom real del WebView2 se controla mediante Ctrl+rueda, teclado y barra nativa con porcentaje visible. No se aplica zoom CSS en Windows; solo la vista web usa zoom CSS para revisar el comportamiento. La escala admitida y persistente es 50–200 %. El puente admite window.zoom con validación numérica, nunca comandos de sistema arbitrarios.
 
-## Espacio y apariencia (0.10.0)
+## Espacio y apariencia (0.10.1)
 
 La apariencia se elige en Configuración → Tu espacio de trabajo y conserva Automático/Claro/Oscuro por usuario. Inicio se centra en soporte y recursos: se elimina la franja superior de contexto y tema, se compactan cabecera, navegación, tarjetas y contactos, y se organizan las preferencias y actualizaciones en dos columnas cuando hay espacio. En tamaños pequeños se apilan y el menú tiene desplazamiento propio si lo necesita. En oscuro, tanto el logotipo como el isotipo del menú plegado se muestran en blanco, conservando su transparencia; en claro conservan los colores originales. Los iconos de Windows mantienen el isotipo bicolor.
 

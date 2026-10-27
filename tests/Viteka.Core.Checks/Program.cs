@@ -3,7 +3,7 @@ using System.Text.Json;
 
 if (args is ["--download-smoke"])
 {
-    using var http = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMinutes(10) };
+    using var http = new HttpClient(new GitHubSmokeAuthenticationHandler(Environment.GetEnvironmentVariable("VITEKA_SMOKE_GITHUB_TOKEN"), new HttpClientHandler { AllowAutoRedirect = false })) { Timeout = TimeSpan.FromMinutes(10) };
     var checker = new PreviewUpdater(http);
     var destination = Path.Combine(Path.GetTempPath(), "viteka-real-download-" + Guid.NewGuid().ToString("N"));
     try
@@ -267,6 +267,19 @@ try
         File.WriteAllText(local.StatePath,"{\"SchemaVersion\":1,\"FavoriteIds\":[],\"Activity\":[],\"OpenFavoritesOnStart\":false}");
         Require(local.Load().ZoomPercent==100);
     });
+    Check("CI authentication is limited to the GitHub releases API", () =>
+    {
+        foreach (var (url, expected) in new[] {
+            ($"https://api.github.com/repos/{GitHubReleaseChecker.Repository}/releases?per_page=30", true),
+            ("https://github.com/example/release.exe", false),
+            ("https://release-assets.githubusercontent.com/example.exe", false),
+            ("http://api.github.com/repos/example/releases", false)
+        })
+        {
+            using var client = new HttpClient(new GitHubSmokeAuthenticationHandler("test-placeholder", new SmokeAuthenticationProbe(expected)));
+            using var response = client.GetAsync(url).GetAwaiter().GetResult();
+        }
+    });
     Console.WriteLine($"{passed} checks passed.");
 }
 finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
@@ -294,5 +307,26 @@ sealed class DownloadStub(Func<HttpRequestMessage, HttpResponseMessage> response
     {
         if (request.Headers.Authorization is not null) throw new Exception("Service credentials must never be sent to release hosts");
         return Task.FromResult(response(request));
+    }
+}
+
+// Only the CI download smoke uses this handler. No token is included in the desktop application.
+sealed class GitHubSmokeAuthenticationHandler(string? token, HttpMessageHandler inner) : DelegatingHandler(inner)
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        var uri = request.RequestUri;
+        if (!string.IsNullOrWhiteSpace(token) && uri is { Scheme: "https", Host: "api.github.com", Port: 443 } &&
+            uri.UserInfo.Length == 0 && uri.AbsolutePath == $"/repos/{GitHubReleaseChecker.Repository}/releases")
+            request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
+        return base.SendAsync(request, ct);
+    }
+}
+sealed class SmokeAuthenticationProbe(bool expected) : HttpMessageHandler
+{
+    protected override Task<HttpResponseMessage> SendAsync(HttpRequestMessage request, CancellationToken ct)
+    {
+        if ((request.Headers.Authorization?.Scheme == "Bearer") != expected) throw new Exception("Unexpected CI authentication destination.");
+        return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
     }
 }

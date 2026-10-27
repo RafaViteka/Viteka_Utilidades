@@ -76,6 +76,8 @@ jobs:
           python scripts/smoke-server.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Real preview download verification
+        env:
+          VITEKA_SMOKE_GITHUB_TOKEN: ${{ github.token }}
         shell: pwsh
         run: |
           dotnet run --project tests/Viteka.Core.Checks -c Release --no-build -- --download-smoke
