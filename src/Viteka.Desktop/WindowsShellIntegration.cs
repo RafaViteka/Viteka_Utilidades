@@ -73,7 +73,6 @@ internal sealed class WindowsShellIntegration : IDisposable
         if (big == IntPtr.Zero || small == IntPtr.Zero) { if (big != IntPtr.Zero) DestroyIcon(big); if (small != IntPtr.Zero) DestroyIcon(small); return; }
         SendMessage(Handle, 0x80, new IntPtr(1), big);
         SendMessage(Handle, 0x80, IntPtr.Zero, small);
-        SendMessage(Handle, 0x80, new IntPtr(2), small);
         if (largeIcon != IntPtr.Zero) DestroyIcon(largeIcon);if (smallIcon != IntPtr.Zero) DestroyIcon(smallIcon);
         largeIcon = big;smallIcon = small;
     }
