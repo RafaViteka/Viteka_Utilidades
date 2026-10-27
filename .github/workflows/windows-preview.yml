@@ -52,7 +52,7 @@ jobs:
           "$hash  $([System.IO.Path]::GetFileName($zip))" | Set-Content -Encoding ascii "$zip.sha256"
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "Viteka Utilidades $version - MVP visual" --notes 'MVP visual: navegacion estilo B con identidad Viteka, catalogo y actividad vacios. Sin utilidades de ejemplo ni conexion real a NixFarma. Instalador sin firma digital; pendiente de revision visual en Windows.' 
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "Viteka Utilidades $version - MVP visual" --notes 'MVP visual: navegacion estilo B con identidad Viteka, catalogo y actividad vacios. Sin utilidades de ejemplo ni conexion real a NixFarma. Instalador sin firma digital; pendiente de revision visual en Windows.'
             if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
           }
           gh release upload $tag $zip "$zip.sha256" artifacts/installer/*.exe --repo $env:GITHUB_REPOSITORY --clobber
