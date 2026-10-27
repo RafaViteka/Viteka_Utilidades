@@ -1,68 +1,52 @@
-# Viteka Utilidades
+# Viteka Utilidades · MVP visual 0.5.0
 
-Base de aplicación de escritorio para Windows, con identidad Viteka y catálogo modular de herramientas para farmacia.
+Aplicación Windows para reunir futuras utilidades de farmacia. **Primero se revisará el MVP visual; las aplicaciones y vínculos a NixFarma se desarrollarán después.**
 
-## Estado actual
+## Interfaz actual
 
-- Cliente WPF: navegación, búsqueda, favoritos persistentes, actividad local y comprobación del servicio local.
-- Servidor ASP.NET Core: catálogo, estado y operaciones protegidos por autorización de puesto; consultas bloqueadas mientras Oracle no esté configurado.
-- Vinculación de usuario/equipo mediante código de un solo uso, revocación y caducidad de credenciales.
-- Comprobación manual de versiones en GitHub Releases, con revisión de la publicación; sin descarga/instalación automática.
-- Contratos compartidos, sin dependencias de interfaz ni Oracle.
-- Prototipo HTML autónomo en `prototipo/index.html`.
+- Diseño B con identidad Viteka: isotipo en la barra superior, logotipo en el lateral, verde oscuro, selección lima y fondos marfil.
+- Inicio, Utilidades, Favoritos, Actividad y Configuración con estilos propios de WPF.
+- Catálogo y actividad vacíos, sin ejemplos de stock, caducidades o compras.
+- Preferencia local de abrir Favoritos al iniciar.
+- Comprobación manual de versiones estables en GitHub; sin instalación automática.
+- Los formularios de conexión/vinculación están retirados de la interfaz. No hace falta iniciar un servidor para revisar el MVP.
 
-**No conecta a Oracle, no ejecuta utilidades reales y no es una versión desplegable en farmacia.** El host es una demostración local; el instalador todavía no registra automáticamente el servicio ni habilita TLS o acceso LAN. Se ha añadido soporte de servicio y administración manual, pendiente de prueba en Windows. La vinculación está implementada en modo local; no identifica a cada empleado ni define permisos por utilidad.
+[Descargas de prueba en GitHub Releases](https://github.com/RafaViteka/Viteka_Utilidades/releases). Descargar el instalador o extraer **todo** el ZIP y abrir `Cliente/Viteka.Desktop.exe`. La versión nueva requiere descarga manual. Paquetes sin firma digital, todavía no listos para farmacia.
 
-## Desarrollo en este entorno cloud
+## Desarrollo
 
-Desde `/workspace/Viteka_Utilidades`:
+En este entorno Linux, desde `/workspace/Viteka_Utilidades`:
 
 ```bash
 bash scripts/setup-cloud.sh
 ```
 
-Instala o reutiliza el SDK .NET 10.0.403 en `/workspace/.dotnet`, restaura con los lockfiles, compila la solución, ejecuta veintiuna comprobaciones de persistencia y autorización y comprobaciones HTTP reales sobre el servidor. El test arranca y detiene su propio proceso y necesita libre el puerto 5187.
+Reutiliza/instala el SDK .NET 10.0.403, restaura con lockfiles, compila la solución, ejecuta 22 comprobaciones del núcleo y el smoke HTTP. Este último usa un registro temporal aislado y necesita libre el puerto 5187.
 
-Arranque manual del servidor de demostración:
-
-```bash
-/workspace/.dotnet/dotnet src/Viteka.Server/bin/Release/net10.0/Viteka.Server.dll
-```
-
-El proceso escucha exclusivamente en loopback, puerto 5187. `/health` debe devolver `status: ok` y `mode: demo`; `/api/status` devuelve HTTP 401 sin autorización. Tras vincular el cliente debe indicar `databaseConfigured: false`. Estos resultados no validan Oracle. No publicar enlaces de preview para este servidor.
-
-## Desarrollo en Windows
-
-Requiere SDK .NET 10.0.403 (no necesario en cada puesto para un futuro paquete autocontenido). Desde la raíz del repositorio, en dos terminales:
+WPF se compila en Linux, pero se ejecuta en Windows. Con el SDK indicado, desde la raíz del proyecto en Windows:
 
 ```powershell
 dotnet restore Viteka.Utilidades.slnx --locked-mode
 dotnet build Viteka.Utilidades.slnx -c Release --no-restore
-dotnet run --project src/Viteka.Server -c Release --no-build
-```
-
-```powershell
 dotnet run --project src/Viteka.Desktop -c Release --no-build
 ```
 
-El cliente utiliza un catálogo local de demostración; la comprobación en Configuración consulta el estado real del servidor local. Favoritos, preferencia de inicio y las últimas 100 acciones locales se guardan por usuario en `%LOCALAPPDATA%\Viteka\Utilidades`. No se guardan credenciales ni datos de farmacia. Si un archivo está dañado o tiene un esquema incompatible, se conserva y se muestra un aviso; no se sobrescribe automáticamente. En esta versión, iniciar el servidor solo en el servidor de farmacia no permitirá conectarse desde otros puestos: el acceso LAN está pendiente de implementar.
+La referencia HTML autónoma, también vacía, está en `prototipo/index.html`.
 
-## Validación y siguientes pasos
+## Empaquetado
 
-Comprobado en Linux: compilación completa, veintiuna comprobaciones de persistencia y autorización y smoke test HTTP del servidor. Pendiente: ejecución visual WPF en Windows, compatibilidad de versiones/ediciones concretas de Windows 10/11 y Server 2022/2025, acceso real ODBC, cuenta Oracle de lectura, ejecución del flujo de vinculación y DPAPI en Windows, TLS y empaquetado compartido.
+```powershell
+./scripts/publish-windows.ps1 -BuildInstaller
+```
 
-[Arquitectura y decisiones](docs/estructura.md). Las secciones históricas se precisan mediante las actualizaciones posteriores: la dirección vigente es un servicio central con ODBC y clientes sin Oracle.
+Requiere Windows e Inno Setup 6. Publica cliente/servidor autocontenidos x64. El workflow manual `windows-preview.yml` ejecuta las pruebas, compila el instalador y publica una prerelease en GitHub. La versión se obtiene de `Directory.Build.props`.
 
-## Vinculación local de demostración
+## Backend conservado, desarrollo aplazado
 
-[Procedimiento administrativo y límites](docs/vinculacion.md). Los códigos no deben enviarse al chat ni guardarse en el repositorio. El smoke test usa su propio directorio temporal y no deja autorizaciones en el registro real.
+El servidor previo y sus pruebas se conservan, pero no se amplían para esta revisión. No hay conexión real a Oracle ni utilidades operativas. El catálogo autenticado devuelve una lista vacía. La API mantiene autorización de puestos y el host está restringido a loopback. No exponerlo a la red ni cambiar el DSN de NixFarma.
 
-## Ejecutables e instalación
+Preferencias locales: `%LOCALAPPDATA%\Viteka\Utilidades`. No se borran archivos anteriores; los favoritos/historial de utilidades retiradas no reaparecen en el MVP. No guardar datos de pacientes ni contraseñas en el repositorio o disco compartido.
 
-Se publica para Windows x64 de forma autocontenida. [Empaquetado y plan de actualización online](docs/distribucion.md). El instalador preparado es una vista previa local; no es el instalador de producción para los puestos de la farmacia.
+[Decisiones y arquitectura](docs/estructura.md) · [Distribución](docs/distribucion.md) · [Servicio Windows pendiente de validar](docs/servicio-windows.md)
 
-[Preparación del servicio Windows](docs/servicio-windows.md).
-
-## MVP visual 0.5.0
-
-Prioridad actual: revisar la interfaz antes de desarrollar utilidades y conexión a NixFarma. El catálogo está vacío y la pantalla de configuración no pide credenciales ni conexiones. La navegación, estados vacíos, preferencias y consulta de actualizaciones forman la base visual. El backend anterior se conserva, sin ampliar su alcance.
+La compilación y las pruebas automáticas no sustituyen la revisión gráfica ni la prueba de instalación en el equipo del usuario.
