@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([switch]$BuildInstaller)
+param([switch]$BuildInstaller, [switch]$InstallerOnly)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 $root = Split-Path $PSScriptRoot -Parent
@@ -9,6 +9,7 @@ try {
         & dotnet @Arguments
         if ($LASTEXITCODE -ne 0) { throw "dotnet failed with exit code $LASTEXITCODE" }
     }
+    if (-not $InstallerOnly) {
     Push-Location 'frontend'
     try {
         & npm ci --no-audit --no-fund
@@ -25,10 +26,11 @@ try {
     Invoke-Dotnet -Arguments @('publish', 'src/Viteka.Server/Viteka.Server.csproj', '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:RestoreLockedMode=true', '-o', 'artifacts/windows-x64/Servidor')
     Copy-Item 'packaging/windows/manage-service.ps1' 'artifacts/windows-x64/Servidor/manage-service.ps1' -Force
     Copy-Item 'packaging/windows/LEEME.txt' 'artifacts/windows-x64/LEEME.txt' -Force
+    }
     foreach ($exe in @('Cliente/Viteka.Desktop.exe', 'Servidor/Viteka.Server.exe')) {
         if (-not (Test-Path (Join-Path 'artifacts/windows-x64' $exe))) { throw "Executable missing: $exe" }
     }
-    if ($BuildInstaller) {
+    if ($BuildInstaller -or $InstallerOnly) {
         & ./packaging/windows/prepare-webview.ps1
 
         $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue

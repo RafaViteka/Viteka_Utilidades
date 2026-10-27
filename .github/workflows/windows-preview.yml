@@ -21,7 +21,7 @@ jobs:
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Continue'
-          & pwsh -NoProfile -File ./scripts/publish-windows.ps1 -BuildInstaller *> build-preview.log
+          & pwsh -NoProfile -File ./scripts/publish-windows.ps1 *> build-preview.log
           $result = $LASTEXITCODE
           if ($result -ne 0) {
             $tail = (Get-Content build-preview.log -Tail 35) -join '%0A'
@@ -58,7 +58,10 @@ jobs:
             if (-not $report.passed) { throw "Native UI did not pass: $($report.stage)" }
             Get-Content $env:VITEKA_UI_SMOKE_REPORT
           } catch {
-            Write-Output "::error::$($_.Exception.Message.Replace("`r","").Replace("`n","%0A"))"
+            $detail = $_.Exception.Message
+            if ($detail.Length -gt 3500) { $detail = $detail.Substring(0,3500) }
+            $detail = $detail.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error::$detail"
             exit 1
           }
       - name: HTTP authorization smoke check
@@ -72,6 +75,9 @@ jobs:
         run: |
           dotnet run --project tests/Viteka.Core.Checks -c Release --no-build -- --download-smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Compile validated Windows installer
+        shell: pwsh
+        run: ./scripts/publish-windows.ps1 -InstallerOnly
       - uses: actions/upload-artifact@v4
         with:
           name: Viteka-Utilidades-Windows-preview
