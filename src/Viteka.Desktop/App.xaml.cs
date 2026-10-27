@@ -13,7 +13,14 @@ public partial class App : Application
             catch (WebView2RuntimeNotFoundException) { Shutdown(2); }
             return;
         }
-        WindowsShellIntegration.RegisterIdentity();
+        if (SmokeTest) DispatcherUnhandledException += (_, args) => { WriteSmokeFailure(args.Exception, "dispatcher"); args.Handled = true; Shutdown(1); };
+        try { WindowsShellIntegration.RegisterIdentity(); }
+        catch (Exception exception) { if (SmokeTest) { WriteSmokeFailure(exception, "shell-startup"); Shutdown(1); return; } throw; }
         base.OnStartup(e);
+    }
+    private static void WriteSmokeFailure(Exception exception, string stage)
+    {
+        var report = Environment.GetEnvironmentVariable("VITEKA_UI_SMOKE_REPORT");
+        if (!string.IsNullOrWhiteSpace(report)) System.IO.File.WriteAllText(report, System.Text.Json.JsonSerializer.Serialize(new { passed = false, stage, error = exception.ToString() }));
     }
 }
