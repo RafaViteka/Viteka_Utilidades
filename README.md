@@ -1,4 +1,4 @@
-# Viteka Utilidades · Centro de accesos 0.9.4
+# Viteka Utilidades · Centro de accesos 0.10.0
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete, sin web alojada ni servidor requerido para abrir el MVP.
 

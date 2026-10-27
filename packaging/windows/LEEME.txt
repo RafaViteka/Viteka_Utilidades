@@ -1,4 +1,4 @@
-VITEKA UTILIDADES 0.9.4 - CANAL DE PRUEBAS
+VITEKA UTILIDADES 0.10.0 - CANAL DE PRUEBAS
 
 Instala sobre la version anterior. No hace falta desinstalar; las preferencias
 se conservan en la carpeta local de tu usuario.
