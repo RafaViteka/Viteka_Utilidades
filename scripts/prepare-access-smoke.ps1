@@ -1,48 +1,57 @@
-$ErrorActionPreference = 'Stop'
-$repo = Split-Path $PSScriptRoot -Parent
-$exe = Join-Path $repo 'artifacts/windows-x64/Servidor/Viteka.Server.exe'
-$manage = Join-Path $repo 'artifacts/windows-x64/Servidor/manage-access-service.ps1'
-if (Get-Service VitekaUtilidadesAccess -ErrorAction SilentlyContinue) { throw 'Refusing to replace an existing access service during CI.' }
-$serviceState = Join-Path $env:ProgramData 'Viteka/UtilidadesAccess'
-if (Test-Path $serviceState) { throw 'Refusing to replace pre-existing authority state during CI.' }
-$root = Join-Path $env:TEMP ('VitekaAccessSmoke-' + [guid]::NewGuid().ToString('N'))
-New-Item -ItemType Directory -Path $root | Out-Null
-try {
-    & $manage -Action Install -ClientDirectory (Join-Path $root 'InstalledClient')
-    if ($LASTEXITCODE -ne 0) { throw 'Access service installation failed.' }
-    $before = (Get-FileHash (Join-Path $serviceState 'Private/access.dat') -Algorithm SHA256).Hash
-    & $manage -Action Install -ClientDirectory (Join-Path $root 'InstalledClient')
-    if ($LASTEXITCODE -ne 0 -or (Get-FileHash (Join-Path $serviceState 'Private/access.dat') -Algorithm SHA256).Hash -ne $before) { throw 'Reinstall did not preserve the account authority.' }
-    & $exe --access-health (Join-Path $root 'InstalledClient/access-server.json')
-    if ($LASTEXITCODE -ne 0) { throw 'Installed LocalService authority TLS health failed.' }
-} finally {
-    & $manage -Action Uninstall
-    if ($LASTEXITCODE -ne 0) { throw 'Access service cleanup failed.' }
-    Remove-Item $serviceState -Recurse -Force
-}
-$fixture = Join-Path $root 'Fixture'
-$process = Start-Process $exe -ArgumentList @('--access-console',('"'+$fixture+'"'),'7448') -RedirectStandardOutput (Join-Path $root 'service-out.log') -RedirectStandardError (Join-Path $root 'service-error.log') -PassThru
-$bootstrap = Join-Path $fixture 'Public/access-server.json'
-$ready=$false
-for ($attempt=0;$attempt -lt 20;$attempt++) {
-    if (Test-Path $bootstrap) {
-        & $exe --access-health $bootstrap *> $null
-        if ($LASTEXITCODE -eq 0) { $ready=$true;break }
+$ErrorActionPreference='Stop'
+$repo=Split-Path $PSScriptRoot -Parent
+$exe=Join-Path $repo 'artifacts/windows-x64/Servidor/Viteka.Server.exe'
+if(Get-Service VitekaUtilidadesAccess -ErrorAction SilentlyContinue){throw 'Refusing to replace an existing access service during CI.'}
+$serviceState=Join-Path $env:ProgramData 'Viteka/UtilidadesAccess'
+if(Test-Path $serviceState){throw 'Refusing to replace pre-existing authority state during CI.'}
+$root=Join-Path $env:TEMP ('VitekaAccessSmoke-'+[guid]::NewGuid().ToString('N'))
+New-Item -ItemType Directory $root|Out-Null
+function Invoke-OwnServer([string[]]$Arguments,[int]$Seconds=60,[switch]$ExpectFailure){
+    $label=[guid]::NewGuid().ToString('N')
+    $stdout=Join-Path $root "$label-out.log"; $stderr=Join-Path $root "$label-error.log"
+    $process=Start-Process $exe -ArgumentList $Arguments -PassThru -RedirectStandardOutput $stdout -RedirectStandardError $stderr
+    if(-not $process.WaitForExit($Seconds*1000)){
+        $process.Kill()
+        Get-Content $stdout -Tail 20 -ErrorAction SilentlyContinue
+        Get-Content $stderr -Tail 20 -ErrorAction SilentlyContinue
+        throw "Owned CLI timed out: $($Arguments[0]) $($Arguments[1])"
     }
-    if ($process.HasExited) { throw 'Fixture service exited before startup.' }
+    if($ExpectFailure){if($process.ExitCode -eq 0){throw 'TLS accepted an unrelated authority.'};return}
+    Get-Content $stdout -ErrorAction SilentlyContinue
+    if($process.ExitCode -ne 0){Get-Content $stderr -Tail 30 -ErrorAction SilentlyContinue;throw "Owned CLI failed: $($Arguments[0]) $($Arguments[1])"}
+}
+$failed=$false
+try{
+    Invoke-OwnServer -Arguments @('--access-manage','install',('"'+(Join-Path $root 'InstalledClient')+'"'))
+    $before=(Get-FileHash (Join-Path $serviceState 'Private/access.dat') -Algorithm SHA256).Hash
+    Invoke-OwnServer -Arguments @('--access-manage','install',('"'+(Join-Path $root 'InstalledClient')+'"'))
+    if((Get-FileHash (Join-Path $serviceState 'Private/access.dat') -Algorithm SHA256).Hash -ne $before){throw 'Reinstall did not preserve accounts.'}
+    Invoke-OwnServer -Arguments @('--access-health',('"'+(Join-Path $root 'InstalledClient/access-server.json')+'"')) -Seconds 10
+}catch{$failed=$true;throw}finally{
+    try{
+        Invoke-OwnServer -Arguments @('--access-manage','uninstall') -Seconds 45
+        Remove-Item $serviceState -Recurse -Force
+    }catch{if(-not $failed){throw};Write-Output 'Cleanup did not finish; the failed authority is isolated to this CI VM.'}
+}
+$fixture=Join-Path $root 'Fixture'
+$process=Start-Process $exe -ArgumentList @('--access-console',('"'+$fixture+'"'),'7448') -RedirectStandardOutput (Join-Path $root 'service-out.log') -RedirectStandardError (Join-Path $root 'service-error.log') -PassThru
+$bootstrap=Join-Path $fixture 'Public/access-server.json'
+"VITEKA_ACCESS_BOOTSTRAP=$bootstrap"|Out-File $env:GITHUB_ENV -Append -Encoding utf8
+"VITEKA_ACCESS_FIXTURE_PID=$($process.Id)"|Out-File $env:GITHUB_ENV -Append -Encoding utf8
+$ready=$false
+for($attempt=0;$attempt -lt 20;$attempt++){
+    if(Test-Path $bootstrap){
+        try{Invoke-OwnServer -Arguments @('--access-health',('"'+$bootstrap+'"')) -Seconds 10;$ready=$true;break}catch{}
+    }
+    if($process.HasExited){Get-Content (Join-Path $root 'service-error.log') -Tail 20;throw 'Fixture exited before startup.'}
     Start-Sleep -Seconds 1
 }
-if (-not $ready) { $process.Kill(); throw 'Fixture service TLS health failed.' }
-# A different installation's valid CA must not authenticate this server.
-$wrong = Join-Path $root 'WrongTrust'
-New-Item -ItemType Directory $wrong | Out-Null
+if(-not $ready){$process.Kill();throw 'Fixture TLS health failed.'}
+$wrong=Join-Path $root 'WrongTrust';New-Item -ItemType Directory $wrong|Out-Null
 Copy-Item (Join-Path $root 'InstalledClient/access-root.cer') (Join-Path $wrong 'access-root.cer')
-$metadata = Get-Content $bootstrap -Raw | ConvertFrom-Json
-$metadata.RootSha256 = (Get-FileHash (Join-Path $wrong 'access-root.cer') -Algorithm SHA256).Hash
-$metadata | ConvertTo-Json | Set-Content (Join-Path $wrong 'access-server.json')
-& $exe --access-health (Join-Path $wrong 'access-server.json') *> $null
-if ($LASTEXITCODE -eq 0) { $process.Kill(); throw 'TLS accepted an unrelated authority.' }
-"VITEKA_ACCESS_BOOTSTRAP=$bootstrap" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-"VITEKA_ACCESS_FIXTURE_PID=$($process.Id)" | Out-File -FilePath $env:GITHUB_ENV -Append -Encoding utf8
-if (Test-Path (Join-Path $repo 'artifacts/windows-x64/Cliente/access-server.json')) { throw 'CI bootstrap must never be packaged in the client.' }
-Write-Output 'PASS: installed LocalService authority, protected state, verified TLS, cleanup and rejection of an unrelated CA; isolated UI authority is ready.'
+$metadata=Get-Content $bootstrap -Raw|ConvertFrom-Json
+$metadata.RootSha256=(Get-FileHash (Join-Path $wrong 'access-root.cer') -Algorithm SHA256).Hash
+$metadata|ConvertTo-Json|Set-Content (Join-Path $wrong 'access-server.json')
+Invoke-OwnServer -Arguments @('--access-health',('"'+(Join-Path $wrong 'access-server.json')+'"')) -Seconds 10 -ExpectFailure
+if(Test-Path (Join-Path $repo 'artifacts/windows-x64/Cliente/access-server.json')){throw 'CI bootstrap must never be packaged.'}
+Write-Output 'PASS: LocalService installation/reinstallation, preserved accounts, TLS health, removal, rejection of an unrelated CA, isolated authority ready.'

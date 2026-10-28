@@ -1,0 +1,20 @@
+name: Stop stalled access validation
+on:
+  push:
+    tags:
+      - 'ci/cancel-access-*'
+permissions:
+  actions: write
+jobs:
+  stop:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Stop only the requested access validation
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          run_id="${GITHUB_REF_NAME#ci/cancel-access-}"
+          [[ "$run_id" =~ ^[0-9]+$ ]] || exit 1
+          branch=$(gh run view "$run_id" --repo "$GITHUB_REPOSITORY" --json headBranch --jq '.headBranch')
+          [[ "$branch" == ci/access-roles-* ]] || exit 1
+          gh run cancel "$run_id" --repo "$GITHUB_REPOSITORY"

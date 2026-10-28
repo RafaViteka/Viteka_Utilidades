@@ -41,11 +41,12 @@ internal static class AccessHost
         var sessions = new ConcurrentDictionary<string, Session>();
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { ContentRootPath = AppContext.BaseDirectory, Args = [] });
         if (service) builder.Services.AddWindowsService(options => options.ServiceName = ServiceName);
+        var protocols = SslProtocols.Tls12 | (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 20348) ? SslProtocols.Tls13 : SslProtocols.None);
         builder.WebHost.ConfigureKestrel(options =>
         {
             options.Limits.MaxRequestBodySize = 32768;
-            if (service) options.ListenAnyIP(port, listen => listen.UseHttps(https => { https.ServerCertificate = certificate; https.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13; }));
-            else options.ListenLocalhost(port, listen => listen.UseHttps(https => { https.ServerCertificate = certificate; https.SslProtocols = SslProtocols.Tls12 | SslProtocols.Tls13; }));
+            if (service) options.ListenAnyIP(port, listen => listen.UseHttps(https => { https.ServerCertificate = certificate; https.SslProtocols = protocols; }));
+            else options.ListenLocalhost(port, listen => listen.UseHttps(https => { https.ServerCertificate = certificate; https.SslProtocols = protocols; }));
         });
         builder.Services.AddRateLimiter(options =>
         {

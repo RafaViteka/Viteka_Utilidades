@@ -33,6 +33,9 @@ public sealed class AccessServiceTrust : IDisposable
             using var chain = new X509Chain();
             chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
             chain.ChainPolicy.CustomTrustStore.Add(root);
+            chain.ChainPolicy.ExtraStore.Add(root);
+            chain.ChainPolicy.DisableCertificateDownloads = true;
+            chain.ChainPolicy.UrlRetrievalTimeout = TimeSpan.FromSeconds(2);
             // This installation-specific CA has no external CRL service. Trust is pinned
             // to its protected bootstrap; chain signatures, hostname, EKU and dates still apply.
             chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;

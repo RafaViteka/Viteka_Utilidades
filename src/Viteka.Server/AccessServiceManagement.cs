@@ -31,6 +31,7 @@ internal static class AccessServiceManagement
                 Firewall(false); return;
             }
             if (action != "install" || string.IsNullOrEmpty(clientDirectory)) throw new ArgumentException("Acción de servicio no válida.");
+            Console.WriteLine("Preparando permisos del servicio.");
             ProtectDirectories();
             var server = Path.Combine(AppContext.BaseDirectory, "Viteka.Server.exe");
             var permissions = new DirectoryInfo(AppContext.BaseDirectory).GetAccessControl();
@@ -38,10 +39,12 @@ internal static class AccessServiceManagement
                 InheritanceFlags.ContainerInherit | InheritanceFlags.ObjectInherit, PropagationFlags.None, AccessControlType.Allow));
             new DirectoryInfo(AppContext.BaseDirectory).SetAccessControl(permissions);
             var binary = "\"" + server + "\" --access-service";
+            Console.WriteLine("Registrando servicio.");
             if (existing is null) Sc("create", AccessHost.ServiceName, "binPath=", binary, "start=", "auto", "obj=", "NT AUTHORITY\\LocalService", "DisplayName=", "Viteka Utilidades - Acceso de usuarios");
             else Sc("config", AccessHost.ServiceName, "binPath=", binary, "start=", "auto", "obj=", "NT AUTHORITY\\LocalService");
             Sc("failure", AccessHost.ServiceName, "reset=", "86400", "actions=", "restart/60000/restart/60000/restart/60000");
             using var service = new ServiceController(AccessHost.ServiceName);
+            Console.WriteLine("Iniciando servicio.");
             service.Start(); service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
             var bootstrap = Path.Combine(StateRoot, "Public", "access-server.json");
             var ready = false; string? lastProblem = null;
@@ -50,6 +53,7 @@ internal static class AccessServiceManagement
                 AccessServiceTrust? trust = null;
                 try
                 {
+                    Console.WriteLine("Comprobando identidad HTTPS, intento " + (attempt + 1));
                     trust = new AccessServiceTrust(bootstrap); trust.Client.Timeout = TimeSpan.FromSeconds(2);
                     using var response = await trust.Client.GetAsync("access/health");
                     if (response.IsSuccessStatusCode) { ready = true; break; }
@@ -97,8 +101,9 @@ internal static class AccessServiceManagement
         var start = new ProcessStartInfo(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.System), "sc.exe")) { UseShellExecute = false, CreateNoWindow = true, RedirectStandardOutput = true, RedirectStandardError = true };
         foreach (var argument in arguments) start.ArgumentList.Add(argument);
         using var process = Process.Start(start) ?? throw new InvalidOperationException();
-        var output = process.StandardOutput.ReadToEnd(); var error = process.StandardError.ReadToEnd();
-        if (!process.WaitForExit(15000) || process.ExitCode != 0) throw new InvalidOperationException("No se pudo registrar o controlar el servicio de usuarios. " + output + error);
+        var output = process.StandardOutput.ReadToEndAsync(); var error = process.StandardError.ReadToEndAsync();
+        if (!process.WaitForExit(15000)) { process.Kill(); throw new System.TimeoutException("El control del servicio no respondió en 15 segundos."); }
+        if (process.ExitCode != 0) throw new InvalidOperationException("No se pudo registrar o controlar el servicio de usuarios. " + output.GetAwaiter().GetResult() + error.GetAwaiter().GetResult());
     }
     private static void Firewall(bool enabled)
     {
