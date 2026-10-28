@@ -4,7 +4,17 @@ using Viteka.Server;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
-if (args.Length > 0 && args[0].StartsWith("--access-", StringComparison.Ordinal)) { await AccessHost.RunAsync(args); return; }
+if (args.Length > 0 && args[0].StartsWith("--access-", StringComparison.Ordinal))
+{
+    try { await AccessHost.RunAsync(args); }
+    catch (Exception error) when (error is not OutOfMemoryException)
+    {
+        // CLI failures must return a bounded error, not invoke an interactive Windows crash reporter.
+        Console.Error.WriteLine("No se pudo completar la operación de acceso: " + error.GetType().Name + ": " + error.Message);
+        Environment.ExitCode = 2;
+    }
+    return;
+}
 
 var serviceMode = args.Contains("--service") || (OperatingSystem.IsWindows() && WindowsServiceHelpers.IsWindowsService());
 args = args.Where(x => x != "--service").ToArray();

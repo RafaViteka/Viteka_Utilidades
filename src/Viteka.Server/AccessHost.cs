@@ -24,8 +24,14 @@ internal static class AccessHost
         {
             using var trust = new AccessServiceTrust(bootstrap);
             trust.Client.Timeout = TimeSpan.FromSeconds(2);
-            using var response = await trust.Client.GetAsync("access/health");
-            response.EnsureSuccessStatusCode(); Console.WriteLine("Servicio de acceso disponible con identidad TLS verificada."); return;
+            try
+            {
+                using var response = await trust.Client.GetAsync("access/health");
+                response.EnsureSuccessStatusCode(); Console.WriteLine("Servicio de acceso disponible con identidad TLS verificada.");
+            }
+            catch (Exception error) when (error is System.Net.Http.HttpRequestException or OperationCanceledException)
+            { throw new InvalidOperationException("No se verificó el servicio: " + error.Message + "; TLS=" + trust.ValidationFailure, error); }
+            return;
         }
         var service = args is ["--access-service"];
         var stateRoot = service ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Viteka", "UtilidadesAccess")
