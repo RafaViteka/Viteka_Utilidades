@@ -338,6 +338,7 @@ try
         Require(!AccessPolicy.CanConfigure(authority.Current(adminTicket)) && !AccessPolicy.CanConfigure(authority.Current(normalTicket)));
         Require(AccessPolicy.CanInstallUpdates(authority.Current(adminTicket)) && !AccessPolicy.CanInstallUpdates(authority.Current(normalTicket)));
         Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Usuarios"));
+        Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Auditoría") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Auditoría") && AccessPolicy.CanOpenPage(authority.Current(superTicket), "Auditoría"));
         Require(AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Configuración") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Configuración"));
     });
     Check("Normal users cannot create accounts or reset another password", () =>

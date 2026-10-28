@@ -38,3 +38,7 @@ La actividad de negocio tampoco está implementada. Si se necesita, acordar qué
 6. Criterio de aceptación con un caso conocido de la farmacia.
 
 Recomendación: empezar por una consulta de solo lectura, acotada y útil en el trabajo diario. Cualquier modificación de NixFarma se define y autoriza por separado para esa utilidad.
+
+## Primera utilidad solicitada · 0.12.3
+
+Consulta de existencias mínimas, con referencia Unycop y estilo NixFarma/Viteka. Requisitos pendientes y límite del vídeo documentados en [existencias-minimas.md](existencias-minimas.md). No implementar reglas ni SQL supuesto antes de confirmar los datos necesarios.

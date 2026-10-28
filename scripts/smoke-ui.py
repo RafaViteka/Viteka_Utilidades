@@ -91,7 +91,7 @@ with sync_playwright() as p:
    page.get_by_label('Contraseña actual',exact=True).fill(password);page.get_by_label('Nueva contraseña',exact=True).fill(new_password);page.get_by_label('Repetir nueva contraseña',exact=True).fill(new_password);page.get_by_role('button',name='Guardar contraseña',exact=True).click()
   page.get_by_role('heading',name='Portal de soporte',exact=True).wait_for()
  def go(name):
-  if name in ('Mi cuenta','Usuarios','Actualizaciones'):
+  if name in ('Mi cuenta','Usuarios','Actualizaciones','Auditoría'):
    go('Configuración');page.locator('.setting-row').filter(has=page.get_by_text(name,exact=True)).click()
   else:page.get_by_role('navigation').get_by_role('button',name=name,exact=True).click()
   page.get_by_role('heading',name=name,exact=True).wait_for()
@@ -118,7 +118,7 @@ with sync_playwright() as p:
  page.get_by_role('button',name='Configurar conexión',exact=True).click();page.get_by_text('Conexión guardada. Pulsa Probar conexión para verificarla.',exact=True).wait_for()
  page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Conexión verificada: prueba de solo lectura correcta.',exact=True).wait_for()
  fixture.probe_fail=True;page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Diagnóstico: 28000 · ORA-01017',exact=True).wait_for()
- page.keyboard.press('Escape');page.screenshot(path=str(artifacts/'angular-settings.png'),full_page=True);go('Actualizaciones');page.get_by_role('button',name='Buscar actualizaciones',exact=True).click();page.get_by_text('Versión 0.13.0 disponible.',exact=True).wait_for()
+ page.keyboard.press('Escape');go('Auditoría');page.get_by_role('heading',name='Todavía no hay registros de auditoría',exact=True).wait_for();assert page.get_by_role('navigation').get_by_role('button',name='Auditoría',exact=True).count()==0;go('Configuración');page.screenshot(path=str(artifacts/'angular-settings.png'),full_page=True);go('Actualizaciones');page.get_by_role('button',name='Buscar actualizaciones',exact=True).click();page.get_by_text('Versión 0.13.0 disponible.',exact=True).wait_for()
  assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).get_attribute('aria-current')=='page'
  page.get_by_role('button',name='Descargar e instalar',exact=True).click();page.get_by_text('Instalación cancelada. Puedes seguir usando esta versión.',exact=True).wait_for()
  page.get_by_role('button',name='Historial de actualizaciones',exact=True).click();page.get_by_role('dialog',name='Historial de actualizaciones',exact=True).wait_for();page.get_by_text('Versión ejecutada 0.12.0',exact=True).wait_for()
@@ -140,6 +140,7 @@ with sync_playwright() as p:
  assert page.get_by_role('navigation').get_by_role('button',name='Usuarios',exact=True).count()==0
  assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).count()==1
  go('Configuración');assert page.locator('.setting-row').filter(has=page.get_by_text('Conexión a NixFarma',exact=True)).count()==0
+ assert page.locator('.setting-row').filter(has=page.get_by_text('Auditoría',exact=True)).count()==0
  go('Aplicaciones');page.get_by_role('heading',name='No hay aplicaciones disponibles para tu cuenta',exact=True).wait_for()
  go('Actualizaciones');assert page.get_by_role('button',name='Descargar e instalar',exact=True).count()==0;page.get_by_text('El titular o Viteka pueden ejecutar esta actualización desde el servidor de la farmacia.',exact=True).wait_for()
  go('Mi cuenta');page.locator('.setting-row').filter(has=page.get_by_text('Cambiar mi contraseña',exact=True)).click();page.get_by_label('Contraseña actual',exact=True).fill('FixtureUserPass1');page.get_by_label('Nueva contraseña',exact=True).fill('abc');page.get_by_label('Repetir nueva contraseña',exact=True).fill('abc');page.get_by_role('button',name='Cambiar mi contraseña',exact=True).click();page.get_by_text('Contraseña actualizada.',exact=True).wait_for()

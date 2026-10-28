@@ -19,7 +19,7 @@ public static class AccessPolicy
     public static bool CanOpenPage(AccessUserView user, string page) => user.Active && !user.MustChangePassword && page switch
     {
         "Inicio" or "Aplicaciones" or "Actualizaciones" or "Mi cuenta" => true,
-        "Favoritos" or "Actividad" => user.Role is AccessRole.Administrator or AccessRole.SuperAdministrator,
+        "Favoritos" or "Actividad" or "Auditoría" => user.Role is AccessRole.Administrator or AccessRole.SuperAdministrator,
         "Usuarios" => CanManageUsers(user),
         "Configuración" => true,
         _ => false

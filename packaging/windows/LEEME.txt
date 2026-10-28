@@ -1,4 +1,4 @@
-VITEKA UTILIDADES 0.12.2 - CANAL DE PRUEBAS
+VITEKA UTILIDADES 0.12.3 - CANAL DE PRUEBAS
 
 INSTALACION
 Instalar o actualizar en el servidor de NixFarma, sobre la version anterior.

@@ -161,11 +161,15 @@ public partial class MainWindow : Window
             if(!Preferences.Load().SidebarCollapsed)throw new InvalidOperationException();
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
             stage="navigation";
-            foreach(var section in new[]{"Aplicaciones","Favoritos","Actividad","Configuración"})
+            foreach(var section in new[]{"Aplicaciones","Favoritos","Configuración"})
             {
                 await Browser.CoreWebView2.ExecuteScriptAsync($"[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==={JsonSerializer.Serialize(section)}).click()");
                 await WaitForScript($"document.querySelector('h1')?.textContent === {JsonSerializer.Serialize(section)}");
             }
+            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Auditoría').click()");
+            await WaitForScript("document.querySelector('h1')?.textContent === 'Auditoría'");
+            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Configuración').click()");
+            await WaitForScript("document.querySelector('h1')?.textContent === 'Configuración'");
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Actualizaciones').click()");
             await WaitForScript("document.querySelector('h1')?.textContent === 'Actualizaciones' && [...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Configuración')?.getAttribute('aria-current') === 'page'");
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Configuración').click()");

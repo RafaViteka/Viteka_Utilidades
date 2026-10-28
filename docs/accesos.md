@@ -1,4 +1,4 @@
-# Usuarios compartidos y actualizaciones · 0.12.2
+# Usuarios compartidos y actualizaciones · 0.12.3
 
 La autoridad de usuarios reside en el servicio Windows `VitekaUtilidadesAccess` del servidor. Todos los puestos que utilicen su cliente y bootstrap comparten cuentas, roles y permisos; no hay registros de usuarios independientes por puesto ni se confía en el rol enviado por Angular.
 
@@ -7,7 +7,7 @@ La autoridad de usuarios reside en el servicio Windows `VitekaUtilidadesAccess` 
 | Rol | Alcance | Gestión de contraseñas/cuentas |
 | --- | --- | --- |
 | Usuario | Inicio, aplicaciones asignadas, Actualizaciones de consulta y Mi cuenta | Cambiar su contraseña; no crear cuentas ni ejecutar el instalador |
-| Administrador (titular) | Todas las aplicaciones, Favoritos, Actividad, Usuarios, Actualizaciones y Mi cuenta; sin configuración técnica | Crear/editar/desactivar usuarios normales, asignarles aplicaciones y restablecer sus contraseñas; cambiar la suya confirmando la actual |
+| Administrador (titular) | Todas las aplicaciones, Favoritos, Auditoría, Usuarios, Actualizaciones y Mi cuenta; sin configuración técnica | Crear/editar/desactivar usuarios normales, asignarles aplicaciones y restablecer sus contraseñas; cambiar la suya confirmando la actual |
 | Superadministrador (Viteka) | Todo, incluida la configuración técnica | Crear/editar todos los roles y restablecer contraseñas ajenas; la propia se cambia confirmando la actual |
 
 Las aplicaciones futuras se añaden al catálogo y el administrador marca quién puede usarlas. Un usuario normal no recibe automáticamente permisos sobre aplicaciones nuevas; los roles privilegiados acceden a todo el catálogo conocido. No se han creado utilidades de ejemplo para poblar el selector. El catálogo continúa vacío.
@@ -46,7 +46,7 @@ La CA y los datos protegidos están ligados al servidor; su traslado a otra máq
 
 ## Organización de Configuración
 
-Configuración aparece para todos. Dentro, Mi cuenta reúne filas de contraseña, apariencia y pantalla inicial (esta última para roles privilegiados); cada ajuste abre un diálogo con Guardar/Cancelar. Usuarios solo aparece para titular y Viteka, con un icono de grupo distinto al de la cuenta personal. La conexión a NixFarma solo aparece para Viteka y se abre en diálogo. Entrar en Configuración no concede acceso a los ajustes técnicos: sus permisos en el servicio permanecen intactos.
+Configuración aparece para todos. Auditoría sustituye al apartado Actividad y se encuentra aquí para titular/Viteka; todavía no hay registro de operaciones implementado, ni se muestran eventos ficticios. Dentro, Mi cuenta reúne filas de contraseña, apariencia y pantalla inicial (esta última para roles privilegiados); cada ajuste abre un diálogo con Guardar/Cancelar. Usuarios solo aparece para titular y Viteka, con un icono de grupo distinto al de la cuenta personal. La conexión a NixFarma solo aparece para Viteka y se abre en diálogo. Entrar en Configuración no concede acceso a los ajustes técnicos: sus permisos en el servicio permanecen intactos.
 
 ## Actualizaciones e historial
 
