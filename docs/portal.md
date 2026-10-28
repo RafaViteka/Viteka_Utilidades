@@ -46,6 +46,6 @@ La apariencia se elige en Configuración → Tu espacio de trabajo y conserva Au
 
 Siguiente etapa acordada: primera prueba Oracle en el propio servidor, donde existe el DSN NIXFARMA. El acceso será de solo lectura y no se modificará el DSN compartido con NixFarma. La cuenta, sus permisos y su uso bajo la identidad real del servicio deben verificarse localmente. No solicitar contraseñas en chat ni distribuirlas en la carpeta compartida. La primera comprobación de conexión no implica que el servicio LAN, TLS, autorización de puestos o utilidades estén implementados.
 
-## Conexión local (0.11.0)
+## Conexión local (0.11.1)
 
 La sección pendiente se sustituye por una tarjeta funcional en Configuración: estado del DSN x64 local, usuario, configuración cifrada, prueba y eliminación de credenciales. El formulario de contraseña es nativo de Windows. Ver [conexión a NixFarma](conexion-nixfarma.md) para alcance, uso y validación. Esta etapa permite probar desde el servidor; el servicio de acceso para puestos continúa pendiente.

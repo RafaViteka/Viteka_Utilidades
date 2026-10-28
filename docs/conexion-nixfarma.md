@@ -1,4 +1,4 @@
-# Conexión local a NixFarma · 0.11.0
+# Conexión local a NixFarma · 0.11.1
 
 La aplicación incorpora ahora Oracle ODBC x64 y una prueba real de conexión, independiente de las utilidades. Las versiones hasta 0.10.1 solo tenían un marcador de conexión pendiente: instalarlas en un servidor no iniciaba ninguna conexión Oracle.
 

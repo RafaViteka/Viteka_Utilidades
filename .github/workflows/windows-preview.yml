@@ -1,5 +1,8 @@
 name: Windows preview installer
 on:
+  push:
+    tags:
+      - 'v*-preview.*'
   workflow_dispatch:
     inputs:
       validate_only:
@@ -101,14 +104,15 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           $version = ([xml](Get-Content 'Directory.Build.props' -Raw)).Project.PropertyGroup.Version
-          $tag = "v$version-preview.1"
+          $tag = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME } else { "v$version-preview.1" }
+          if ($tag -notmatch "^v$([regex]::Escape($version))-preview\.[1-9][0-9]*$") { throw 'Release tag does not match the built version.' }
           $zip = "artifacts/VitekaUtilidades-$version-win-x64-preview.zip"
           Compress-Archive -Path 'artifacts/windows-x64/*' -DestinationPath $zip -Force
           $hash = (Get-FileHash -Algorithm SHA256 $zip).Hash.ToLowerInvariant()
           "$hash  $([System.IO.Path]::GetFileName($zip))" | Set-Content -Encoding ascii "$zip.sha256"
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "Viteka Utilidades $version - MVP visual" --notes 'MVP visual: navegacion estilo B con identidad Viteka, catalogo y actividad vacios. Sin utilidades de ejemplo ni conexion real a NixFarma. Instalador sin firma digital; pendiente de revision visual en Windows.'
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "Viteka Utilidades $version - Conexion local a NixFarma" --notes-file packaging/windows/RELEASE-NOTES.md
             if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
           }
           gh release upload $tag $zip "$zip.sha256" artifacts/installer/*.exe --repo $env:GITHUB_REPOSITORY --clobber
