@@ -12,6 +12,7 @@ public sealed class AccessServiceTrust : IDisposable
     private readonly X509Certificate2 root;
     public Uri Server { get; }
     public HttpClient Client { get; }
+    public string? ValidationFailure { get; private set; }
     public AccessServiceTrust(string bootstrapPath)
     {
         if (new FileInfo(bootstrapPath).Length > 16_384) throw new InvalidDataException();
@@ -28,7 +29,7 @@ public sealed class AccessServiceTrust : IDisposable
         var handler = new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = false };
         handler.ServerCertificateCustomValidationCallback = (_, certificate, _, errors) =>
         {
-            if (certificate is null || (errors & (SslPolicyErrors.RemoteCertificateNameMismatch | SslPolicyErrors.RemoteCertificateNotAvailable)) != 0) return false;
+            if (certificate is null || (errors & (SslPolicyErrors.RemoteCertificateNameMismatch | SslPolicyErrors.RemoteCertificateNotAvailable)) != 0) { ValidationFailure = errors.ToString(); return false; }
             using var chain = new X509Chain();
             chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
             chain.ChainPolicy.CustomTrustStore.Add(root);
@@ -36,7 +37,9 @@ public sealed class AccessServiceTrust : IDisposable
             // to its protected bootstrap; chain signatures, hostname, EKU and dates still apply.
             chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
             chain.ChainPolicy.ApplicationPolicy.Add(new Oid("1.3.6.1.5.5.7.3.1"));
-            return chain.Build(certificate);
+            var valid = chain.Build(certificate);
+            if (!valid) ValidationFailure = string.Join(",", chain.ChainStatus.Select(s => s.Status.ToString()));
+            return valid;
         };
         Client = new HttpClient(handler) { BaseAddress = Server, Timeout = TimeSpan.FromSeconds(20) };
     }

@@ -28,7 +28,7 @@ internal static class AccessCertificates
         using (root)
         {
             var leafPath = Path.Combine(privateDirectory, "server-key.dat");
-            X509Certificate2? leaf = File.Exists(leafPath) ? LoadProtected(leafPath) : null;
+            X509Certificate2? leaf = File.Exists(leafPath) ? LoadProtected(leafPath, true) : null;
             if (leaf is null || leaf.NotAfter.ToUniversalTime() < DateTime.UtcNow.AddDays(30) || !leaf.GetNameInfo(X509NameType.SimpleName, false).Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase))
             {
                 leaf?.Dispose();
@@ -42,6 +42,9 @@ internal static class AccessCertificates
                 request.CertificateExtensions.Add(names.Build());
                 using var signed = request.Create(root, DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddYears(1), RandomNumberGenerator.GetBytes(16));
                 leaf = signed.CopyWithPrivateKey(key); SaveProtected(leafPath, leaf);
+                // Windows SChannel needs a named key container for a server credential.
+                // The non-persisted machine container is removed when this certificate is disposed.
+                leaf.Dispose(); leaf = LoadProtected(leafPath, true);
             }
             AtomicWrite(Path.Combine(publicDirectory, "access-root.cer"), root.Export(X509ContentType.Cert));
             var metadata = new AccessBootstrap(1, $"https://{Environment.MachineName}:{port}/", Convert.ToHexString(SHA256.HashData(root.RawData)));
@@ -49,11 +52,11 @@ internal static class AccessCertificates
             return leaf;
         }
     }
-    private static X509Certificate2 LoadProtected(string path)
+    private static X509Certificate2 LoadProtected(string path, bool serverCredential = false)
     {
         if (!OperatingSystem.IsWindows()) throw new PlatformNotSupportedException();
         var clear = ProtectedData.Unprotect(File.ReadAllBytes(path), null, DataProtectionScope.LocalMachine);
-        try { return X509CertificateLoader.LoadPkcs12(clear, null, X509KeyStorageFlags.EphemeralKeySet); }
+        try { return X509CertificateLoader.LoadPkcs12(clear, null, serverCredential ? X509KeyStorageFlags.MachineKeySet : X509KeyStorageFlags.EphemeralKeySet); }
         finally { CryptographicOperations.ZeroMemory(clear); }
     }
     private static void SaveProtected(string path, X509Certificate2 cert)

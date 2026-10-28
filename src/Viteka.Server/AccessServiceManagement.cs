@@ -44,19 +44,22 @@ internal static class AccessServiceManagement
             using var service = new ServiceController(AccessHost.ServiceName);
             service.Start(); service.WaitForStatus(ServiceControllerStatus.Running, TimeSpan.FromSeconds(15));
             var bootstrap = Path.Combine(StateRoot, "Public", "access-server.json");
-            var ready = false;
+            var ready = false; string? lastProblem = null;
             for (var attempt = 0; attempt < 15; attempt++)
             {
+                AccessServiceTrust? trust = null;
                 try
                 {
-                    using var trust = new AccessServiceTrust(bootstrap); trust.Client.Timeout = TimeSpan.FromSeconds(2);
+                    trust = new AccessServiceTrust(bootstrap); trust.Client.Timeout = TimeSpan.FromSeconds(2);
                     using var response = await trust.Client.GetAsync("access/health");
                     if (response.IsSuccessStatusCode) { ready = true; break; }
+                    lastProblem = "HTTP " + (int)response.StatusCode;
                 }
-                catch (Exception error) when (error is IOException or System.Security.Cryptography.CryptographicException or System.Net.Http.HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { }
+                catch (Exception error) when (error is IOException or System.Security.Cryptography.CryptographicException or System.Net.Http.HttpRequestException or TaskCanceledException or System.Text.Json.JsonException) { lastProblem = error.ToString() + "; TLS=" + trust?.ValidationFailure; }
+                finally { trust?.Dispose(); }
                 await Task.Delay(1000);
             }
-            if (!ready) throw new InvalidOperationException("El servicio de usuarios no respondió con su identidad TLS. Las cuentas se han conservado.");
+            if (!ready) throw new InvalidOperationException("El servicio de usuarios no respondió con su identidad TLS. Las cuentas se han conservado. " + lastProblem);
             Directory.CreateDirectory(clientDirectory);
             foreach (var file in new[] { "access-server.json", "access-root.cer" }) File.Copy(Path.Combine(StateRoot, "Public", file), Path.Combine(clientDirectory, file), true);
             Firewall(true);
