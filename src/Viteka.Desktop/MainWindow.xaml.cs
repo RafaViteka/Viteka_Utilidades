@@ -161,17 +161,23 @@ public partial class MainWindow : Window
             if(!Preferences.Load().SidebarCollapsed)throw new InvalidOperationException();
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
             stage="navigation";
-            foreach(var section in new[]{"Aplicaciones","Favoritos","Actividad","Usuarios","Actualizaciones","Configuración","Mi cuenta"})
+            foreach(var section in new[]{"Aplicaciones","Favoritos","Actividad","Actualizaciones","Configuración"})
             {
                 await Browser.CoreWebView2.ExecuteScriptAsync($"[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==={JsonSerializer.Serialize(section)}).click()");
                 await WaitForScript($"document.querySelector('h1')?.textContent === {JsonSerializer.Serialize(section)}");
             }
+            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Usuarios').click()");
+            await WaitForScript("document.querySelector('h1')?.textContent === 'Usuarios'");
             stage="preference";
-            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click()");await WaitForPreference(true);
+            await OpenAccountSmoke();
+            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Pantalla al iniciar').click()");
+            await WaitForScript("document.querySelector('[role=dialog] input[type=checkbox]') !== null");
+            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click();[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Guardar cambios').click()");await WaitForPreference(true);
             Browser.CoreWebView2.Reload();await WaitForScript("document.querySelector('h1')?.textContent === 'Favoritos'");
-            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Mi cuenta').click()");
+            await OpenAccountSmoke();
+            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Pantalla al iniciar').click()");
             await WaitForScript("document.querySelector('input[type=checkbox]')?.checked === true");
-            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click()");await WaitForPreference(false);
+            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click();[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Guardar cambios').click()");await WaitForPreference(false);
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Inicio').click()");
             await WaitForScript("document.querySelector('.priority-grid') !== null");
             var screenshot=Environment.GetEnvironmentVariable("VITEKA_UI_SMOKE_SCREENSHOT");
@@ -179,13 +185,13 @@ public partial class MainWindow : Window
             stage="normal-user-guards";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"Cerrar sesión\"]').click()");
             await LoginSmoke("usuario","0000","SmokeUserPassword1");
-            await WaitForScript("![...document.querySelectorAll('nav button')].some(b=>b.textContent.includes('Configuración')||b.textContent.includes('Usuarios'))");
+            await WaitForScript("![...document.querySelectorAll('nav button')].some(b=>b.textContent.includes('Usuarios')||b.textContent.includes('Mi cuenta'))");
             await DeniedSmoke("nixfarma.status");await DeniedSmoke("update.install");
             await DeniedSmoke("users.create",new{name="forbidden",role="SuperAdministrator",password="SmokeForbiddenPassword1",utilityIds=Array.Empty<string>()});
             stage="administrator-guards";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"Cerrar sesión\"]').click()");
             await LoginSmoke("F. titular","1234","SmokeAdminPassword1");
-            await WaitForScript("![...document.querySelectorAll('nav button')].some(b=>b.textContent.includes('Configuración'))");
+            await WaitForScript("[...document.querySelectorAll('nav button')].some(b=>b.textContent.includes('Configuración'))");
             await DeniedSmoke("nixfarma.status");await DeniedSmoke("users.password",new{id=superId,password="SmokeForbiddenPassword1"});
             FinishSmoke(true,"complete");
         }
@@ -195,6 +201,13 @@ public partial class MainWindow : Window
             try{detail+="; UI: "+await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[role=alert]')?.textContent||document.querySelector('.error')?.textContent||''");}catch(InvalidOperationException){}
             FinishSmoke(false,stage,detail);
         }
+    }
+    private async Task OpenAccountSmoke()
+    {
+        await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Configuración').click()");
+        await WaitForScript("document.querySelector('h1')?.textContent === 'Configuración'");
+        await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Mi cuenta').click()");
+        await WaitForScript("document.querySelector('h1')?.textContent === 'Mi cuenta'");
     }
     private void FinishSmoke(bool passed, string stage, string? error = null)
     {

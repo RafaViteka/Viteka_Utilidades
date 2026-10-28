@@ -90,7 +90,13 @@ with sync_playwright() as p:
    assert page.get_by_role('navigation').count()==0
    page.get_by_label('Contraseña actual',exact=True).fill(password);page.get_by_label('Nueva contraseña',exact=True).fill(new_password);page.get_by_label('Repetir nueva contraseña',exact=True).fill(new_password);page.get_by_role('button',name='Guardar contraseña',exact=True).click()
   page.get_by_role('heading',name='Portal de soporte',exact=True).wait_for()
- def go(name):page.get_by_role('navigation').get_by_role('button',name=name,exact=True).click();page.get_by_role('heading',name=name,exact=True).wait_for()
+ def go(name):
+  if name in ('Mi cuenta','Usuarios'):
+   go('Configuración');page.locator('.setting-row').filter(has=page.get_by_text(name,exact=True)).click()
+  else:page.get_by_role('navigation').get_by_role('button',name=name,exact=True).click()
+  page.get_by_role('heading',name=name,exact=True).wait_for()
+ def appearance(theme):
+  page.locator('.setting-row').filter(has=page.get_by_text('Apariencia',exact=True)).click();dialog=page.get_by_role('dialog',name='Apariencia',exact=True);dialog.get_by_label('Apariencia',exact=True).select_option(theme);dialog.get_by_role('button',name='Guardar cambios',exact=True).click();dialog.wait_for(state='hidden')
  login('Viteka','jupiter','FixtureSuperPass1')
  assert page.get_by_label('Apariencia',exact=True).count()==0
  page.screenshot(path=str(artifacts/'angular-desktop.png'),full_page=True)
@@ -98,7 +104,7 @@ with sync_playwright() as p:
  page.keyboard.press('Control+0');page.wait_for_function("() => document.documentElement.style.zoom==='1'")
  page.get_by_role('button',name='Cerrar menú lateral',exact=True).click();page.wait_for_function("() => Math.round(document.querySelector('aside').getBoundingClientRect().width)===76")
  page.reload();page.get_by_role('button',name='Abrir menú lateral',exact=True).wait_for();page.get_by_role('button',name='Abrir menú lateral',exact=True).click()
- go('Mi cuenta');page.get_by_label('Apariencia',exact=True).select_option('dark');page.wait_for_function("() => document.documentElement.dataset.theme==='dark'")
+ go('Mi cuenta');appearance('dark');page.wait_for_function("() => document.documentElement.dataset.theme==='dark'")
  page.reload();page.wait_for_function("() => document.documentElement.dataset.theme==='dark'")
  page.get_by_role('navigation').get_by_role('button',name='Inicio',exact=True).click();page.get_by_role('button',name='Cerrar menú lateral',exact=True).click();page.wait_for_function("() => Math.round(document.querySelector('aside').getBoundingClientRect().width)===76")
  assert page.locator('.brand-bottom .isologo').evaluate('el=>getComputedStyle(el).filter')=='brightness(0) invert(1)'
@@ -107,10 +113,11 @@ with sync_playwright() as p:
  assert page.get_by_role('button',name='Buscar actualizaciones',exact=True).count()==0
  assert page.get_by_label('Apariencia',exact=True).count()==0
  assert page.locator('input[type=password]').count()==0
+ page.locator('.setting-row').filter(has=page.get_by_text('Conexión a NixFarma',exact=True)).click()
  page.get_by_role('button',name='Configurar conexión',exact=True).click();page.get_by_text('Conexión guardada. Pulsa Probar conexión para verificarla.',exact=True).wait_for()
  page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Conexión verificada: prueba de solo lectura correcta.',exact=True).wait_for()
  fixture.probe_fail=True;page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Diagnóstico: 28000 · ORA-01017',exact=True).wait_for()
- go('Actualizaciones');page.get_by_role('button',name='Buscar actualizaciones',exact=True).click();page.get_by_text('Versión 0.13.0 disponible.',exact=True).wait_for()
+ page.keyboard.press('Escape');go('Actualizaciones');page.get_by_role('button',name='Buscar actualizaciones',exact=True).click();page.get_by_text('Versión 0.13.0 disponible.',exact=True).wait_for()
  page.get_by_role('button',name='Descargar e instalar',exact=True).click();page.get_by_text('Instalación cancelada. Puedes seguir usando esta versión.',exact=True).wait_for()
  page.get_by_role('button',name='Historial de actualizaciones',exact=True).click();page.get_by_role('dialog',name='Historial de actualizaciones',exact=True).wait_for();page.get_by_text('Versión ejecutada 0.12.0',exact=True).wait_for()
  page.get_by_role('dialog').get_by_role('group').count() if False else None
@@ -119,20 +126,25 @@ with sync_playwright() as p:
  go('Usuarios');page.get_by_role('button',name='Crear usuario',exact=True).click();editor=page.get_by_role('dialog',name='Editar cuenta y permisos',exact=True)
  editor.get_by_label('Nombre de usuario',exact=True).fill('Personal');editor.get_by_label('Contraseña inicial',exact=True).fill('FixtureStaffPass1');editor.get_by_label('Repetir contraseña inicial',exact=True).fill('FixtureStaffPass1');editor.get_by_label('Aplicación de prueba A',exact=True).check();editor.get_by_role('button',name='Guardar cuenta',exact=True).click();editor.wait_for(state='hidden');page.get_by_role('button',name='Editar Personal',exact=True).wait_for()
  page.screenshot(path=str(artifacts/'angular-users.png'),full_page=True)
- go('Mi cuenta');page.get_by_label('Apariencia',exact=True).select_option('light')
+ go('Mi cuenta');appearance('light')
  page.get_by_role('button',name='Cerrar sesión',exact=True).click();page.get_by_role('heading',name='Iniciar sesión',exact=True).wait_for()
  login('F. titular','1234','FixtureAdminPass1')
- assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).count()==0
+ assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).count()==1
+ go('Configuración');assert page.locator('.setting-row').filter(has=page.get_by_text('Conexión a NixFarma',exact=True)).count()==0
  go('Usuarios');assert page.get_by_role('button',name='Editar Viteka',exact=True).count()==0
  page.get_by_role('button',name='Crear usuario',exact=True).click();editor=page.get_by_role('dialog',name='Editar cuenta y permisos',exact=True);editor.wait_for();expect(editor.get_by_label('Rol',exact=True).locator('option')).to_have_count(1);page.keyboard.press('Escape')
  page.get_by_role('button',name='Cerrar sesión',exact=True).click();page.get_by_role('heading',name='Iniciar sesión',exact=True).wait_for()
  login('usuario','0000','FixtureUserPass1')
  assert page.get_by_role('navigation').get_by_role('button',name='Usuarios',exact=True).count()==0
- assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).count()==0
+ assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).count()==1
+ go('Configuración');assert page.locator('.setting-row').filter(has=page.get_by_text('Conexión a NixFarma',exact=True)).count()==0
  go('Aplicaciones');page.get_by_role('heading',name='No hay aplicaciones disponibles para tu cuenta',exact=True).wait_for()
  go('Actualizaciones');assert page.get_by_role('button',name='Descargar e instalar',exact=True).count()==0;page.get_by_text('El titular o Viteka pueden ejecutar esta actualización desde el servidor de la farmacia.',exact=True).wait_for()
- go('Mi cuenta');page.get_by_label('Contraseña actual',exact=True).fill('FixtureUserPass1');page.get_by_label('Nueva contraseña',exact=True).fill('FixtureUserPass2');page.get_by_label('Repetir nueva contraseña',exact=True).fill('FixtureUserPass2');page.get_by_role('button',name='Cambiar mi contraseña',exact=True).click();page.get_by_text('Contraseña actualizada.',exact=True).wait_for()
- expect(page.get_by_label('Nueva contraseña',exact=True)).to_have_value('')
+ go('Mi cuenta');page.locator('.setting-row').filter(has=page.get_by_text('Cambiar mi contraseña',exact=True)).click();page.get_by_label('Contraseña actual',exact=True).fill('FixtureUserPass1');page.get_by_label('Nueva contraseña',exact=True).fill('abc');page.get_by_label('Repetir nueva contraseña',exact=True).fill('abc');page.get_by_role('button',name='Cambiar mi contraseña',exact=True).click();page.get_by_text('Contraseña actualizada.',exact=True).wait_for()
+ expect(page.get_by_role('dialog')).to_have_count(0)
+ page.locator('.setting-row').filter(has=page.get_by_text('Apariencia',exact=True)).click();page.get_by_role('dialog',name='Apariencia',exact=True).get_by_label('Apariencia',exact=True).select_option('dark');page.get_by_role('button',name='Cancelar',exact=True).click();assert page.evaluate('document.documentElement.dataset.theme')=='light'
+ page.screenshot(path=str(artifacts/'angular-account-rows.png'),full_page=True)
+ page.locator('.setting-row').filter(has=page.get_by_text('Cambiar mi contraseña',exact=True)).click();page.screenshot(path=str(artifacts/'angular-password-dialog.png'),full_page=True);page.keyboard.press('Escape')
  page.set_viewport_size({'width':820,'height':600});assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
  assert not errors,errors
  browser.close()

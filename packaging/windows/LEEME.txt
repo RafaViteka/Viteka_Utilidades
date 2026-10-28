@@ -1,4 +1,4 @@
-VITEKA UTILIDADES 0.12.0 - CANAL DE PRUEBAS
+VITEKA UTILIDADES 0.12.1 - CANAL DE PRUEBAS
 
 INSTALACION
 Instalar o actualizar en el servidor de NixFarma, sobre la version anterior.
@@ -12,7 +12,7 @@ registro por primera vez se preparan estas credenciales iniciales:
   Viteka     / jupiter : superadministrador, incluida Configuracion tecnica.
   F. titular / 1234    : administrador, todo salvo Configuracion tecnica.
   usuario    / 0000    : Inicio y aplicaciones que tenga autorizadas.
-Se exige cambiar la contrasena inicial, con un minimo de 8 caracteres.
+Se exige cambiar la contrasena inicial, con un minimo de 3 caracteres.
 Los usuarios solo cambian su contrasena. El titular crea y gestiona usuarios
 normales. Viteka gestiona todos los roles. Los cambios revocan sesiones previas.
 Los puestos seguiran bloqueados mientras haya cuentas activas con la contrasena
@@ -20,7 +20,8 @@ inicial de instalacion. Cambiarlas o restablecerlas desde el servidor primero.
 No se restauran las contrasenas iniciales al actualizar ni ante un registro danado.
 
 CONFIGURACION Y CONEXION ORACLE
-Solo Viteka puede abrir Configuracion. La conexion previa del usuario Windows
+Configuracion agrupa Mi cuenta para todos, Usuarios para titular/Viteka y
+conexion tecnica solo para Viteka. La conexion previa del usuario Windows
 original se migra al servicio al entrar Viteka en ese mismo servidor.
 Probar la conexion despues de actualizar: LocalService debe poder utilizar
 el DSN de sistema Oracle de 64 bits y resolver su TNS. La prueba es solo lectura.

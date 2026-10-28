@@ -142,7 +142,7 @@ public sealed class AccessDirectory(string directory, IReadOnlyList<UtilityDefin
     private static void ValidateName(string name)
     { if (string.IsNullOrWhiteSpace(name) || name.Trim().Length > 64 || name.Any(char.IsControl)) throw new ArgumentException("Nombre de usuario no válido."); }
     private static void ValidateNewPassword(string password)
-    { if (string.IsNullOrWhiteSpace(password) || password.Length < 8 || password.Length > 128) throw new ArgumentException("La contraseña nueva debe tener entre 8 y 128 caracteres."); }
+    { if (string.IsNullOrWhiteSpace(password) || password.Length < 3 || password.Length > 128) throw new ArgumentException("La contraseña nueva debe tener entre 3 y 128 caracteres."); }
     private void ValidateUtilities(string[] ids)
     { if (ids is null || ids.Length > 500 || ids.Any(id => !catalog.Any(item => item.Id == id))) throw new ArgumentException("Aplicación no disponible."); }
     private FileStream Lock()

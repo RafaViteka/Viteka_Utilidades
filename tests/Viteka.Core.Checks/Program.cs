@@ -312,6 +312,20 @@ try
         Require(initialSuper.User.MustChangePassword && !AccessPolicy.CanConfigure(initialSuper.User) && !authority.RemoteAccessReady());
         try { authority.List(initialSuper.Ticket); throw new Exception("Expected denial"); } catch (AccessDeniedException) { }
     });
+    Check("New passwords accept three characters and reject fewer across create, reset and own change", () =>
+    {
+        var path = Path.Combine(root, "password-boundaries");
+        var a = new AccessDirectory(path, accessCatalog, b => b.ToArray(), b => b.ToArray(), accessClock);
+        a.InitializeDefaults(); var initial = a.Login("Viteka", "jupiter");
+        try { a.ChangeOwnPassword(initial.Ticket, "jupiter", "ab"); throw new Exception("Accepted short password"); } catch (ArgumentException) { }
+        var actor = a.ChangeOwnPassword(initial.Ticket, "jupiter", "abc");
+        Require(a.Login("Viteka", "abc").User.Active);
+        try { a.Create(actor, "Short", AccessRole.User, "ab", []); throw new Exception("Accepted short creation"); } catch (ArgumentException) { }
+        var created = a.Create(actor, "Short", AccessRole.User, "xyz", []);
+        try { a.ResetPassword(actor, created.Id, "ab"); throw new Exception("Accepted short reset"); } catch (ArgumentException) { }
+        a.ResetPassword(actor, created.Id, "123"); Require(a.Login("Short", "123").User.MustChangePassword);
+        Require(AccessPolicy.CanOpenPage(a.Current(actor), "Configuración"));
+    });
     var superTicket = authority.ChangeOwnPassword(initialSuper.Ticket, "jupiter", "FixtureSuperPass1");
     var adminInitial = authority.Login("F. titular", "1234");
     var adminTicket = authority.ChangeOwnPassword(adminInitial.Ticket, "1234", "FixtureAdminPass1");
@@ -324,6 +338,7 @@ try
         Require(!AccessPolicy.CanConfigure(authority.Current(adminTicket)) && !AccessPolicy.CanConfigure(authority.Current(normalTicket)));
         Require(AccessPolicy.CanInstallUpdates(authority.Current(adminTicket)) && !AccessPolicy.CanInstallUpdates(authority.Current(normalTicket)));
         Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Usuarios"));
+        Require(AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Configuración") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Configuración"));
     });
     Check("Normal users cannot create accounts or reset another password", () =>
     {

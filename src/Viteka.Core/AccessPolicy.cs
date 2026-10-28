@@ -21,7 +21,7 @@ public static class AccessPolicy
         "Inicio" or "Aplicaciones" or "Actualizaciones" or "Mi cuenta" => true,
         "Favoritos" or "Actividad" => user.Role is AccessRole.Administrator or AccessRole.SuperAdministrator,
         "Usuarios" => CanManageUsers(user),
-        "Configuración" => CanConfigure(user),
+        "Configuración" => true,
         _ => false
     };
 }

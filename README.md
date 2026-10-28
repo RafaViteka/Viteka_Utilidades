@@ -1,10 +1,10 @@
-# Viteka Utilidades · Centro de accesos 0.12.0
+# Viteka Utilidades · Centro de accesos 0.12.1
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
 ## Accesos y administración
 
-Cuentas y permisos centralizados en el servicio Windows de la farmacia, con HTTPS y confianza privada fijada en el cliente. Usuario: Inicio y aplicaciones autorizadas; titular: todas las aplicaciones y gestión de usuarios normales; Viteka: superadministración y configuración técnica. Las preferencias personales están en Mi cuenta.
+Cuentas y permisos centralizados en el servicio Windows de la farmacia, con HTTPS y confianza privada fijada en el cliente. Usuario: Inicio y aplicaciones autorizadas; titular: todas las aplicaciones y gestión de usuarios normales; Viteka: superadministración y configuración técnica. Configuración agrupa Mi cuenta (filas con ventanas de edición), Usuarios para titulares/Viteka y conexión técnica solo para Viteka. Contraseñas nuevas desde 3 caracteres.
 
 Actualizaciones tiene una pestaña propia: búsqueda cada 24 horas mientras la app está abierta o al siguiente arranque, botón manual, aviso e historial de versiones publicadas y ejecuciones locales. Solo titular/Viteka pueden iniciar el instalador y deben hacerlo en el servidor. Ver [usuarios y accesos](docs/accesos.md).
 
@@ -34,7 +34,7 @@ bash scripts/setup-cloud.sh
 python scripts/smoke-ui.py
 ```
 
-El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 54 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 55 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
 
 Para editar la interfaz en navegador:
 
