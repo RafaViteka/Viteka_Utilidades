@@ -67,3 +67,11 @@ No hay firma Authenticode: la identidad de origen del canal de pruebas depende d
 Se mantiene el AppId de Inno Setup, para instalar encima sin desinstalar ni borrar preferencias locales. El instalador ofrece abrir la app al terminar. Una instalación portátil ZIP no se convierte en actualización in situ del ZIP: el instalador crea/actualiza la instalación registrada. La versión 0.5 no contiene el actualizador; requiere una instalación manual de 0.6 una vez. No se reinician servicios ni puestos remotos automáticamente; el MVP permanece vacío.
 
 Pruebas: cinco casos nuevos del núcleo verifican canal preview, descarga íntegra, digest incorrecto, tamaño incorrecto y redirección externa. El workflow añade descarga real de una prerelease en Windows, sin ejecutar el instalador. El ciclo UAC/instalación interactiva debe probarse en el equipo del usuario.
+
+## Distribución 0.12.0: servidor de accesos
+
+Esta sección sustituye el diseño de distribución local anterior para la entrega actual. El instalador registra y mantiene VitekaUtilidadesAccess bajo LocalService; genera identidad TLS por instalación, protege el directorio privado y conserva cuentas/CA/Oracle al actualizar. El manejo del servicio está en el ejecutable (no requiere relajar la política de ejecución de PowerShell). El script manage-access-service.ps1 es solo una envoltura administrativa opcional. La antigua entrada de demostración se retira del menú Inicio; su host se conserva para regresión de desarrollo.
+
+El instalador se ejecuta en el servidor. El cliente compartido incluye el bootstrap público y solo debe ser modificable por mantenimiento. Un cliente remoto puede consultar versiones y novedades, pero no ejecutar el instalador de servidor. El administrador/Viteka debe instalar desde el propio servidor y cerrar antes los procesos que utilicen archivos compartidos. Inno detiene el servicio antes de copiar archivos y lo inicia después, preservando los datos de ProgramData. El registro de usuarios no se borra al desinstalar.
+
+El workflow Windows verifica instalación/reinstalación/retirada del servicio y salud TLS, no solo compilación del exe. El paquete sigue sin firma de editor y la validación de los puestos/recurso compartido reales se realiza en la farmacia. Ver accesos.md.

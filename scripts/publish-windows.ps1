@@ -24,6 +24,7 @@ try {
     Invoke-Dotnet -Arguments @('run', '--project', 'tests/Viteka.Core.Checks', '-c', 'Release', '--no-build')
     Invoke-Dotnet -Arguments @('publish', 'src/Viteka.Desktop/Viteka.Desktop.csproj', '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:RestoreLockedMode=true', '-o', 'artifacts/windows-x64/Cliente')
     Invoke-Dotnet -Arguments @('publish', 'src/Viteka.Server/Viteka.Server.csproj', '-c', 'Release', '-r', 'win-x64', '--self-contained', 'true', '-p:RestoreLockedMode=true', '-o', 'artifacts/windows-x64/Servidor')
+    Copy-Item 'packaging/windows/manage-access-service.ps1' 'artifacts/windows-x64/Servidor/manage-access-service.ps1' -Force
     Copy-Item 'packaging/windows/manage-service.ps1' 'artifacts/windows-x64/Servidor/manage-service.ps1' -Force
     Copy-Item 'packaging/windows/LEEME.txt' 'artifacts/windows-x64/LEEME.txt' -Force
     }

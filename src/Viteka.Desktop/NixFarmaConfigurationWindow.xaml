@@ -9,7 +9,7 @@
 <Label Content="Contraseña de Oracle" Target="{Binding ElementName=PasswordInput}" Foreground="{DynamicResource ChromeForeground}" Padding="0"/>
 <PasswordBox x:Name="PasswordInput" MaxLength="1024" Padding="9" Margin="0,7,0,8" AutomationProperties.Name="Contraseña de Oracle"/>
 <TextBlock x:Name="PasswordHint" TextWrapping="Wrap" FontSize="12"/>
-<TextBlock Text="Se guardará cifrada para este usuario de Windows en este servidor. La contraseña no se envía a la interfaz web ni a GitHub. El DSN existente no se modifica." TextWrapping="Wrap" FontSize="12" Margin="0,18,0,0"/>
+<TextBlock Text="Se enviará por la conexión protegida al servicio y se guardará cifrada en el servidor. No se devuelve a la interfaz web ni se envía a GitHub. El DSN existente no se modifica." TextWrapping="Wrap" FontSize="12" Margin="0,18,0,0"/>
 <TextBlock x:Name="ValidationMessage" TextWrapping="Wrap" Foreground="#D18365" Margin="0,12,0,0" AutomationProperties.LiveSetting="Polite"/>
 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0"><Button Content="Cancelar" IsCancel="True" Margin="0,0,10,0"/><Button Content="Guardar conexión" IsDefault="True" Click="SaveConnection" Background="#07555C" Foreground="White"/></StackPanel>
 </StackPanel></ScrollViewer></Window>

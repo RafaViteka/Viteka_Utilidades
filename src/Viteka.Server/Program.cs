@@ -4,6 +4,8 @@ using Viteka.Server;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
+if (args.Length > 0 && args[0].StartsWith("--access-", StringComparison.Ordinal)) { await AccessHost.RunAsync(args); return; }
+
 var serviceMode = args.Contains("--service") || (OperatingSystem.IsWindows() && WindowsServiceHelpers.IsWindowsService());
 args = args.Where(x => x != "--service").ToArray();
 if (serviceMode && !OperatingSystem.IsWindows())

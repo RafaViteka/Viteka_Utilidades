@@ -28,3 +28,7 @@ Guardar la configuración no equivale a verificarla. Un resultado correcto acred
 Los checks del núcleo verifican el orden de lectura, el bloqueo de consulta si falla el modo read-only y el rollback ante fallo. El navegador verifica estados, mensajes, configuración/prueba/eliminación simuladas y ausencia de campos de contraseña o SQL en el puente. El smoke Windows prueba el formulario real con credenciales ficticias, cifrado/descifrado DPAPI, ausencia de contraseña en el estado, eliminación y error real IM002 mediante ODBC con un DSN inexistente. No se crea ni modifica un DSN del runner.
 
 La prueba real contra el servidor Oracle de la farmacia debe realizarse allí: no es accesible desde el entorno cloud. Esta entrega no añade todavía consultas de negocio, acceso LAN, TLS, autorización de puestos ni actualización de un servicio instalado. El cliente ejecutado en otro puesto sin Oracle/DSN mostrará que falta el DSN; ejecutar el exe desde un disco del servidor no cambia dónde se ejecuta el proceso.
+
+## Actualización 0.12.0: autoridad central
+
+La sección local anterior describe 0.11.x. Desde 0.12.0, solo Viteka puede abrir Configuración y la conexión se protege y ejecuta en el servicio central del servidor bajo LocalService. La configuración del perfil original se migra al entrar el superadministrador en ese servidor. Ver [usuarios compartidos](accesos.md), incluido TNS, bootstrap, permisos y pruebas tras actualizar.

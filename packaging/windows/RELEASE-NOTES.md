@@ -1,11 +1,14 @@
-Configuración incorpora conexión local a NixFarma mediante Oracle ODBC de 64 bits:
+Gestión de accesos compartida para toda la farmacia:
 
-- DSN, usuario y contraseña Oracle en un formulario nativo de Windows.
-- Credenciales cifradas para el usuario de Windows en este servidor.
-- Prueba real de conexión con transacción de solo lectura y consulta fija SELECT 1 FROM DUAL.
-- Diagnóstico de DSN/controlador, autenticación, TNS, disponibilidad y permisos, sin mostrar contraseñas.
-- Eliminación de la configuración local sin modificar el DSN ni Oracle.
+- Inicio de sesión y roles Usuario, Administrador/titular y Superadministrador/Viteka.
+- Configuración técnica y conexión Oracle reservadas a Viteka, con validación de permisos en el servicio.
+- Gestión de usuarios, contraseñas, cuentas activas y selección de aplicaciones autorizadas.
+- Cambio obligatorio de contraseñas iniciales; los puestos no pueden utilizar secretos iniciales conocidos.
+- Preferencias personales en Mi cuenta y perfiles independientes por cuenta.
+- Servicio Windows central protegido, HTTPS con identidad de esta instalación y bootstrap público para el cliente compartido.
+- Migración de la conexión Oracle previa al servicio al entrar Viteka en el servidor original; volver a probar el DSN bajo la cuenta del servicio.
+- Actualizaciones en una pestaña propia, búsqueda cada 24 h mientras se utiliza la app, botón manual, avisos e historial de publicaciones y ejecuciones.
 
-Ejecutar la primera prueba en el servidor que dispone del DSN de sistema NIXFARMA. No se instala ni modifica el cliente Oracle. Las consultas de utilidades y el servicio para los puestos están pendientes. La conexión real a la base de datos de la farmacia debe verificarse allí.
+Instalar/actualizar desde el servidor de NixFarma. Las cuentas y contraseñas se conservan en próximas actualizaciones. Cerrar los clientes compartidos antes de actualizar y volver a iniciar sesión después. La instalación la aprueba el titular o Viteka, con confirmación de Windows. No hay instalación automática en los puestos.
 
-Actualizar desde Configuración sobre la instalación actual, sin desinstalar. Canal de pruebas sin firma digital del editor.
+El catálogo de aplicaciones sigue vacío, listo para incorporar utilidades y asignarlas por usuario. Canal de pruebas sin firma digital del editor.

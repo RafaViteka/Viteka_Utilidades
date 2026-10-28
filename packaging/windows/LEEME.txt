@@ -1,38 +1,51 @@
-VITEKA UTILIDADES 0.11.1 - CANAL DE PRUEBAS
+VITEKA UTILIDADES 0.12.0 - CANAL DE PRUEBAS
 
-Instala sobre la version anterior. No hace falta desinstalar; las preferencias
-se conservan en la carpeta local de tu usuario.
+INSTALACION
+Instalar o actualizar en el servidor de NixFarma, sobre la version anterior.
+No hace falta desinstalar. El paquete incluye .NET; WebView2 se prepara si falta.
+El instalador registra VitekaUtilidadesAccess como servicio de Windows bajo
+LocalService y prepara su identidad HTTPS. No se modifica el DSN ni Oracle.
 
-Inicio ofrece acceso al portal de soporte, AnyDesk, manuales, formacion, web
-y contactos de Viteka. Las paginas se abren en tu navegador predeterminado.
-AnyDesk abre el programa instalado en Program Files, sin conectarse a terceros
-ni conceder acceso desatendido. Debes autorizar cada sesion.
+USUARIOS DE LA FARMACIA
+Las cuentas son compartidas por el servidor y los puestos. Solo al crear el
+registro por primera vez se preparan estas credenciales iniciales:
+  Viteka     / jupiter : superadministrador, incluida Configuracion tecnica.
+  F. titular / 1234    : administrador, todo salvo Configuracion tecnica.
+  usuario    / 0000    : Inicio y aplicaciones que tenga autorizadas.
+Se exige cambiar la contrasena inicial, con un minimo de 8 caracteres.
+Los usuarios solo cambian su contrasena. El titular crea y gestiona usuarios
+normales. Viteka gestiona todos los roles. Los cambios revocan sesiones previas.
+Los puestos seguiran bloqueados mientras haya cuentas activas con la contrasena
+inicial de instalacion. Cambiarlas o restablecerlas desde el servidor primero.
+No se restauran las contrasenas iniciales al actualizar ni ante un registro danado.
 
-El menu lateral se puede plegar y desplegar. Puedes elegir apariencia clara,
-oscura o automatica. Ambos ajustes se conservan entre sesiones.
+CONFIGURACION Y CONEXION ORACLE
+Solo Viteka puede abrir Configuracion. La conexion previa del usuario Windows
+original se migra al servicio al entrar Viteka en ese mismo servidor.
+Probar la conexion despues de actualizar: LocalService debe poder utilizar
+el DSN de sistema Oracle de 64 bits y resolver su TNS. La prueba es solo lectura.
+Las credenciales se protegen en el servidor; no se copian a los puestos.
+El catalogo de aplicaciones sigue vacio hasta incorporar las primeras utilidades.
 
-Configuracion incluye conexion local a NixFarma mediante Oracle ODBC x64.
-Introduce DSN, usuario y contrasena Oracle en la ventana de Windows y pulsa
-Probar conexion. Las credenciales se guardan cifradas para tu usuario Windows.
-La prueba usa una transaccion de solo lectura, SELECT 1 FROM DUAL y rollback.
-Requiere el DSN en este equipo; no modifica el DSN ni instala Oracle.
-Las utilidades de datos y el acceso desde puestos siguen pendientes.
-La interfaz Angular esta incluida en el paquete. No necesitas iniciar el
-servicio de desarrollo para abrirla o probar esta conexion local.
-El instalador prepara Microsoft Edge WebView2 si falta: puede necesitar internet.
-No requiere instalar Node ni el SDK .NET en el equipo del usuario.
+PUESTOS
+Distribuir Cliente completo con access-server.json y access-root.cer en un
+compartido con lectura/ejecucion para usuarios y escritura solo para mantenimiento.
+Abrir ese cliente desde los puestos; no instalar el servidor en cada puesto.
+No copiar datos de ProgramData ni claves privadas. El cliente verifica la identidad
+HTTPS del servidor. El puerto 7447 solo se habilita para red local Privada/Dominio.
+Las preferencias de cada cuenta se conservan localmente, separadas entre usuarios.
 
-Configuracion permite buscar, descargar, verificar e iniciar una actualizacion
-de prueba desde GitHub, siempre con confirmacion. El instalador de Viteka aun
-no dispone de firma digital del editor.
-
-Este paquete no habilita acceso LAN ni instala automaticamente el servicio
-opcional de desarrollo. Se mantiene la documentacion de ese servicio para una
-fase posterior, sin alterar el DSN de NixFarma.
+ACTUALIZACIONES
+Actualizaciones tiene pestana propia, fuera de Configuracion. Busca cada 24 horas
+con la app abierta o al siguiente arranque si queda pendiente. Mantiene el boton
+Buscar actualizaciones, el aviso y un historial de publicaciones y ejecuciones.
+Solo titular/Viteka y desde el servidor pueden iniciar el instalador, con confirmacion.
+Antes de actualizar, cerrar Viteka en los puestos que usan archivos compartidos.
+Se reinicia el servicio, conservando cuentas y credenciales; los puestos vuelven a entrar.
+Las descargas conservan verificacion de HTTPS, destinos, tamano y SHA256.
+El instalador todavia no tiene firma digital del editor: es un canal de pruebas.
 
 VENTANA Y ZOOM
-Ctrl + rueda amplia o reduce el contenido. La rueda normal desplaza la pagina.
-La barra superior muestra el porcentaje: botones menos/mas y 100 % para restablecer.
-Ctrl + 0 tambien vuelve al 100 %. La preferencia se conserva entre sesiones.
-Si un icono antiguo anclado no cambia, desanclalo y ancla de nuevo el acceso
-Viteka Utilidades del menu Inicio despues de actualizar.
+El menu se puede plegar manualmente. Mi cuenta contiene contrasena y apariencia.
+Ctrl + rueda o Ctrl +/- cambia la escala; Ctrl + 0 vuelve al 100 %.
+La barra superior muestra el porcentaje y controles de zoom.

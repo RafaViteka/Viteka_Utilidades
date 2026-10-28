@@ -3,7 +3,7 @@ using System.IO;
 using System.Text.RegularExpressions;
 using Viteka.Core;
 
-namespace Viteka.Desktop;
+namespace Viteka.Server;
 
 internal sealed record NixFarmaProbeResult(bool Success, string Code, string Message, string? SqlState = null, int? OracleCode = null);
 
@@ -11,13 +11,14 @@ internal sealed class NixFarmaConnectionTester
 {
     private int running;
     internal bool IsRunning => Volatile.Read(ref running) != 0;
-    internal async Task<NixFarmaProbeResult> TestAsync(NixFarmaSettings settings, CancellationToken ct)
+    internal async Task<NixFarmaProbeResult> TestAsync(OracleProfile settings, CancellationToken ct)
     {
         settings.Validate();
         if (Interlocked.CompareExchange(ref running, 1, 0) != 0)
             return new(false, "busy", "El controlador sigue atendiendo la prueba anterior. Espera o cierra y vuelve a abrir Viteka.");
         var operation = Task.Run(() =>
         {
+            if (!OperatingSystem.IsWindows()) return new NixFarmaProbeResult(false, "driver", "Se requiere Windows.");
             try
             {
                 var builder = new OdbcConnectionStringBuilder { Dsn = settings.Dsn };
@@ -36,6 +37,7 @@ internal sealed class NixFarmaConnectionTester
         try { return await operation.WaitAsync(TimeSpan.FromSeconds(30), ct); }
         catch (TimeoutException) { return new(false, "timeout", "El controlador no respondió en 30 segundos. La aplicación sigue disponible; no se iniciará otra prueba mientras continúe la anterior."); }
     }
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static NixFarmaProbeResult Classify(OdbcException error)
     {
         // Only structured/numeric codes leave the native layer. Never return the raw

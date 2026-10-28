@@ -301,6 +301,139 @@ try
         try { NixFarmaReadProbe.Execute(connection); throw new Exception("Expected failure"); } catch (ProbeFixtureException) { }
         Require(connection.Steps.Last() == "rollback");
     });
+    var accessClock = new AdjustableClock();
+    var accessPath = Path.Combine(root, "access-authority");
+    var accessCatalog = new[] { new Viteka.Contracts.UtilityDefinition("fixture-a", "A", "", "", true), new Viteka.Contracts.UtilityDefinition("fixture-b", "B", "", "", true) };
+    var authority = new AccessDirectory(accessPath, accessCatalog, b => b.ToArray(), b => b.ToArray(), accessClock);
+    authority.InitializeDefaults();
+    var initialSuper = authority.Login("viteka", "jupiter");
+    Check("Bootstrap accounts require a password change and keep remote access closed", () =>
+    {
+        Require(initialSuper.User.MustChangePassword && !AccessPolicy.CanConfigure(initialSuper.User) && !authority.RemoteAccessReady());
+        try { authority.List(initialSuper.Ticket); throw new Exception("Expected denial"); } catch (AccessDeniedException) { }
+    });
+    var superTicket = authority.ChangeOwnPassword(initialSuper.Ticket, "jupiter", "FixtureSuperPass1");
+    var adminInitial = authority.Login("F. titular", "1234");
+    var adminTicket = authority.ChangeOwnPassword(adminInitial.Ticket, "1234", "FixtureAdminPass1");
+    var normalInitial = authority.Login("usuario", "0000");
+    var normalTicket = authority.ChangeOwnPassword(normalInitial.Ticket, "0000", "FixtureUserPass1");
+    Check("Remote access opens only after the known bootstrap passwords are replaced", () => Require(authority.RemoteAccessReady()));
+    Check("Role matrix reserves technical configuration for Viteka", () =>
+    {
+        Require(AccessPolicy.CanConfigure(authority.Current(superTicket)));
+        Require(!AccessPolicy.CanConfigure(authority.Current(adminTicket)) && !AccessPolicy.CanConfigure(authority.Current(normalTicket)));
+        Require(AccessPolicy.CanInstallUpdates(authority.Current(adminTicket)) && !AccessPolicy.CanInstallUpdates(authority.Current(normalTicket)));
+        Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Usuarios"));
+    });
+    Check("Normal users cannot create accounts or reset another password", () =>
+    {
+        try { authority.Create(normalTicket, "denied", AccessRole.User, "FixtureDeniedPass1", []); throw new Exception("Expected denial"); } catch (AccessDeniedException) { }
+        try { authority.ResetPassword(normalTicket, initialSuper.User.Id, "FixtureDeniedPass1"); throw new Exception("Expected denial"); } catch (AccessDeniedException) { }
+    });
+    var created = authority.Create(adminTicket, "Personal", AccessRole.User, "FixtureStaffPass1", ["fixture-a"]);
+    Check("Titular creates normal users but cannot create or alter privileged accounts", () =>
+    {
+        foreach (var role in new[] { AccessRole.Administrator, AccessRole.SuperAdministrator })
+            try { authority.Create(adminTicket, "denied-role", role, "FixtureDeniedPass1", []); throw new Exception("Expected denial"); } catch (AccessDeniedException) { }
+        try { authority.ResetPassword(adminTicket, initialSuper.User.Id, "FixtureDeniedPass1"); throw new Exception("Expected denial"); } catch (AccessDeniedException) { }
+        try { authority.Modify(adminTicket, created.Id, created.Name, AccessRole.Administrator, true, []); throw new Exception("Expected denial"); } catch (AccessDeniedException) { }
+    });
+    var staffInitial = authority.Login("Personal", "FixtureStaffPass1");
+    var staffTicket = authority.ChangeOwnPassword(staffInitial.Ticket, "FixtureStaffPass1", "FixtureStaffPass2");
+    Check("Application access is an explicit allow-list and unknown utilities are denied", () =>
+    {
+        var staff = authority.Current(staffTicket);
+        Require(AccessPolicy.CanUse(staff, "fixture-a", accessCatalog) && !AccessPolicy.CanUse(staff, "fixture-b", accessCatalog));
+        Require(!AccessPolicy.CanUse(staff, "unknown", accessCatalog) && !AccessPolicy.CanUse(authority.Current(superTicket), "unknown", accessCatalog));
+        Require(AccessPolicy.CanUse(authority.Current(adminTicket), "fixture-b", accessCatalog));
+    });
+    Check("Changing grants immediately invalidates the previous session", () =>
+    {
+        authority.Modify(adminTicket, created.Id, created.Name, AccessRole.User, true, []);
+        try { authority.Current(staffTicket); throw new Exception("Expected revocation"); } catch (AccessSessionException) { }
+        var refreshed = authority.Login("Personal", "FixtureStaffPass2");
+        Require(!AccessPolicy.CanUse(refreshed.User, "fixture-a", accessCatalog));
+    });
+    Check("Password reset revokes sessions and requires changing the temporary password", () =>
+    {
+        authority.ResetPassword(adminTicket, normalInitial.User.Id, "FixtureResetPass1");
+        try { authority.Current(normalTicket); throw new Exception("Expected revocation"); } catch (AccessSessionException) { }
+        var reset = authority.Login("usuario", "FixtureResetPass1");
+        Require(reset.User.MustChangePassword);
+        normalTicket = authority.ChangeOwnPassword(reset.Ticket, "FixtureResetPass1", "FixtureUserPass2");
+    });
+    Check("Changing own password requires the current one and revokes other sessions", () =>
+    {
+        var other = authority.Login("usuario", "FixtureUserPass2");
+        try { authority.ChangeOwnPassword(normalTicket, "incorrect", "FixtureUserPass3"); throw new Exception("Expected denial"); } catch (AccessDeniedException) { }
+        normalTicket = authority.ChangeOwnPassword(normalTicket, "FixtureUserPass2", "FixtureUserPass3");
+        try { authority.Current(other.Ticket); throw new Exception("Expected revocation"); } catch (AccessSessionException) { }
+    });
+    Check("The last active superadministrator cannot be disabled or demoted", () =>
+    {
+        try { authority.Modify(superTicket, initialSuper.User.Id, "Viteka", AccessRole.User, true, []); throw new Exception("Expected protection"); } catch (ArgumentException) { }
+        try { authority.Modify(superTicket, initialSuper.User.Id, "Viteka", AccessRole.SuperAdministrator, false, []); throw new Exception("Expected protection"); } catch (ArgumentException) { }
+        Require(AccessPolicy.CanConfigure(authority.Current(superTicket)));
+    });
+    Check("Five failed logins lock the account temporarily", () =>
+    {
+        for (var i=0;i<5;i++) try { authority.Login("usuario", "incorrect"); throw new Exception("Expected rejection"); } catch (AccessDeniedException) { }
+        try { authority.Login("usuario", "FixtureUserPass3"); throw new Exception("Expected lock"); } catch (AccessDeniedException) { }
+        accessClock.Advance(TimeSpan.FromMinutes(3));
+        normalTicket = authority.Login("usuario", "FixtureUserPass3").Ticket;
+    });
+    Check("Disabling an account revokes it and does not preserve an old session after reenabling", () =>
+    {
+        authority.Modify(adminTicket, normalInitial.User.Id, "usuario", AccessRole.User, false, []);
+        try { authority.Current(normalTicket); throw new Exception("Expected revocation"); } catch (AccessSessionException) { }
+        authority.Modify(adminTicket, normalInitial.User.Id, "usuario", AccessRole.User, true, []);
+        try { authority.Current(normalTicket); throw new Exception("Expected revocation"); } catch (AccessSessionException) { }
+    });
+    Check("An update preserves passwords and does not recreate bootstrap credentials", () =>
+    {
+        authority.InitializeDefaults();
+        try { authority.Login("Viteka", "jupiter"); throw new Exception("Expected old password rejection"); } catch (AccessDeniedException) { }
+        Require(authority.Login("Viteka", "FixtureSuperPass1").User.Role == AccessRole.SuperAdministrator);
+    });
+    Check("Password verifiers use unique salts and public views contain no verifier", () =>
+    {
+        var data = JsonSerializer.Deserialize<JsonElement>(File.ReadAllBytes(Path.Combine(accessPath,"access.dat")));
+        var salts = data.GetProperty("Users").EnumerateArray().Select(u=>u.GetProperty("Salt").GetString()).ToArray();
+        Require(salts.Distinct().Count()==salts.Length);
+        var view = JsonSerializer.Serialize(authority.Current(superTicket));
+        Require(!view.Contains("Hash") && !view.Contains("Salt") && !view.Contains("FixtureSuperPass1"));
+    });
+    Check("Deleting an initialized authority never restores default accounts", () =>
+    {
+        File.Delete(Path.Combine(accessPath,"access.dat"));
+        try { authority.InitializeDefaults(); throw new Exception("Expected preservation"); } catch (InvalidDataException) { }
+        Require(!File.Exists(Path.Combine(accessPath,"access.dat")));
+    });
+    var updateClock = new AdjustableClock();
+    var journal = new UpdateJournal(Path.Combine(root,"update-journal"), updateClock);
+    Check("Update scheduling persists the 24-hour interval across restarts", () =>
+    {
+        Require(journal.TryBeginCheck(false)); Require(!journal.TryBeginCheck(true));
+        journal.CompleteCheck(new Version(0,13,0), true);
+        updateClock.Advance(TimeSpan.FromHours(23));
+        Require(!new UpdateJournal(Path.Combine(root,"update-journal"),updateClock).TryBeginCheck(false));
+        updateClock.Advance(TimeSpan.FromHours(1));Require(journal.TryBeginCheck(false));journal.CompleteCheck(null,false);
+        Require(!journal.TryBeginCheck(false));Require(journal.TryBeginCheck(true));journal.CompleteCheck(new Version(0,13,0),true);
+    });
+    Check("An installer launch is not recorded as an installed or running version", () =>
+    {
+        journal.RecordRunningVersion(new Version(0,12,0));journal.RecordRunningVersion(new Version(0,12,0));journal.RecordInstallerStarted(new Version(0,13,0));
+        Require(journal.Load().LastRunVersion=="0.12.0");
+        Require(journal.Load().Entries.Count(e=>e.Kind=="version_started")==1);
+        journal.RecordRunningVersion(new Version(0,13,0));
+        Require(journal.Load().LastRunVersion=="0.13.0"&&journal.Load().AvailableVersion is null);
+    });
+    Check("Published update history filters drafts and treats notes as plain text", () =>
+    {
+        using var client = new HttpClient(new ReleaseStub("[{\"draft\":false,\"tag_name\":\"v0.12.0-preview.1\",\"name\":\"Version\",\"body\":\"<script>untrusted</script>\"},{\"draft\":true,\"tag_name\":\"v9.0.0\"},{\"draft\":false,\"tag_name\":\"../../bad\"}]", System.Net.HttpStatusCode.OK));
+        var entries = new PreviewUpdater(client).GetHistoryAsync().GetAwaiter().GetResult();
+        Require(entries.Length==1&&entries[0].Notes=="<script>untrusted</script>"&&entries[0].ReleasePage.StartsWith("https://github.com/RafaViteka/",StringComparison.Ordinal));
+    });
     Console.WriteLine($"{passed} checks passed.");
 }
 finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }

@@ -4,6 +4,7 @@ using System.Text.Json;
 using System.Text.RegularExpressions;
 namespace Viteka.Core;
 
+public sealed record PublishedUpdate(string Version, string Title, string Notes, DateTimeOffset? PublishedAt, string ReleasePage);
 public sealed record PreviewUpdate(Version Version, Uri Installer, string Sha256, long Size, Uri ReleasePage);
 public sealed class VerifiedInstaller(string path, FileStream guard) : IDisposable
 {
@@ -57,6 +58,40 @@ public sealed class PreviewUpdater(HttpClient http)
             }
         }
         return best;
+    }
+
+    public async Task<PublishedUpdate[]> GetHistoryAsync(CancellationToken ct = default)
+    {
+        using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{Repo}/releases?per_page=30");
+        request.Headers.UserAgent.ParseAdd("Viteka-Utilidades/0.12");
+        request.Headers.Accept.ParseAdd("application/vnd.github+json");
+        request.Headers.Add("X-GitHub-Api-Version", "2022-11-28");
+        using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, ct);
+        response.EnsureSuccessStatusCode();
+        using var source = await response.Content.ReadAsStreamAsync(ct);
+        using var buffer = new MemoryStream();
+        var block = new byte[8192]; int count;
+        while ((count = await source.ReadAsync(block, ct)) > 0)
+        {
+            if (buffer.Length + count > 1_048_576) throw new InvalidDataException("Respuesta de versiones demasiado grande.");
+            await buffer.WriteAsync(block.AsMemory(0, count), ct);
+        }
+        using var document = JsonDocument.Parse(buffer.ToArray());
+        if (document.RootElement.ValueKind != JsonValueKind.Array) throw new InvalidDataException();
+        var items = new List<PublishedUpdate>();
+        foreach (var release in document.RootElement.EnumerateArray().Take(30))
+        {
+            if (release.ValueKind != JsonValueKind.Object || !release.TryGetProperty("draft", out var draft) || draft.ValueKind != JsonValueKind.False) continue;
+            var tag = Text(release, "tag_name");
+            if (tag is null || !Regex.IsMatch(tag, @"^v(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})(-preview\.[1-9][0-9]{0,5})?$", RegexOptions.NonBacktracking)) continue;
+            if (!Version.TryParse(tag[1..].Split('-')[0], out var version)) continue;
+            var notes = Text(release, "body") ?? "Sin notas de publicación.";
+            var title = Text(release, "name") ?? tag;
+            var published = DateTimeOffset.TryParse(Text(release, "published_at"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var at) ? (DateTimeOffset?)at : null;
+            items.Add(new(version.ToString(3), title[..Math.Min(title.Length, 300)], notes[..Math.Min(notes.Length, 8000)], published,
+                $"https://github.com/{Repo}/releases/tag/{Uri.EscapeDataString(tag)}"));
+        }
+        return items.OrderByDescending(x => Version.Parse(x.Version)).ToArray();
     }
 
     public async Task<VerifiedInstaller> DownloadAsync(PreviewUpdate update, string directory, IProgress<int>? progress = null, CancellationToken ct = default)

@@ -8,19 +8,13 @@
         "resolved": "1.0.4314.35",
         "contentHash": "x5MFf2W03xueU1mMNvivXfHSsQ+ODo7vJ36qw/dLtU5Gs+8d7+7N7zzmNNDoT3ffosmcvZNBtUnlzyiDUuBkSQ=="
       },
-      "System.Data.Odbc": {
-        "type": "Direct",
-        "requested": "[10.0.14, )",
-        "resolved": "10.0.14",
-        "contentHash": "k7XeM60rt7P4QDP2h/tu6ytqiB4s7cDslwXPQUWMPGs+/QvN1Iwwwbhj2nggropeyAxcwtzv/ZRUQaVrEYCUhw=="
-      },
       "viteka.contracts": {
         "type": "Project"
       },
       "viteka.core": {
         "type": "Project",
         "dependencies": {
-          "Viteka.Contracts": "[0.11.0, )"
+          "Viteka.Contracts": "[0.11.1, )"
         }
       }
     },
@@ -30,12 +24,6 @@
         "requested": "[1.0.4314.35, )",
         "resolved": "1.0.4314.35",
         "contentHash": "x5MFf2W03xueU1mMNvivXfHSsQ+ODo7vJ36qw/dLtU5Gs+8d7+7N7zzmNNDoT3ffosmcvZNBtUnlzyiDUuBkSQ=="
-      },
-      "System.Data.Odbc": {
-        "type": "Direct",
-        "requested": "[10.0.14, )",
-        "resolved": "10.0.14",
-        "contentHash": "k7XeM60rt7P4QDP2h/tu6ytqiB4s7cDslwXPQUWMPGs+/QvN1Iwwwbhj2nggropeyAxcwtzv/ZRUQaVrEYCUhw=="
       }
     }
   }

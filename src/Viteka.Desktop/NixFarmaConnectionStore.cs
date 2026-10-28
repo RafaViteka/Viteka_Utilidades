@@ -1,7 +1,6 @@
 using System.IO;
 using System.Security.Cryptography;
 using System.Text.Json;
-using Microsoft.Win32;
 
 namespace Viteka.Desktop;
 
@@ -12,11 +11,11 @@ internal sealed class NixFarmaSettings
     public string Dsn { get; set; } = "NIXFARMA";
     public string User { get; set; } = "";
     public string Password { get; set; } = "";
-    public void Validate()
+    public void Validate(bool allowEmptyPassword = false)
     {
         if (Schema != 1 || string.IsNullOrWhiteSpace(Dsn) || Dsn.Length > 32 || Dsn.Any(char.IsControl) ||
             string.IsNullOrWhiteSpace(User) || User.Length > 128 || User.Any(char.IsControl) ||
-            string.IsNullOrEmpty(Password) || Password.Length > 1024)
+            (!allowEmptyPassword && string.IsNullOrEmpty(Password)) || Password is null || Password.Length > 1024)
             throw new InvalidDataException("Invalid connection configuration.");
     }
     // Default object ToString deliberately does not include any fields.
@@ -55,10 +54,4 @@ internal sealed class NixFarmaConnectionStore(string directory)
         finally { if (File.Exists(temporary)) File.Delete(temporary); }
     }
     internal void Forget() => File.Delete(FilePath);
-    internal static bool SystemDsnExists(string dsn)
-    {
-        using var machine = RegistryKey.OpenBaseKey(RegistryHive.LocalMachine, RegistryView.Registry64);
-        using var sources = machine.OpenSubKey(@"SOFTWARE\ODBC\ODBC.INI\ODBC Data Sources");
-        return sources?.GetValue(dsn) is string;
-    }
 }

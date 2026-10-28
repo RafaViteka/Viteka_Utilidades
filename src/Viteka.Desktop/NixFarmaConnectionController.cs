@@ -1,59 +1,57 @@
 using System.IO;
-using System.Security.Cryptography;
 using System.Text.Json;
 using System.Windows;
 
 namespace Viteka.Desktop;
 
-internal sealed class NixFarmaConnectionController(Window owner, string directory)
+internal sealed class NixFarmaConnectionController(Window owner, string directory, AccessServiceClient access)
 {
-    private readonly NixFarmaConnectionStore store = new(directory);
-    private readonly NixFarmaConnectionTester tester = new();
+    private readonly NixFarmaConnectionStore legacy = new(directory);
     private bool busy;
-    internal bool IsBusy => busy || tester.IsRunning;
-    private object State(NixFarmaSettings? settings, string? message = null)
+    internal bool IsBusy => busy;
+    private async Task<object> Status()
     {
-        bool available;
-        try { available = NixFarmaConnectionStore.SystemDsnExists(settings?.Dsn ?? "NIXFARMA"); }
-        catch (Exception error) when (error is UnauthorizedAccessException or System.Security.SecurityException or IOException) { available = false; }
-        return new { configured = settings is not null, saved = store.Exists, dsn = settings?.Dsn ?? "NIXFARMA", user = settings?.User ?? "", dsnAvailable = available, message };
+        var state = await access.OracleAsync("state");
+        // Preserve the verified legacy connection when upgrading on its original server.
+        // It moves only over pinned TLS, after superadministrator authorization.
+        if (access.IsLocalServer && legacy.Exists)
+        {
+            if (!state.GetProperty("configured").GetBoolean())
+            {
+                var old = legacy.Load();
+                if (old is not null) await access.OracleAsync("configure", new { dsn = old.Dsn, user = old.User, password = old.Password, keepPassword = false });
+            }
+            legacy.Forget(); state = await access.OracleAsync("state");
+        }
+        return state;
     }
-    internal object Status()
-    {
-        try { return State(store.Load()); }
-        catch (Exception error) when (IsStorageError(error))
-        { return State(null, "No se puede leer la conexión guardada para este usuario de Windows. Usa «Olvidar conexión» antes de configurarla de nuevo."); }
-    }
-    private static bool IsStorageError(Exception error) => error is IOException or UnauthorizedAccessException or CryptographicException or JsonException;
     internal async Task<object> HandleAsync(string command, CancellationToken ct)
     {
-        if (command == "nixfarma.status") return Status();
-        if (IsBusy) return new { busy = true, message = "Hay una operación de conexión en curso. Espera a que termine o vuelve a abrir Viteka si el controlador no responde." };
+        if (IsBusy) return new { busy = true, message = "Hay una operación de conexión en curso." };
         busy = true;
         try
         {
-            switch (command)
+            if (command == "nixfarma.status") return await Status();
+            if (command == "nixfarma.test") return await access.OracleAsync("test");
+            if (command == "nixfarma.forget")
             {
-                case "nixfarma.configure":
-                    var dialog = new NixFarmaConfigurationWindow(store.Load()) { Owner = owner, MaxHeight = Math.Max(240, Math.Min(660, owner.ActualHeight - 24)) };
-                    if (dialog.ShowDialog() != true || dialog.Settings is null) return new { cancelled = true, state = Status() };
-                    store.Save(dialog.Settings);
-                    return new { state = Status() };
-                case "nixfarma.test":
-                    var settings = store.Load();
-                    if (settings is null) return new { success = false, code = "not_configured", message = "Configura primero el DSN y la cuenta Oracle en este servidor." };
-                    var result = await tester.TestAsync(settings, ct);
-                    return new { success = result.Success, code = result.Code, message = result.Message, sqlState = result.SqlState, oracleCode = result.OracleCode, checkedAt = DateTimeOffset.Now };
-                case "nixfarma.forget":
-                    if (MessageBox.Show(owner, "Se eliminará la conexión cifrada de este usuario de Windows. No se modificará NixFarma ni su DSN. ¿Continuar?", "Olvidar conexión", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
-                        return new { cancelled = true, state = Status() };
-                    store.Forget();
-                    return new { state = Status() };
-                default: throw new InvalidOperationException();
+                if (MessageBox.Show(owner, "Se eliminará la conexión Oracle guardada en el servidor para esta farmacia. No se modificará el DSN ni la base de datos. ¿Continuar?", "Olvidar conexión", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
+                    return new { cancelled = true, state = await Status() };
+                return await access.OracleAsync("forget");
             }
+            if (command == "nixfarma.configure")
+            {
+                var state = (JsonElement)await Status();
+                var saved = state.GetProperty("configured").GetBoolean();
+                var prior = new NixFarmaSettings { Dsn = state.GetProperty("dsn").GetString() ?? "NIXFARMA", User = state.GetProperty("user").GetString() ?? "" };
+                var dialog = new NixFarmaConfigurationWindow(saved ? prior : null, saved) { Owner = owner, MaxHeight = Math.Max(240, Math.Min(660, owner.ActualHeight - 24)) };
+                if (dialog.ShowDialog() != true || dialog.Settings is null) return new { cancelled = true, state };
+                var settings = dialog.Settings;
+                return await access.OracleAsync("configure", new { dsn = settings.Dsn, user = settings.User, password = settings.Password,
+                    keepPassword = saved && settings.Password.Length == 0 && settings.Dsn == prior.Dsn && settings.User == prior.User });
+            }
+            throw new InvalidOperationException();
         }
-        catch (Exception error) when (IsStorageError(error))
-        { return new { message = "No se pudo leer o guardar la conexión cifrada de este usuario. Revisa sus permisos y, si es necesario, usa «Olvidar conexión» para configurarla de nuevo.", state = Status() }; }
         finally { busy = false; }
     }
 }

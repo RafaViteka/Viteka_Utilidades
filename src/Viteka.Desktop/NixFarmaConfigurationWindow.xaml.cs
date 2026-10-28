@@ -6,11 +6,12 @@ namespace Viteka.Desktop;
 internal partial class NixFarmaConfigurationWindow : Window
 {
     private readonly NixFarmaSettings? prior;
+    private readonly bool canKeepPassword;
     internal NixFarmaSettings? Settings { get; private set; }
-    internal NixFarmaConfigurationWindow(NixFarmaSettings? settings)
+    internal NixFarmaConfigurationWindow(NixFarmaSettings? settings, bool canKeepPassword = false)
     {
         InitializeComponent();
-        prior = settings;
+        prior = settings; this.canKeepPassword = canKeepPassword;
         DsnInput.Text = settings?.Dsn ?? "NIXFARMA";
         UserInput.Text = settings?.User ?? "";
         PasswordHint.Text = settings is null ? "Introduce la contraseña de la cuenta Oracle." : "Déjala vacía para conservarla si no cambias el DSN ni el usuario.";
@@ -22,7 +23,7 @@ internal partial class NixFarmaConfigurationWindow : Window
         var password = PasswordInput.Password;
         if (password.Length == 0 && prior?.Dsn == dsn && prior.User == user) password = prior.Password;
         var settings = new NixFarmaSettings { Dsn = dsn, User = user, Password = password };
-        try { settings.Validate(); }
+        try { settings.Validate(canKeepPassword && prior?.Dsn == dsn && prior.User == user); }
         catch (InvalidDataException) { ValidationMessage.Text = "Indica el DSN, el usuario y la contraseña de Oracle. Si cambias DSN o usuario, vuelve a introducir la contraseña."; return; }
         Settings = settings;
         PasswordInput.Clear();

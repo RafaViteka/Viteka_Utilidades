@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "0.11.1"
+#define AppVersion "0.12.0"
 #endif
 #define PublishRoot "..\..\artifacts\windows-x64"
 
@@ -36,13 +36,39 @@ Source: "LEEME.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\Viteka Utilidades"; Filename: "{app}\Cliente\Viteka.Desktop.exe"; WorkingDir: "{app}\Cliente"; IconFilename: "{app}\Cliente\viteka.ico"; AppUserModelID: "Viteka.Utilidades"
-Name: "{group}\Iniciar servidor de demostración"; Filename: "{app}\Servidor\Viteka.Server.exe"; WorkingDir: "{app}\Servidor"
 Name: "{group}\Leer antes de probar"; Filename: "{app}\LEEME.txt"
+
+[InstallDelete]
+Type: files; Name: "{group}\Iniciar servidor de demostración.lnk"
 
 [Run]
 Filename: "{app}\Cliente\Viteka.Desktop.exe"; Description: "Abrir Viteka Utilidades"; Flags: nowait postinstall skipifsilent runasoriginaluser
 
 [Code]
+procedure StopAccessService();
+var Code: Integer;
+begin
+  if RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\VitekaUtilidadesAccess') then
+    if (not Exec(ExpandConstant('{app}\Servidor\Viteka.Server.exe'), '--access-manage stop', '', SW_HIDE, ewWaitUntilTerminated, Code)) or (Code <> 0) then
+      RaiseException('No se pudo detener el servicio de usuarios. No se reemplazarán sus archivos.');
+end;
+
+procedure CurStepChanged(CurStep: TSetupStep);
+var Code: Integer;
+begin
+  if CurStep = ssPostInstall then begin
+    if (not Exec(ExpandConstant('{app}\Servidor\Viteka.Server.exe'), '--access-manage install "' + ExpandConstant('{app}\Cliente') + '"', '', SW_HIDE, ewWaitUntilTerminated, Code)) or (Code <> 0) then
+      RaiseException('El servicio de usuarios no está disponible. Las cuentas se han conservado. Contacta con Viteka para revisar la instalación.');
+  end;
+end;
+
+procedure DeinitializeSetup();
+var Code: Integer;
+begin
+  if RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\VitekaUtilidadesAccess') and FileExists(ExpandConstant('{app}\Servidor\Viteka.Server.exe')) then
+    Exec(ExpandConstant('{app}\Servidor\Viteka.Server.exe'), '--access-manage start', '', SW_HIDE, ewWaitUntilTerminated, Code);
+end;
+
 function WebViewInstalled(): Boolean;
 var Version: String;
     Key: String;
@@ -55,6 +81,7 @@ function PrepareToInstall(var NeedsRestart: Boolean): String;
 var Code: Integer;
 begin
   Result := '';
+  StopAccessService();
   if RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\VitekaUtilidadesPreview') then
     Result := 'Desinstala primero el servicio de vista previa con manage-service.ps1 -Action Uninstall. Sus datos se conservarán. No se reemplazarán archivos del servicio mientras esté registrado.';
   if (Result = '') and not WebViewInstalled() then begin
@@ -67,8 +94,11 @@ begin
 end;
 
 function InitializeUninstall(): Boolean;
+var Code: Integer;
 begin
   Result := not RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\VitekaUtilidadesPreview');
+  if Result and RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\VitekaUtilidadesAccess') then
+    Result := Exec(ExpandConstant('{app}\Servidor\Viteka.Server.exe'), '--access-manage uninstall', '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
   if not Result then
     MsgBox('Desinstala primero el servicio de vista previa con manage-service.ps1 -Action Uninstall. Después podrás desinstalar la aplicación.', mbError, MB_OK);
 end;

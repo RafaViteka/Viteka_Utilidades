@@ -3,6 +3,7 @@ on:
   push:
     tags:
       - 'v*-preview.*'
+      - 'ci/access-*'
   workflow_dispatch:
     inputs:
       validate_only:
@@ -44,6 +45,20 @@ jobs:
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           python scripts/smoke-ui.py
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Central access service and TLS verification
+        shell: pwsh
+        run: |
+          & pwsh -NoProfile -File ./scripts/prepare-access-smoke.ps1 *> access-smoke.log
+          $result = $LASTEXITCODE
+          if ($result -ne 0) {
+            $events = Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=(Get-Date).AddMinutes(-3)} -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -in @('.NET Runtime','Application Error','VitekaUtilidadesAccess') } | Select-Object -First 2
+            $detail = ((Get-Content access-smoke.log -Tail 35) -join "`n") + "`n" + ($events.Message -join "`n")
+            if ($detail.Length -gt 3800) { $detail = $detail.Substring($detail.Length-3800) }
+            $detail = $detail.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error::$detail"
+            exit $result
+          }
+          Get-Content access-smoke.log
       - name: Native Angular WebView2 integration
         shell: pwsh
         run: |
@@ -86,11 +101,11 @@ jobs:
           dotnet run --project tests/Viteka.Core.Checks -c Release --no-build -- --download-smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Compile validated Windows installer
-        if: ${{ !inputs.validate_only }}
+        if: ${{ !inputs.validate_only && !startsWith(github.ref_name, 'ci/') }}
         shell: pwsh
         run: ./scripts/publish-windows.ps1 -InstallerOnly
       - uses: actions/upload-artifact@v4
-        if: ${{ !inputs.validate_only }}
+        if: ${{ !inputs.validate_only && !startsWith(github.ref_name, 'ci/') }}
         with:
           name: Viteka-Utilidades-Windows-preview
           path: artifacts/installer/*.exe
@@ -98,7 +113,7 @@ jobs:
           retention-days: 14
 
       - name: Publish preview download
-        if: ${{ !inputs.validate_only }}
+        if: ${{ !inputs.validate_only && !startsWith(github.ref_name, 'ci/') }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -119,3 +134,12 @@ jobs:
           if ($LASTEXITCODE -ne 0) { throw 'Release upload failed' }
           gh release edit $tag --repo $env:GITHUB_REPOSITORY --draft=false --prerelease
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
+
+      - name: Stop isolated access test authority
+        if: ${{ always() }}
+        shell: pwsh
+        run: |
+          if ($env:VITEKA_ACCESS_FIXTURE_PID) {
+            $process = Get-Process -Id ([int]$env:VITEKA_ACCESS_FIXTURE_PID) -ErrorAction SilentlyContinue
+            if ($process -and $process.Path -eq (Join-Path $env:GITHUB_WORKSPACE 'artifacts/windows-x64/Servidor/Viteka.Server.exe')) { Stop-Process -Id $process.Id }
+          }

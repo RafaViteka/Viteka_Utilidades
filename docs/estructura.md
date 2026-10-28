@@ -175,3 +175,7 @@ Migración de la interfaz autorizada por el usuario. El MVP se representa en fro
 ## Centro de accesos editorial (0.8.0)
 
 El usuario solicita adoptar el diseño de Viteka_Portal_Estudio_2026.html en toda la aplicación y usar Inicio para soporte y recursos. Se añaden los accesos definidos por el archivo, menú plegable y temas persistentes, marca inferior e iconos bicolor transparentes. No se añaden utilidades Oracle. Detalles y límites en docs/portal.md.
+
+## Estado actual 0.12.0
+
+La autoridad de usuarios es ahora central, con servicio Windows e identidad HTTPS por instalación, bootstrap público del cliente y roles comprobados en servidor y anfitrión. La conexión Oracle se configura y prueba en ese servicio, bajo LocalService; se migra desde el perfil original al entrar Viteka en el servidor. No hay consultas de negocio ni utilidades publicadas todavía. Las secciones históricas que describen conexión directa por puesto o ausencia de servicio se mantienen como contexto; consultar accesos.md para el modelo actual.

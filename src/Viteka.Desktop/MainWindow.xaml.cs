@@ -14,26 +14,32 @@ public partial class MainWindow : Window
     private const string Origin = "https://app.viteka.local";
     private readonly LocalStateStore store = App.SmokeTest ? new LocalStateStore(Path.Combine(Path.GetTempPath(), "VitekaUiSmoke-" + Guid.NewGuid().ToString("N"))) : LocalStateStore.ForCurrentUser();
     private readonly WindowsShellIntegration shell;
-    private readonly NixFarmaConnectionController nixfarma;
+    private NixFarmaConnectionController? nixfarma;
     private bool smokeStarted;
     private readonly CancellationTokenSource lifetime = new();
-    private readonly HttpClient http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMinutes(10) };
-    private PreviewUpdate? availableUpdate;
-    private bool updateBusy;
+    private AccessServiceClient? access;
+    private DesktopUpdates? updates;
+    private System.Windows.Threading.DispatcherTimer? maintenance;
+    private LocalStateStore? profile;
+    private string? profileId;
+    private AccessServiceClient Access => access ?? throw new InvalidOperationException();
+    private LocalStateStore Preferences => profile ?? store;
     private bool closing;
     public MainWindow()
     {
         InitializeComponent();
         shell = new WindowsShellIntegration(this);
-        nixfarma = new NixFarmaConnectionController(this, store.DirectoryPath);
         StateChanged += (_, _) => MaximizeButton.Content = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
         Loaded += async (_, _) => await InitializeBrowser();
-        Closed += (_, _) => { closing = true; lifetime.Cancel(); Browser.Dispose(); shell.Dispose(); http.Dispose(); lifetime.Dispose(); };
+        Closed += (_, _) => { closing = true; lifetime.Cancel(); maintenance?.Stop(); Browser.Dispose(); shell.Dispose(); updates?.Dispose(); access?.Dispose(); lifetime.Dispose(); };
     }
     private async Task InitializeBrowser()
     {
         try
         {
+            access ??= new AccessServiceClient();
+            nixfarma ??= new NixFarmaConnectionController(this, store.DirectoryPath, Access);
+            updates ??= new DesktopUpdates(this, store.DirectoryPath, () => Access.RequireUserAsync(), Post, () => Access.IsLocalServer);
             var files = Path.Combine(AppContext.BaseDirectory, "Web");
             if (!File.Exists(Path.Combine(files, "index.html"))) throw new FileNotFoundException();
             var environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(store.DirectoryPath, "WebView2"));
@@ -62,6 +68,12 @@ public partial class MainWindow : Window
             core.NavigationCompleted += async (_, e) => {
                 if (e.IsSuccess) {
                     LoadingPanel.Visibility = Visibility.Collapsed;
+                    if (!App.SmokeTest && maintenance is null)
+                    {
+                        maintenance = new System.Windows.Threading.DispatcherTimer { Interval = TimeSpan.FromMinutes(1) };
+                        maintenance.Tick += async (_, _) => await ScheduledUpdateCheck(); maintenance.Start();
+                        _ = ScheduledUpdateCheck();
+                    }
                     if (App.SmokeTest && !smokeStarted) { smokeStarted = true; await RunNativeSmoke(); }
                 } else { LoadingMessage.Text = "No se pudo cargar la interfaz. Cierra y vuelve a abrir Viteka."; if (App.SmokeTest) FinishSmoke(false, "navigation"); }
             };
@@ -70,7 +82,7 @@ public partial class MainWindow : Window
         }
         catch (WebView2RuntimeNotFoundException)
         { LoadingMessage.Text = "Necesitas el runtime Microsoft Edge WebView2 para abrir la interfaz. Instálalo y vuelve a abrir Viteka."; RuntimeHelp.Visibility = Visibility.Visible; if (App.SmokeTest) FinishSmoke(false, "runtime"); }
-        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Runtime.InteropServices.COMException)
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidOperationException or System.Security.Cryptography.CryptographicException or System.Runtime.InteropServices.COMException)
         { LoadingMessage.Text = "No se pudo preparar la interfaz. Reinstala la versión completa o comprueba los permisos de tu carpeta de usuario."; if (App.SmokeTest) FinishSmoke(false, "initialization"); }
     }
     private async Task WaitForScript(string expression)
@@ -84,87 +96,131 @@ public partial class MainWindow : Window
     }
     private async Task WaitForPreference(bool enabled)
     {
-        for (var attempt = 0; attempt < 50; attempt++) { if (store.Load().OpenFavoritesOnStart == enabled) return; await Task.Delay(100); }
+        for (var attempt = 0; attempt < 50; attempt++) { if (Preferences.Load().OpenFavoritesOnStart == enabled) return; await Task.Delay(100); }
         throw new InvalidOperationException("Preference bridge timed out.");
+    }
+    private async Task FillSmoke(string name, string value)
+    {
+        await Browser.CoreWebView2.ExecuteScriptAsync($"(()=>{{const field=document.querySelector('input[name=\"{name}\"]');field.value={JsonSerializer.Serialize(value)};field.dispatchEvent(new Event('input',{{bubbles:true}}));}})()");
+    }
+    private async Task LoginSmoke(string name, string password, string replacement)
+    {
+        await WaitForScript("document.querySelector('input[name=\"loginName\"]') !== null");
+        await FillSmoke("loginName", name); await FillSmoke("loginPassword", password);
+        await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.auth-card form button[type=submit]').click()");
+        await WaitForScript("document.querySelector('h1')?.textContent === 'Cambia tu contraseña'");
+        await FillSmoke("initialCurrent", password); await FillSmoke("initialNew", replacement); await FillSmoke("initialRepeat", replacement);
+        await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.auth-card form button[type=submit]').click()");
+        await WaitForScript("document.querySelector('.priority-grid') !== null");
+    }
+    private async Task DeniedSmoke(string command, object? payload = null)
+    {
+        var script = "(()=>{window.smokeReply=null;const id=crypto.randomUUID();const listener=e=>{if(e.data.id===id){window.smokeReply=e.data;chrome.webview.removeEventListener('message',listener);}};chrome.webview.addEventListener('message',listener);chrome.webview.postMessage({id,command:" + JsonSerializer.Serialize(command) + ",payload:" + JsonSerializer.Serialize(payload) + "});})()";
+        await Browser.CoreWebView2.ExecuteScriptAsync(script);
+        await WaitForScript("window.smokeReply !== null");
+        if (await Browser.CoreWebView2.ExecuteScriptAsync("window.smokeReply.ok === false") != "true") throw new InvalidOperationException("Privilege boundary failed: " + command);
     }
     private async Task RunNativeSmoke()
     {
-        var stage = "startup";
+        var stage = "login";
         try
         {
+            await LoginSmoke("Viteka", "jupiter", "SmokeSuperPassword1");
+            var superId = (await Access.RequireUserAsync()).Id;
             await WaitForScript($"document.querySelector('footer')?.textContent.includes({JsonSerializer.Serialize(typeof(MainWindow).Assembly.GetName().Version?.ToString(3))}) === true");
-            await WaitForScript("document.querySelector('.priority-grid') !== null");
             await WaitForScript("Math.round(document.querySelector('aside').getBoundingClientRect().width) === 220");
             stage = "window-controls";
-            if (Icon is null) throw new InvalidOperationException("Missing WPF icon.");
-            if (!shell.HasNativeIcons) throw new InvalidOperationException("Missing native icons: " + shell.Diagnostics());
-            if (!shell.WithinWorkArea()) throw new InvalidOperationException("Initial work area: " + shell.Diagnostics());
-            MaximizeWindow(this, new RoutedEventArgs());
-            await Task.Delay(200);
-            if (WindowState != WindowState.Maximized || !shell.WithinWorkArea()) throw new InvalidOperationException("Maximized work area: " + shell.Diagnostics());
-            MaximizeWindow(this, new RoutedEventArgs());
-            await Task.Delay(200);
+            if (Icon is null || !shell.HasNativeIcons || !shell.WithinWorkArea()) throw new InvalidOperationException(shell.Diagnostics());
+            MaximizeWindow(this, new RoutedEventArgs()); await Task.Delay(200);
+            if (WindowState != WindowState.Maximized || !shell.WithinWorkArea()) throw new InvalidOperationException(shell.Diagnostics());
+            MaximizeWindow(this, new RoutedEventArgs()); await Task.Delay(200);
             if (WindowState != WindowState.Normal) throw new InvalidOperationException();
             stage = "zoom";
             shell.SmokeCtrlWheel();
-            for (var attempt = 0; attempt < 50 && Math.Round(Browser.ZoomFactor * 100) != 110; attempt++) await Task.Delay(100);
-            if (Math.Round(Browser.ZoomFactor * 100) != 110 || !Equals(ZoomLabel.Content, "110 %") || store.Load().ZoomPercent != 110) throw new InvalidOperationException();
-            ResetZoom(this, new RoutedEventArgs());
-            if (Math.Round(Browser.ZoomFactor * 100) != 100) throw new InvalidOperationException();
-            stage = "nixfarma-local";
-            var smokeSecret = "fixture-" + Guid.NewGuid().ToString("N");
-            var missingDsn = "Viteka_" + Guid.NewGuid().ToString("N")[..16];
-            var setup = new NixFarmaConfigurationWindow(null) { Owner = this };
-            setup.ContentRendered += (_, _) => setup.CompleteSmoke(missingDsn, "fixture-user", smokeSecret);
-            if (setup.ShowDialog() != true || setup.Settings is null) throw new InvalidOperationException("Native configuration dialog failed.");
-            var connectionStore = new NixFarmaConnectionStore(store.DirectoryPath);
-            connectionStore.Save(setup.Settings);
-            var restored = connectionStore.Load() ?? throw new InvalidOperationException("Missing encrypted settings.");
-            if (restored.Password != smokeSecret || System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(connectionStore.FilePath)).Contains(smokeSecret)) throw new InvalidOperationException("DPAPI roundtrip failed.");
-            if (JsonSerializer.Serialize(nixfarma.Status()).Contains(smokeSecret)) throw new InvalidOperationException("Secret exposed by connection status.");
-            var missingResult = await new NixFarmaConnectionTester().TestAsync(restored, lifetime.Token);
-            if (missingResult.Success || missingResult.Code != "dsn_missing") throw new InvalidOperationException("ODBC missing DSN classification failed: " + missingResult.Code);
-            connectionStore.Forget();
-            if (connectionStore.Exists) throw new InvalidOperationException("Credential removal failed.");
-            stage = "sidebar";
+            for (var attempt=0;attempt<50&&Math.Round(Browser.ZoomFactor*100)!=110;attempt++) await Task.Delay(100);
+            if (Math.Round(Browser.ZoomFactor*100)!=110 || !Equals(ZoomLabel.Content,"110 %") || Preferences.Load().ZoomPercent!=110) throw new InvalidOperationException();
+            ResetZoom(this,new RoutedEventArgs());
+            stage = "oracle-migration";
+            var secret="fixture-"+Guid.NewGuid().ToString("N");var dsn="Viteka_"+Guid.NewGuid().ToString("N")[..16];
+            var setup=new NixFarmaConfigurationWindow(null){Owner=this};
+            setup.ContentRendered+=(_,_)=>setup.CompleteSmoke(dsn,"fixture-user",secret);
+            if(setup.ShowDialog()!=true||setup.Settings is null)throw new InvalidOperationException("Native configuration dialog failed.");
+            var legacy=new NixFarmaConnectionStore(store.DirectoryPath);legacy.Save(setup.Settings);
+            if(legacy.Load()?.Password!=secret||System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(legacy.FilePath)).Contains(secret))throw new InvalidOperationException("Legacy DPAPI roundtrip failed.");
+            var state=await(nixfarma??throw new InvalidOperationException()).HandleAsync("nixfarma.status",lifetime.Token);
+            if(JsonSerializer.Serialize(state).Contains(secret)||legacy.Exists)throw new InvalidOperationException("Protected migration failed.");
+            var result=await Access.OracleAsync("test");
+            if(result.GetProperty("success").GetBoolean()||result.GetProperty("code").GetString()!="dsn_missing")throw new InvalidOperationException("Service ODBC missing-DSN diagnostic failed.");
+            await Access.OracleAsync("forget");
+            stage="sidebar";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
             await WaitForScript("document.querySelector('.layout')?.classList.contains('collapsed') === true");
-            for (var attempt = 0; attempt < 50 && !store.Load().SidebarCollapsed; attempt++) await Task.Delay(100);
-            if (!store.Load().SidebarCollapsed) throw new InvalidOperationException();
+            for(var attempt=0;attempt<50&&!Preferences.Load().SidebarCollapsed;attempt++)await Task.Delay(100);
+            if(!Preferences.Load().SidebarCollapsed)throw new InvalidOperationException();
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
-            await WaitForScript("document.querySelector('.layout')?.classList.contains('collapsed') === false");
-            stage = "navigation";
-            foreach (var section in new[] { "Utilidades", "Favoritos", "Actividad", "Configuración" })
+            stage="navigation";
+            foreach(var section in new[]{"Aplicaciones","Favoritos","Actividad","Usuarios","Actualizaciones","Configuración","Mi cuenta"})
             {
                 await Browser.CoreWebView2.ExecuteScriptAsync($"[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==={JsonSerializer.Serialize(section)}).click()");
                 await WaitForScript($"document.querySelector('h1')?.textContent === {JsonSerializer.Serialize(section)}");
             }
-            await WaitForScript("document.querySelector('[aria-label=\"Conexión a NixFarma\"]') !== null");
-            stage = "preference";
-            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click()");
-            await WaitForPreference(true);
-            stage = "reload";
-            Browser.CoreWebView2.Reload();
-            await WaitForScript("document.querySelector('h1')?.textContent === 'Favoritos'");
-            stage = "restore";
-            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Configuración').click()");
+            stage="preference";
+            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click()");await WaitForPreference(true);
+            Browser.CoreWebView2.Reload();await WaitForScript("document.querySelector('h1')?.textContent === 'Favoritos'");
+            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Mi cuenta').click()");
             await WaitForScript("document.querySelector('input[type=checkbox]')?.checked === true");
-            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click()");
-            await WaitForPreference(false);
+            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click()");await WaitForPreference(false);
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Inicio').click()");
             await WaitForScript("document.querySelector('.priority-grid') !== null");
-            stage = "capture";
-            var screenshot = Environment.GetEnvironmentVariable("VITEKA_UI_SMOKE_SCREENSHOT");
-            if (!string.IsNullOrEmpty(screenshot)) { using var file = File.Create(screenshot); await Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, file); }
-            FinishSmoke(true, "complete");
+            var screenshot=Environment.GetEnvironmentVariable("VITEKA_UI_SMOKE_SCREENSHOT");
+            if(!string.IsNullOrEmpty(screenshot)){using var file=File.Create(screenshot);await Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,file);}
+            stage="normal-user-guards";
+            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"Cerrar sesión\"]').click()");
+            await LoginSmoke("usuario","0000","SmokeUserPassword1");
+            await WaitForScript("![...document.querySelectorAll('nav button')].some(b=>b.textContent.includes('Configuración')||b.textContent.includes('Usuarios'))");
+            await DeniedSmoke("nixfarma.status");await DeniedSmoke("update.install");
+            await DeniedSmoke("users.create",new{name="forbidden",role="SuperAdministrator",password="SmokeForbiddenPassword1",utilityIds=Array.Empty<string>()});
+            stage="administrator-guards";
+            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"Cerrar sesión\"]').click()");
+            await LoginSmoke("F. titular","1234","SmokeAdminPassword1");
+            await WaitForScript("![...document.querySelectorAll('nav button')].some(b=>b.textContent.includes('Configuración'))");
+            await DeniedSmoke("nixfarma.status");await DeniedSmoke("users.password",new{id=superId,password="SmokeForbiddenPassword1"});
+            FinishSmoke(true,"complete");
         }
-        catch (Exception exception) { FinishSmoke(false, stage, exception.Message); }
+        catch(Exception error)
+        {
+            var detail=error.Message;
+            try{detail+="; UI: "+await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[role=alert]')?.textContent||document.querySelector('.error')?.textContent||''");}catch(InvalidOperationException){}
+            FinishSmoke(false,stage,detail);
+        }
     }
     private void FinishSmoke(bool passed, string stage, string? error = null)
     {
         var report = Environment.GetEnvironmentVariable("VITEKA_UI_SMOKE_REPORT");
         if (!string.IsNullOrEmpty(report)) File.WriteAllText(report, JsonSerializer.Serialize(new { passed, stage, error }));
         if (passed) CloseWindow(this, new RoutedEventArgs()); else Application.Current.Shutdown(1);
+    }
+    private void Post(object message)
+    { if (!closing && Browser.CoreWebView2 is {} core) core.PostWebMessageAsJson(JsonSerializer.Serialize(message)); }
+    private async Task ScheduledUpdateCheck()
+    {
+        try { if (updates is not null) await updates.CheckAsync(false, lifetime.Token); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException or OperationCanceledException or ObjectDisposedException) { }
+    }
+    private void SynchronizeProfile(object result)
+    {
+        var document = JsonSerializer.SerializeToElement(result);
+        if (!document.TryGetProperty("user", out var user) || user.ValueKind == JsonValueKind.Null) { profile = null; profileId = null; return; }
+        var id = user.GetProperty("id").GetString();
+        if (id == profileId) return;
+        if (!Guid.TryParseExact(id, "N", out _)) throw new InvalidDataException();
+        profile = new LocalStateStore(Path.Combine(store.DirectoryPath, "Profiles", id!)); profileId = id;
+        if (!File.Exists(profile.StatePath))
+        {
+            var prior = store.Load(); profile.SetTheme(prior.Theme); profile.SetSidebar(prior.SidebarCollapsed); profile.SetZoom(prior.ZoomPercent);
+            if (user.GetProperty("role").GetString() != "User") profile.SetOpenFavorites(prior.OpenFavoritesOnStart);
+        }
+        SetZoom(profile.Load().ZoomPercent, false);
     }
     private static bool Trusted(string source) => Uri.TryCreate(source, UriKind.Absolute, out var uri) && uri.Scheme == "https" && uri.Host == "app.viteka.local" && uri.Port == 443 && uri.UserInfo.Length == 0;
     private void Reply(string id, object? result = null, string? error = null)
@@ -180,22 +236,32 @@ public partial class MainWindow : Window
             if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("id", out var identifier) || identifier.ValueKind != JsonValueKind.String || !Guid.TryParse(identifier.GetString(), out _)) return;
             id = identifier.GetString()!;
             var command = root.GetProperty("command").GetString();
+            if (command is "auth.state" or "auth.login" or "auth.logout" or "auth.password" or "users.list" or "users.create" or "users.modify" or "users.password" or "utilities.list")
+            {
+                if (command is "auth.login" or "auth.logout") { profile = null; profileId = null; }
+                var result = await Access.HandleAsync(command, root);
+                if (command.StartsWith("auth.", StringComparison.Ordinal) || command == "users.modify") SynchronizeProfile(result);
+                Reply(id, result); return;
+            }
+            AccessUserView? actor = null;
+            if (command is not ("app.state" or "window.appearance" or "window.zoom")) actor = await Access.RequireUserAsync();
             switch (command)
             {
                 case "nixfarma.status":
                 case "nixfarma.configure":
                 case "nixfarma.test":
                 case "nixfarma.forget":
-                    if (updateBusy) { Reply(id, error: "Espera a que termine la actualización."); break; }
-                    Reply(id, await nixfarma.HandleAsync(command, lifetime.Token));
+                    if (actor is null || !AccessPolicy.CanConfigure(actor)) throw new AccessDeniedException();
+                    if (updates?.IsBusy == true) { Reply(id, error: "Espera a que termine la actualización."); break; }
+                    Reply(id, await (nixfarma ?? throw new InvalidOperationException()).HandleAsync(command, lifetime.Token));
                     break;
                 case "app.state":
-                    var state = store.Load();
+                    var state = Preferences.Load();
                     Reply(id, new { version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3), openFavorites = state.OpenFavoritesOnStart, sidebarCollapsed = state.SidebarCollapsed, theme = state.Theme, zoomPercent = (int)Math.Round(Browser.ZoomFactor * 100) });
                     break;
                 case "settings.start":
                     var enabled = root.GetProperty("payload").GetProperty("enabled").GetBoolean();
-                    store.SetOpenFavorites(enabled);
+                    Preferences.SetOpenFavorites(enabled);
                     Reply(id, new { openFavorites = enabled });
                     break;
                 case "window.zoom":
@@ -205,13 +271,13 @@ public partial class MainWindow : Window
                     Reply(id, new { percent });
                     break;
                 case "settings.sidebar":
-                    store.SetSidebar(root.GetProperty("payload").GetProperty("collapsed").GetBoolean());
+                    Preferences.SetSidebar(root.GetProperty("payload").GetProperty("collapsed").GetBoolean());
                     Reply(id, new { saved = true });
                     break;
                 case "settings.theme":
                     var theme = root.GetProperty("payload").GetProperty("theme").GetString();
                     if (theme is not ("auto" or "light" or "dark")) { Reply(id, error: "Apariencia no válida."); break; }
-                    store.SetTheme(theme);
+                    Preferences.SetTheme(theme);
                     Reply(id, new { saved = true });
                     break;
                 case "window.appearance":
@@ -243,54 +309,31 @@ public partial class MainWindow : Window
                     Clipboard.SetText(email);
                     Reply(id, new { copied = true });
                     break;
+                case "update.state":
+                case "update.history":
                 case "update.check":
-                    if (updateBusy) { Reply(id, error: "Ya hay una actualización en curso."); break; }
-                    updateBusy = true;
-                    try
-                    {
-                        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(lifetime.Token);
-                        timeout.CancelAfter(TimeSpan.FromSeconds(20));
-                        availableUpdate = await new PreviewUpdater(http).FindAsync(typeof(MainWindow).Assembly.GetName().Version ?? new Version(0, 0, 0), timeout.Token);
-                        Reply(id, new { available = availableUpdate is not null, version = availableUpdate?.Version.ToString(3) });
-                    }
-                    finally { updateBusy = false; }
-                    break;
                 case "update.install":
-                    if (nixfarma.IsBusy) { Reply(id, error: "Espera a que termine la prueba de conexión antes de actualizar."); break; }
-                    if (updateBusy || availableUpdate is null) { Reply(id, error: "Busca primero una actualización disponible."); break; }
-                    updateBusy = true;
-                    try { await InstallUpdate(id, availableUpdate); } finally { updateBusy = false; }
-                    break;
                 case "update.publication":
-                    if (availableUpdate is null) { Reply(id, error: "No hay publicación disponible."); break; }
-                    Process.Start(new ProcessStartInfo(availableUpdate.ReleasePage.AbsoluteUri) { UseShellExecute = true });
-                    Reply(id, new { opened = true });
+                    if (command == "update.install" && nixfarma?.IsBusy == true) { Reply(id, error: "Espera a que termine la prueba de conexión antes de actualizar."); break; }
+                    Reply(id, await (updates ?? throw new InvalidOperationException()).HandleAsync(command, lifetime.Token));
                     break;
                 default: Reply(id, error: "Acción no disponible."); break;
             }
         }
+        catch (AccessSessionException) { profile = null; profileId = null; Post(new { type = "session-ended" }); if (id is not null) Reply(id, error: "AUTH_REQUIRED"); }
+        catch (AccessDeniedException error) { if (id is not null) Reply(id, error: error.Message); }
+        catch (ArgumentException error) { if (id is not null) Reply(id, error: error.Message); }
+        catch (HttpRequestException) { if (id is not null) Reply(id, error: "No se pudo contactar con el servicio de usuarios. Revisa que esté iniciado en el servidor y que su identidad esté configurada."); }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) { if (id is not null) Reply(id, new { cancelled = true }); }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or JsonException or UnauthorizedAccessException or InvalidOperationException or KeyNotFoundException or HttpRequestException or OperationCanceledException or System.Runtime.InteropServices.ExternalException)
+        catch (Exception ex) when (ex is IOException or InvalidDataException or JsonException or UnauthorizedAccessException or InvalidOperationException or System.Security.Cryptography.CryptographicException or KeyNotFoundException or HttpRequestException or OperationCanceledException or System.Runtime.InteropServices.ExternalException)
         { if (id is not null) Reply(id, error: "No se pudo completar la operación. La aplicación y tus archivos se conservan."); }
-    }
-    private async Task InstallUpdate(string id, PreviewUpdate update)
-    {
-        if (MessageBox.Show(this, "Se descargará y verificará el instalador desde GitHub. Es una versión de prueba sin firma digital. Viteka se cerrará al iniciar la instalación y Windows podrá pedir permisos. Tus preferencias se conservarán. ¿Continuar?", "Actualizar Viteka Utilidades", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
-        { Reply(id, new { cancelled = true }); return; }
-        var progress = new Progress<int>(percent => { if (!closing) Browser.CoreWebView2.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "update-progress", percent })); });
-        using var installer = await new PreviewUpdater(http).DownloadAsync(update, Path.Combine(store.DirectoryPath, "Updates"), progress, lifetime.Token);
-        var process = Process.Start(new ProcessStartInfo(installer.Path) { UseShellExecute = true, Verb = "runas" });
-        if (process is null) throw new InvalidOperationException();
-        process.Dispose();
-        Reply(id, new { started = true });
-        Application.Current.Shutdown();
     }
     private void SetZoom(int percent, bool save = true)
     {
         percent = Math.Clamp(percent, 50, 200);
         Browser.ZoomFactor = percent / 100d;
         ZoomLabel.Content = percent + " %";
-        if (save) store.SetZoom(percent);
+        if (save) Preferences.SetZoom(percent);
     }
     private void ChangeZoom(int percent)
     {

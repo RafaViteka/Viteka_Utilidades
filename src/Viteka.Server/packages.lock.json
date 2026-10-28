@@ -11,6 +11,18 @@
           "System.ServiceProcess.ServiceController": "10.0.0"
         }
       },
+      "System.Data.Odbc": {
+        "type": "Direct",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "k7XeM60rt7P4QDP2h/tu6ytqiB4s7cDslwXPQUWMPGs+/QvN1Iwwwbhj2nggropeyAxcwtzv/ZRUQaVrEYCUhw=="
+      },
+      "System.Security.Cryptography.ProtectedData": {
+        "type": "Direct",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "UuaBUHgmtc9h6CMxaQqFDDJxkS5JVy7XEB+DbtCvD68GFcVM9/AccuNwFpARx8nwCnvjaxzoOBjG3gPz32P1Eg=="
+      },
       "System.ServiceProcess.ServiceController": {
         "type": "Transitive",
         "resolved": "10.0.0",
@@ -22,11 +34,17 @@
       "viteka.core": {
         "type": "Project",
         "dependencies": {
-          "Viteka.Contracts": "[0.4.0, )"
+          "Viteka.Contracts": "[0.11.1, )"
         }
       }
     },
     "net10.0/win-x64": {
+      "System.Data.Odbc": {
+        "type": "Direct",
+        "requested": "[10.0.14, )",
+        "resolved": "10.0.14",
+        "contentHash": "k7XeM60rt7P4QDP2h/tu6ytqiB4s7cDslwXPQUWMPGs+/QvN1Iwwwbhj2nggropeyAxcwtzv/ZRUQaVrEYCUhw=="
+      },
       "System.ServiceProcess.ServiceController": {
         "type": "Transitive",
         "resolved": "10.0.0",

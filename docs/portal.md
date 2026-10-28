@@ -49,3 +49,7 @@ Siguiente etapa acordada: primera prueba Oracle en el propio servidor, donde exi
 ## Conexión local (0.11.1)
 
 La sección pendiente se sustituye por una tarjeta funcional en Configuración: estado del DSN x64 local, usuario, configuración cifrada, prueba y eliminación de credenciales. El formulario de contraseña es nativo de Windows. Ver [conexión a NixFarma](conexion-nixfarma.md) para alcance, uso y validación. Esta etapa permite probar desde el servidor; el servicio de acceso para puestos continúa pendiente.
+
+## Accesos y actualizaciones (0.12.0)
+
+Inicio de sesión y navegación según rol. Usuarios normales ven Inicio, aplicaciones autorizadas, Actualizaciones y Mi cuenta; titulares gestionan usuarios normales y todo salvo Configuración; Viteka administra y configura. Las preferencias personales pasan a Mi cuenta. Actualizaciones tiene pestaña propia, calendario 24 h, aviso e historial. Configuración técnica y Oracle están respaldadas por la autoridad HTTPS del servidor. Ver accesos.md.
