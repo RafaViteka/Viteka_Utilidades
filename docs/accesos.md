@@ -1,4 +1,4 @@
-# Usuarios compartidos y actualizaciones · 0.12.3
+# Usuarios compartidos y actualizaciones · 0.13.0
 
 La autoridad de usuarios reside en el servicio Windows `VitekaUtilidadesAccess` del servidor. Todos los puestos que utilicen su cliente y bootstrap comparten cuentas, roles y permisos; no hay registros de usuarios independientes por puesto ni se confía en el rol enviado por Angular.
 
@@ -10,7 +10,7 @@ La autoridad de usuarios reside en el servicio Windows `VitekaUtilidadesAccess` 
 | Administrador (titular) | Todas las aplicaciones, Favoritos, Auditoría, Usuarios, Actualizaciones y Mi cuenta; sin configuración técnica | Crear/editar/desactivar usuarios normales, asignarles aplicaciones y restablecer sus contraseñas; cambiar la suya confirmando la actual |
 | Superadministrador (Viteka) | Todo, incluida la configuración técnica | Crear/editar todos los roles y restablecer contraseñas ajenas; la propia se cambia confirmando la actual |
 
-Las aplicaciones futuras se añaden al catálogo y el administrador marca quién puede usarlas. Un usuario normal no recibe automáticamente permisos sobre aplicaciones nuevas; los roles privilegiados acceden a todo el catálogo conocido. No se han creado utilidades de ejemplo para poblar el selector. El catálogo continúa vacío.
+Las aplicaciones futuras se añaden al catálogo y el administrador marca quién puede usarlas. Un usuario normal no recibe automáticamente permisos sobre aplicaciones nuevas; los roles privilegiados acceden a todo el catálogo conocido. El selector permite asignar Tenencia obligatoria; no hay aplicaciones ficticias. El catálogo incluye Tenencia obligatoria; sus listas provinciales siguen pendientes de la referencia.
 
 No se permite desactivar o degradar al último superadministrador activo. Los cambios de rol, permisos o contraseña revocan las sesiones anteriores. Las sesiones duran como máximo ocho horas y no se guardan en el cliente al cerrarlo.
 
@@ -58,6 +58,10 @@ Historial abre una ventana con las publicaciones y notas de GitHub como texto, y
 
 ## Validación
 
-55 checks del núcleo cubren los tres roles, elevaciones prohibidas, listas de aplicaciones, contraseñas y revocaciones, bloqueo de cuenta, conservación al actualizar y calendario de 24 h. El navegador comprueba navegación por roles, cambio inicial, edición de usuarios/permisos, configuración oculta, Actualizaciones y notas sin ejecutar HTML. El workflow Windows instala/reinstala/retira el servicio bajo LocalService, exige salud HTTPS y conservación del registro, rechaza una CA ajena y ejecuta el cliente real con una autoridad aislada. El smoke nativo realiza login/cambio inicial con los tres roles y envía mensajes privilegiados directamente para verificar que son rechazados incluso sin pasar por la navegación.
+63 checks del núcleo cubren los tres roles, elevaciones prohibidas, listas de aplicaciones, contraseñas y revocaciones, bloqueo de cuenta, conservación al actualizar y calendario de 24 h. El navegador comprueba navegación por roles, cambio inicial, edición de usuarios/permisos, configuración oculta, Actualizaciones y notas sin ejecutar HTML. El workflow Windows instala/reinstala/retira el servicio bajo LocalService, exige salud HTTPS y conservación del registro, rechaza una CA ajena y ejecuta el cliente real con una autoridad aislada. El smoke nativo realiza login/cambio inicial con los tres roles y envía mensajes privilegiados directamente para verificar que son rechazados incluso sin pasar por la navegación.
 
 La validación de red y TNS reales entre el servidor y los puestos de la farmacia debe realizarse allí. No se afirma haber probado esos equipos desde el entorno cloud. El paquete continúa siendo un canal de pruebas sin firma de editor.
+
+## Datos de la farmacia y Tenencia obligatoria · 0.13.0
+
+Titular y Viteka editan el perfil central desde Configuración. La provincia selecciona el listado de Tenencia obligatoria; un usuario normal requiere asignación explícita de la aplicación, y no puede modificar ese perfil. No hay listas provinciales distribuidas hasta extraer y verificar el vídeo pendiente. Leer [existencias-minimas.md](existencias-minimas.md).

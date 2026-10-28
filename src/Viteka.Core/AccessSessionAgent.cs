@@ -54,7 +54,7 @@ public sealed class AccessSessionAgent(AccessDirectory authority)
                     ticket = await Task.Run(() => authority.ChangeOwnPassword(current, oldPassword, newPassword));
                     return State();
                 case "users.list":
-                    return new { remoteAccessReady = authority.RemoteAccessReady(), users = authority.List(current).Select(Public), utilities = DemoCatalog.Items.Select(u => new { id = u.Id, name = u.Name }) };
+                    return new { remoteAccessReady = authority.RemoteAccessReady(), users = authority.List(current).Select(Public), utilities = UtilityCatalog.Items.Select(u => new { id = u.Id, name = u.Name }) };
                 case "users.create":
                     var created = await Task.Run(() => authority.Create(current, Text(payload, "name"), Role(payload), Text(payload, "password"), Ids(payload)));
                     return new { user = Public(created) };
@@ -72,7 +72,7 @@ public sealed class AccessSessionAgent(AccessDirectory authority)
     public object Utilities()
     {
         var actor = RequireUser();
-        return new { utilities = DemoCatalog.Items.Where(u => AccessPolicy.CanUse(actor, u.Id, DemoCatalog.Items)).Select(u => new { id = u.Id, name = u.Name, description = u.Description }) };
+        return new { utilities = UtilityCatalog.Items.Where(u => AccessPolicy.CanUse(actor, u.Id, UtilityCatalog.Items)).Select(u => new { id = u.Id, name = u.Name, description = u.Description }) };
     }
     private static string Text(JsonElement data, string key) => data.GetProperty(key).GetString() ?? "";
     private static string[] Ids(JsonElement data) => data.GetProperty("utilityIds").EnumerateArray().Select(x => x.GetString() ?? "").ToArray();

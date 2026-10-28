@@ -14,7 +14,7 @@ public sealed class LocalStateStore(string directory, IReadOnlyList<UtilityDefin
 {
     public string DirectoryPath { get; } = Path.GetFullPath(directory);
     public string StatePath => Path.Combine(DirectoryPath, "state.json");
-    private readonly HashSet<string> KnownIds = (utilities ?? DemoCatalog.Items).Select(x => x.Id).ToHashSet();
+    private readonly HashSet<string> KnownIds = (utilities ?? UtilityCatalog.Items).Select(x => x.Id).ToHashSet();
     private static readonly HashSet<string> RetiredDemoIds = ["stock", "expiry", "purchases"];
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     public static LocalStateStore ForCurrentUser() => new(Path.Combine(

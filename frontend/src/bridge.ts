@@ -23,6 +23,6 @@ export class DesktopBridge {
    if(command==='window.zoom'){const percent=Math.max(50,Math.min(200,(payload as {percent:number}).percent));localStorage.setItem('viteka.zoom',String(percent));document.documentElement.style.setProperty('zoom',String(percent/100));this.zoom.set(percent);return {percent} as T;}
    throw new Error('El acceso con contraseña está disponible en la aplicación Windows.');
   }
-  const id=crypto.randomUUID();return new Promise<T>((resolve,reject)=>{const timeout=command==='update.install'?660000:command==='nixfarma.configure'||command==='nixfarma.forget'?600000:command==='nixfarma.test'?45000:30000;const timer=setTimeout(()=>{this.pending.delete(id);reject(new Error('La operación ha tardado demasiado.'));},timeout);this.pending.set(id,{resolve:r=>resolve(r as T),reject,timer});window.chrome!.webview!.postMessage({id,command,payload});});
+  const id=crypto.randomUUID();return new Promise<T>((resolve,reject)=>{const timeout=command==='update.install'?660000:command==='nixfarma.configure'||command==='nixfarma.forget'?600000:command==='nixfarma.test'||command.startsWith('tenencia.')?45000:30000;const timer=setTimeout(()=>{this.pending.delete(id);reject(new Error('La operación ha tardado demasiado.'));},timeout);this.pending.set(id,{resolve:r=>resolve(r as T),reject,timer});window.chrome!.webview!.postMessage({id,command,payload});});
  }
 }

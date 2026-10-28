@@ -1,30 +1,35 @@
-# Primera utilidad: consulta de existencias mínimas
+# Tenencia obligatoria · 0.13.0
 
-## Solicitud y estado
+Primera utilidad solicitada por el usuario. Auditoría está en Configuración para titular/Viteka. Sigue siendo un espacio sin registro persistente de operaciones; este traslado no implementa ni inventa un historial.
 
-El usuario solicita una consulta de existencias mínimas, tomando como referencia el vídeo «tenencia obligatoria málaga unycop.mp4», con la organización visual de NixFarma 10 y la identidad Viteka. También solicita agrupar Auditoría en Configuración.
+## Datos de la farmacia
 
-El vídeo adjunto, sediment file_00000000b01c81f4add22d4d8ea8add1, excede el límite de transferencia de 32 MiB de la herramienta. No se ha podido visualizar y no hay copia en los adjuntos locales. Se ha solicitado un vídeo comprimido o capturas. No afirmar que se han revisado sus pantallas.
+Configuración → Datos de la farmacia permite al titular y Viteka guardar nombre, provincia, localidad, correo, teléfono, dirección y código postal. El perfil reside protegido en el servidor y se comparte entre los puestos; no depende de la provincia que envíe un cliente. Se valida provincia INE y correspondencia del código postal si se indica. Los usuarios normales no modifican estos datos.
 
-Falta confirmar si el criterio es tenencia obligatoria de Málaga, mínimos de stock de la farmacia o ambos. No son equivalentes: el primero requiere una lista y reglas normativas verificadas; el segundo requiere los umbrales de NixFarma. No asumir una lista legal ni importar datos de otras farmacias.
+## Pantalla y permisos
 
-La conexión Oracle de prueba existe, pero no se conocen tablas, campos y relaciones de artículos/existencias/mínimos. Una conexión correcta y SELECT 1 FROM DUAL no prueban que la consulta de negocio esté definida.
+Aplicaciones → Tenencia obligatoria. Titular y Viteka acceden por su rol; cada usuario normal requiere asignación explícita de esta aplicación en Usuarios. El permiso se comprueba de nuevo en anfitrión y servicio. La pantalla presenta disponibilidad del listado y botón Consultar; abrirla no consulta existencias automáticamente. Tras una consulta: resumen por grupos, búsqueda por grupo/denominación/CN, filtro de estado, tabla paginada (25), detalle en diálogo y hora/fuente/versión del listado. Mantiene identidad Viteka y organización de trabajo con filtros/tablas/detalles de NixFarma 10.
 
-## Propuesta visual pendiente de contrastar con el vídeo
+## Conexión de solo lectura
 
-Mantener la barra lateral, los colores, temas e iconografía de Viteka. Dentro de Aplicaciones, una pantalla de trabajo compacta con título, filtros a acordar, acción Consultar y tabla de resultados. Los detalles de una fila se abrirían en ventana emergente. Diferenciar «sin consultar», «sin resultados», «conexión no disponible» y error; no mostrar una tabla vacía como si una consulta bloqueada hubiera terminado bien.
+Datos del usuario: tablas ARTICULOS y EXISTENCIAS; ARTICULO identifica el CN; DESCRIPCION la denominación; ACTUAL o STOCK ACTUAL el stock. No se usa el mínimo comercial de artículos: las unidades exigidas proceden del listado provincial.
 
-La elección de filtros, columnas, agrupaciones, colores de estado y exportaciones se cerrará al revisar la referencia y el criterio. No se ha añadido un catálogo de ejemplos ni resultados ficticios a la aplicación.
+El servidor abre transacción de solo lectura antes de inspeccionar o consultar. Lee solo los metadatos de ARTICULOS y EXISTENCIAS (WHERE 1 = 0) para encontrar los nombres reales. Admite ACTUAL/STOCKACTUAL/STOCK_ACTUAL/«STOCK ACTUAL» si hay una única coincidencia. Los identificadores se validan; códigos como parámetros ODBC en lotes de 100, hasta 1000 CN y 10000 filas, timeout de comando 15 s, espera de respuesta 30 s y presupuesto de lectura. No acepta SQL, provincia ni lista enviados por el cliente. Siempre rollback/cierre. Un controlador bloqueado conserva una única operación activa; no crea reintentos ilimitados.
 
-## Información necesaria para integrar NixFarma
+Configuración → Conexión a NixFarma → Comprobar tablas de tenencia, solo Viteka, permite comprobar esta estructura sin tener todavía una lista ni leer existencias. La prueba real bajo LocalService debe hacerse en el servidor.
 
-- Tablas/vistas y columnas reales para identificador/código nacional, denominación, existencias y mínimo cuando corresponda.
-- Relación entre artículo, almacén/ubicación y existencias; significado de las unidades y tratamiento de cantidades pendientes si corresponde.
-- Si se trata de tenencia obligatoria: fuente vigente, fecha, ámbito y reglas de equivalencia/agrupación de presentaciones.
-- Un ejemplo conocido para comprobar el resultado en la farmacia, sin contraseñas ni datos personales.
+Si hay varias filas de EXISTENCIAS para un CN, el resultado es ambiguo: no se suman almacenes/lotes hasta confirmar su significado. Ausencia de artículo, stock ausente o nulo y artículos duplicados quedan pendientes; nunca se sustituyen por cero. Los grupos se evalúan sumando las unidades de los códigos alternativos declarados en su lista. Antes de incorporar una lista se debe verificar que esa agrupación representa las reglas de la referencia; otros criterios necesitan representación explícita y pruebas.
 
-Implementación cuando se confirme: componente Angular independiente, operación tipada específica en el servicio HTTPS, permiso por ID de utilidad revalidado en servidor, conexión central protegida y consultas parametrizadas de solo lectura con límites y timeout. Ver primera-aplicacion.md.
+## Listas provinciales: pendiente la referencia
 
-## Entregado por separado
+El usuario confirmó tenencia obligatoria según provincia y pidió extraer los códigos por grupo y unidades mínimas del vídeo «tenencia obligatoria málaga unycop.mp4». El archivo sediment file_00000000b01c81f4add22d4d8ea8add1 excede 32 MiB, límite de descarga de la herramienta; no existe copia local del adjunto. No se ha visto este vídeo ni se han extraído códigos o mínimos. Se ha pedido una versión comprimida o capturas legibles. Sí se han revisado fotogramas de las promociones anteriores de NixFarma 10 como referencia de organización.
 
-0.12.3 mueve Auditoría a Configuración para titular/Viteka y actualiza navegación y comprobación de roles. Auditoría sigue sin un registro persistente de operaciones: no confundir el traslado de su pantalla con la implementación del registro. La utilidad de existencias sigue pendiente de los datos anteriores.
+**No se distribuye ninguna lista provincial en esta entrega.** Málaga y las demás provincias muestran «Lista de tenencia pendiente», sin consulta ni evaluación. Esto no equivale a «no faltan artículos» ni a «cumple». Cambiar la provincia selecciona su lista correspondiente y nunca utiliza otra por defecto.
+
+Las listas revisadas se distribuirán con las actualizaciones, bajo Servidor/Catalogs/tenencia/NN.json (código INE de provincia). Contrato: schema=1, province, version, source, reviewedOn, groups:[{id,name,minimum,codes:[CN]}]. Código nacional de 6–7 cifras; mínimo entero positivo; IDs y códigos de cada grupo únicos. Hasta 250 grupos, 100 códigos por grupo y 1000 distintos por lista. Falta de lista, provincia incorrecta, formato no válido y fecha de revisión futura bloquean la evaluación. El instalador reemplaza los catálogos distribuidos; los datos de farmacia y credenciales se conservan en ProgramData. No guardar listas locales distintas sin un proceso de revisión de Viteka.
+
+## Validación y límites
+
+Checks del núcleo: persistencia/validación del perfil, selección de lista por provincia, mínimos y códigos malformados, cálculo cubierto/falta, datos ausentes/ambiguos, parámetros, identificación de columnas, rollback y prohibición de leer sin establecer solo lectura. Navegador: formulario compartido, lista pendiente, ejecución explícita, resultados de prueba, búsqueda/filtro/detalle, errores sin resultados antiguos y usuario con/sin permiso. Los datos ficticios están exclusivamente en pruebas, nunca en el catálogo distribuido. Windows: perfil central, diagnóstico ODBC de DSN inexistente, pantalla con lista pendiente y denegaciones de permisos.
+
+Estas pruebas no acreditan las tablas/valores reales de la farmacia ni la corrección de un listado normativo. La utilidad queda instalada y su motor preparado, pero la consulta de tenencia real requiere incorporar la referencia y validar la estructura con NixFarma en el servidor.

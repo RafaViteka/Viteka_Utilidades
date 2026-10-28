@@ -301,6 +301,43 @@ try
         try { NixFarmaReadProbe.Execute(connection); throw new Exception("Expected failure"); } catch (ProbeFixtureException) { }
         Require(connection.Steps.Last() == "rollback");
     });
+    var tenenciaList=new Viteka.Contracts.TenenciaList(1,"29","fixture-v1","Datos ficticios de prueba",DateOnly.FromDateTime(DateTime.UtcNow),[new("a","Grupo ficticio",3,["650001","650002"])]);
+    Check("Pharmacy data persists centrally and rejects invalid province and postcode",()=>{
+        var directory=new PharmacyDirectory(Path.Combine(root,"pharmacy"),b=>b,b=>b);Require(directory.Load() is null);
+        var profile=new Viteka.Contracts.PharmacyProfile("Farmacia ficticia","29","Málaga","prueba@example.test","","","29001");directory.Save(profile);Require(directory.Load()==profile);
+        try{directory.Save(profile with{Province="../../other"});throw new Exception("Expected rejection");}catch(ArgumentException){}
+        try{directory.Save(profile with{Postcode="28001"});throw new Exception("Expected rejection");}catch(ArgumentException){}
+        Require(directory.Load()==profile);
+    });
+    Check("Tenencia groups aggregate only known codes and compute shortfalls",()=>{
+        var stocks=new Dictionary<string,Viteka.Contracts.StockArticle>{{"650001",new("650001","A",1)},{"650002",new("650002","B",1)}};
+        var row=TenenciaRules.Evaluate(tenenciaList,stocks).Single();Require(row.Stock==2&&row.Missing==1&&row.Status=="shortfall");stocks["650001"]=new("650001","A",3);Require(TenenciaRules.Evaluate(tenenciaList,stocks).Single().Status=="covered");
+    });
+    Check("Missing or ambiguous stock never becomes zero or a compliance result",()=>{
+        var stocks=new Dictionary<string,Viteka.Contracts.StockArticle>{{"650001",new("650001","A",10)}};
+        var row=TenenciaRules.Evaluate(tenenciaList,stocks).Single();Require(row.Stock is null&&row.Missing is null&&row.Status=="unresolved");stocks["650002"]=new("650002","B",5,"ambiguous_stock");Require(TenenciaRules.Evaluate(tenenciaList,stocks).Single().Status=="unresolved");
+    });
+    Check("Provincial catalogs fail closed when absent mismatched duplicated or malformed",()=>{
+        var directory=Path.Combine(root,"catalogs");Directory.CreateDirectory(directory);Require(TenenciaRules.Load(directory,"29") is null);
+        File.WriteAllBytes(Path.Combine(directory,"29.json"),JsonSerializer.SerializeToUtf8Bytes(tenenciaList with{Province="28"}));try{TenenciaRules.Load(directory,"29");throw new Exception("Expected mismatch");}catch(InvalidDataException){}
+        try{TenenciaRules.Validate(tenenciaList with{Groups=[new("a","A",0,["650001"])]});throw new Exception("Expected invalid minimum");}catch(InvalidDataException){}
+        try{TenenciaRules.Validate(tenenciaList with{Groups=[new("a","A",1,["650001","650001"])]});throw new Exception("Expected duplicate");}catch(InvalidDataException){}
+    });
+    Check("NixFarma stock queries detect columns bind codes and always roll back",()=>{
+        using var connection=new TenenciaFixture();var stocks=TenenciaStockQuery.ReadOnly(connection,tx=>{var schema=TenenciaStockQuery.Inspect(connection,tx);Require(schema.Stock=="\"STOCK_ACTUAL\"");return TenenciaStockQuery.Read(connection,tx,schema,["650001","650002"]);});
+        Require(stocks["650001"].Stock==2&&connection.Steps[1]=="SET TRANSACTION READ ONLY"&&connection.Steps.Last()=="rollback"&&connection.ParametersSeen.Count==4);
+    });
+    Check("NixFarma stock reading stops before SELECT when read-only fails",()=>{
+        using var connection=new TenenciaFixture{FailReadOnly=true};try{TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Inspect(connection,tx));throw new Exception("Expected failure");}catch(ProbeFixtureException){}Require(!connection.Steps.Any(s=>s.StartsWith("SELECT"))&&connection.Steps.Last()=="rollback");
+    });
+    Check("Alternative ACTUAL is accepted but ambiguous columns and duplicate rows are unresolved",()=>{
+        using(var connection=new TenenciaFixture{StockColumn="ACTUAL"}){TenenciaStockQuery.ReadOnly(connection,tx=>{Require(TenenciaStockQuery.Inspect(connection,tx).Stock=="\"ACTUAL\"");return true;});}
+        using(var connection=new TenenciaFixture{AmbiguousColumns=true}){try{TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Inspect(connection,tx));throw new Exception("Expected ambiguity");}catch(InvalidDataException){}}
+        using(var connection=new TenenciaFixture{DuplicateStock=true}){var stocks=TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Read(connection,tx,TenenciaStockQuery.Inspect(connection,tx),["650001"]));Require(stocks["650001"].Issue=="ambiguous_stock");}
+    });
+    Check("Stock queries reject SQL payloads and unknown utilities remain denied",()=>{
+        using var connection=new TenenciaFixture();try{TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Read(connection,tx,new("\"ARTICULO\"","\"DESCRIPCION\"","\"ARTICULO\"","\"ACTUAL\""),["650001 OR 1=1"]));throw new Exception("Expected invalid code");}catch(ArgumentException){}Require(!connection.Steps.Any(s=>s.Contains("OR 1=1")));
+    });
     var accessClock = new AdjustableClock();
     var accessPath = Path.Combine(root, "access-authority");
     var accessCatalog = new[] { new Viteka.Contracts.UtilityDefinition("fixture-a", "A", "", "", true), new Viteka.Contracts.UtilityDefinition("fixture-b", "B", "", "", true) };
@@ -338,6 +375,7 @@ try
         Require(!AccessPolicy.CanConfigure(authority.Current(adminTicket)) && !AccessPolicy.CanConfigure(authority.Current(normalTicket)));
         Require(AccessPolicy.CanInstallUpdates(authority.Current(adminTicket)) && !AccessPolicy.CanInstallUpdates(authority.Current(normalTicket)));
         Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Usuarios"));
+        Require(!AccessPolicy.CanUse(authority.Current(normalTicket),Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items)&&AccessPolicy.CanUse(authority.Current(adminTicket),Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items));
         Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Auditoría") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Auditoría") && AccessPolicy.CanOpenPage(authority.Current(superTicket), "Auditoría"));
         Require(AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Configuración") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Configuración"));
     });

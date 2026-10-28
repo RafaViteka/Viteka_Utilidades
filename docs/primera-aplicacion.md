@@ -42,3 +42,7 @@ Recomendación: empezar por una consulta de solo lectura, acotada y útil en el 
 ## Primera utilidad solicitada · 0.12.3
 
 Consulta de existencias mínimas, con referencia Unycop y estilo NixFarma/Viteka. Requisitos pendientes y límite del vídeo documentados en [existencias-minimas.md](existencias-minimas.md). No implementar reglas ni SQL supuesto antes de confirmar los datos necesarios.
+
+## Implementación · 0.13.0
+
+Tenencia obligatoria ya tiene módulo Angular, contratos, permiso por utilidad, lector parametrizado de solo lectura y datos centrales de farmacia/provincia. No se distribuye lista provincial hasta recibir la referencia reducida o capturas y revisar los códigos/grupos/mínimos. El catálogo de acceso ya incluye la aplicación; no confundir lista provincial pendiente con catálogo de aplicaciones vacío. Ver [existencias-minimas.md](existencias-minimas.md).

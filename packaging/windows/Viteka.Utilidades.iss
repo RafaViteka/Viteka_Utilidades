@@ -39,6 +39,7 @@ Name: "{group}\Viteka Utilidades"; Filename: "{app}\Cliente\Viteka.Desktop.exe";
 Name: "{group}\Leer antes de probar"; Filename: "{app}\LEEME.txt"
 
 [InstallDelete]
+Type: files; Name: "{app}\Servidor\Catalogs\tenencia\*.json"
 Type: files; Name: "{group}\Iniciar servidor de demostración.lnk"
 
 [Run]

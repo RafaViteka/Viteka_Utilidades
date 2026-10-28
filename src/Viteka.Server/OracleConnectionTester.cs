@@ -38,7 +38,7 @@ internal sealed class NixFarmaConnectionTester
         catch (TimeoutException) { return new(false, "timeout", "El controlador no respondió en 30 segundos. La aplicación sigue disponible; no se iniciará otra prueba mientras continúe la anterior."); }
     }
     [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    private static NixFarmaProbeResult Classify(OdbcException error)
+    internal static NixFarmaProbeResult Classify(OdbcException error)
     {
         // Only structured/numeric codes leave the native layer. Never return the raw
         // driver message: it can contain connection details or credentials.

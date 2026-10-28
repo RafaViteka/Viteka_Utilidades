@@ -12,7 +12,7 @@ url=f'http://127.0.0.1:{server.server_port}'
 class AuthorityFixture:
  def __init__(self):
   self.accounts=[dict(id=f'{i:032x}',name=name,role=role,active=True,mustChangePassword=True,utilityIds=[],password=password) for i,(name,role,password) in enumerate([('Viteka','SuperAdministrator','jupiter'),('F. titular','Administrator','1234'),('usuario','User','0000')],1)]
-  self.current=None;self.calls=[];self.prefs={};self.nix=dict(configured=False,saved=False,dsn='NIXFARMA',user='',dsnAvailable=True);self.probe_fail=False
+  self.current=None;self.calls=[];self.prefs={};self.nix=dict(configured=False,saved=False,dsn='NIXFARMA',user='',dsnAvailable=True);self.probe_fail=False;self.pharmacy=None;self.tenencia_ready=False;self.stock_error=False;self.tenencia_queries=0
  def view(self,u):
   if u is None:return None
   ready=not u['mustChangePassword'];admin=u['role'] in ('Administrator','SuperAdministrator')
@@ -38,10 +38,10 @@ class AuthorityFixture:
   role=self.current['role'];admin=role!='User';superadmin=role=='SuperAdministrator'
   if cmd.startswith('settings.'):
    prop={'start':'openFavorites','sidebar':'sidebarCollapsed','theme':'theme'}[cmd.split('.')[1]];pref[prop]=next(iter(d.values()));return {}
-  if cmd=='utilities.list':return dict(utilities=[])
+  if cmd=='utilities.list':return dict(utilities=[dict(id='tenencia-obligatoria',name='Tenencia obligatoria',description='Comprueba las existencias mínimas del listado de tu provincia.')] if admin or 'tenencia-obligatoria' in self.current['utilityIds'] else [])
   if cmd=='users.list':
    if not admin:deny()
-   return dict(users=[self.view(u) for u in self.accounts],utilities=[dict(id='fixture-a',name='Aplicación de prueba A'),dict(id='fixture-b',name='Aplicación de prueba B')])
+   return dict(users=[self.view(u) for u in self.accounts],utilities=[dict(id='tenencia-obligatoria',name='Tenencia obligatoria'),dict(id='fixture-a',name='Aplicación de prueba A'),dict(id='fixture-b',name='Aplicación de prueba B')])
   if cmd.startswith('users.'):
    target=next((u for u in self.accounts if u['id']==d.get('id')),None)
    if not admin or target and target['role']!='User' and not superadmin:deny()
@@ -50,6 +50,23 @@ class AuthorityFixture:
     self.accounts.append(dict(id=f'{len(self.accounts)+1:032x}',name=d['name'],role=d['role'],active=True,mustChangePassword=True,utilityIds=d['utilityIds'],password=d['password']));return {}
    if cmd=='users.modify':target.update(name=d['name'],role=d['role'],active=d['active'],utilityIds=d['utilityIds']);return self.state()
    if cmd=='users.password':target.update(password=d['password'],mustChangePassword=True);return {}
+  if cmd.startswith('pharmacy.'):
+   if not admin:deny()
+   if cmd=='pharmacy.save':self.pharmacy=copy.deepcopy(d)
+   return dict(profile=copy.deepcopy(self.pharmacy),provinces=[dict(code='29',name='Málaga'),dict(code='28',name='Madrid')])
+  if cmd.startswith('tenencia.'):
+   if cmd=='tenencia.schema':
+    if not superadmin:deny()
+    return dict(code='schema_verified',message='Estructura verificada: ARTICULOS y EXISTENCIAS; columna de stock ACTUAL.')
+   if not admin and 'tenencia-obligatoria' not in self.current['utilityIds']:deny()
+   if self.pharmacy is None:return dict(code='pharmacy_pending',message='El titular o Viteka deben guardar la provincia en Datos de la farmacia.',province='')
+   if not self.tenencia_ready:return dict(code='catalog_pending',message='Lista de tenencia pendiente para Málaga. No se ha evaluado el cumplimiento.',province='29',provinceName='Málaga')
+   response=dict(code='ready',message='Lista disponible. Pulsa Consultar para leer las existencias actuales.',province=self.pharmacy['province'],provinceName='Málaga',listVersion='Fixture de pruebas',source='Datos ficticios exclusivos del smoke UI')
+   if cmd=='tenencia.query':
+    self.tenencia_queries+=1
+    if self.stock_error:return dict(**{**response,'code':'network','message':'No se alcanza el servicio Oracle.'})
+    response.update(code='ok',message='Consulta de solo lectura completada.',checkedAt='2026-10-28T12:00:00Z',rows=[dict(id='a',name='Grupo ficticio A',minimum=3,stock=1,missing=2,status='shortfall',articles=[dict(code='650001',description='Artículo ficticio',stock=1)]),dict(id='b',name='Grupo ficticio B',minimum=1,stock=None,missing=None,status='unresolved',articles=[dict(code='650002',description='Artículo desconocido',stock=None,issue='ambiguous_stock')]),dict(id='c',name='Grupo ficticio C',minimum=1,stock=2,missing=0,status='covered',articles=[dict(code='650003',description='Artículo suficiente',stock=2)])])
+   return response
   if cmd.startswith('nixfarma.'):
    if not superadmin:deny()
    assert not d,'Oracle credentials/SQL must not travel through the web bridge'
@@ -125,6 +142,14 @@ with sync_playwright() as p:
  page.get_by_role('dialog').get_by_role('group').count() if False else None
  page.get_by_role('dialog').locator('summary').click();assert '<script>' in page.get_by_role('dialog').locator('pre').inner_text();assert page.evaluate('window.historyScriptRan===undefined')
  page.keyboard.press('Escape');page.get_by_role('dialog').wait_for(state='hidden')
+ go('Aplicaciones');page.get_by_role('button',name='Tenencia obligatoria',exact=False).click();page.get_by_role('heading',name='Tenencia obligatoria',exact=True).wait_for();page.get_by_text('El titular o Viteka deben guardar la provincia en Datos de la farmacia.',exact=True).wait_for();assert fixture.tenencia_queries==0
+ go('Configuración');page.locator('.setting-row').filter(has=page.get_by_text('Datos de la farmacia',exact=True)).click();pharmacy=page.get_by_role('dialog',name='Datos de la farmacia',exact=True);pharmacy.get_by_label('Nombre de la farmacia',exact=True).fill('Farmacia ficticia');pharmacy.get_by_label('Provincia',exact=True).select_option('29');pharmacy.get_by_label('Localidad',exact=True).fill('Málaga');pharmacy.get_by_label('Correo electrónico',exact=True).fill('fixture@example.test');pharmacy.get_by_role('button',name='Guardar datos',exact=True).click();pharmacy.get_by_text('Datos guardados para toda la farmacia. La próxima consulta utilizará esta provincia.',exact=True).wait_for();page.screenshot(path=str(artifacts/'angular-pharmacy.png'),full_page=True);page.keyboard.press('Escape');pharmacy.wait_for(state='hidden')
+ go('Aplicaciones');page.get_by_role('button',name='Tenencia obligatoria',exact=False).click();page.get_by_text('Lista de tenencia pendiente para Málaga. No se ha evaluado el cumplimiento.',exact=True).wait_for();expect(page.get_by_role('button',name='Consultar existencias',exact=True)).to_be_disabled();assert page.locator('table').count()==0
+ fixture.tenencia_ready=True;page.get_by_role('button',name='Revisar disponibilidad',exact=True).click();expect(page.get_by_role('button',name='Consultar existencias',exact=True)).to_be_enabled();assert fixture.tenencia_queries==0
+ page.get_by_role('button',name='Consultar existencias',exact=True).click();page.get_by_role('button',name='Ver detalle de Grupo ficticio A',exact=True).wait_for();assert fixture.tenencia_queries==1;page.screenshot(path=str(artifacts/'angular-tenencia.png'),full_page=True)
+ page.get_by_role('button',name='Ver detalle de Grupo ficticio B',exact=True).click();page.get_by_role('dialog',name='Detalle de tenencia',exact=True).get_by_text('Varias filas de existencias: hay que concretar el almacén.',exact=True).wait_for();page.keyboard.press('Escape');expect(page.get_by_role('dialog')).to_have_count(0)
+ page.get_by_label('Estado',exact=True).select_option('shortfall');expect(page.locator('.tenencia-table tbody tr')).to_have_count(1);page.get_by_label('Buscar grupo, artículo o CN',exact=True).fill('650099');page.get_by_text('No hay grupos que coincidan con estos filtros.',exact=True).wait_for();page.get_by_label('Buscar grupo, artículo o CN',exact=True).fill('');page.get_by_label('Estado',exact=True).select_option('all')
+ fixture.stock_error=True;page.get_by_role('button',name='Consultar existencias',exact=True).click();page.get_by_text('No se alcanza el servicio Oracle.',exact=True).wait_for();assert page.locator('table').count()==0;fixture.stock_error=False
  go('Usuarios');page.get_by_role('button',name='Crear usuario',exact=True).click();editor=page.get_by_role('dialog',name='Editar cuenta y permisos',exact=True)
  editor.get_by_label('Nombre de usuario',exact=True).fill('Personal');editor.get_by_label('Contraseña inicial',exact=True).fill('FixtureStaffPass1');editor.get_by_label('Repetir contraseña inicial',exact=True).fill('FixtureStaffPass1');editor.get_by_label('Aplicación de prueba A',exact=True).check();editor.get_by_role('button',name='Guardar cuenta',exact=True).click();editor.wait_for(state='hidden');page.get_by_role('button',name='Editar Personal',exact=True).wait_for()
  page.screenshot(path=str(artifacts/'angular-users.png'),full_page=True)
@@ -142,6 +167,7 @@ with sync_playwright() as p:
  go('Configuración');assert page.locator('.setting-row').filter(has=page.get_by_text('Conexión a NixFarma',exact=True)).count()==0
  assert page.locator('.setting-row').filter(has=page.get_by_text('Auditoría',exact=True)).count()==0
  go('Aplicaciones');page.get_by_role('heading',name='No hay aplicaciones disponibles para tu cuenta',exact=True).wait_for()
+ fixture.current['utilityIds']=['tenencia-obligatoria'];page.reload();go('Aplicaciones');page.get_by_role('button',name='Tenencia obligatoria',exact=False).click();page.get_by_role('heading',name='Tenencia obligatoria',exact=True).wait_for()
  go('Actualizaciones');assert page.get_by_role('button',name='Descargar e instalar',exact=True).count()==0;page.get_by_text('El titular o Viteka pueden ejecutar esta actualización desde el servidor de la farmacia.',exact=True).wait_for()
  go('Mi cuenta');page.locator('.setting-row').filter(has=page.get_by_text('Cambiar mi contraseña',exact=True)).click();page.get_by_label('Contraseña actual',exact=True).fill('FixtureUserPass1');page.get_by_label('Nueva contraseña',exact=True).fill('abc');page.get_by_label('Repetir nueva contraseña',exact=True).fill('abc');page.get_by_role('button',name='Cambiar mi contraseña',exact=True).click();page.get_by_text('Contraseña actualizada.',exact=True).wait_for()
  expect(page.get_by_role('dialog')).to_have_count(0)
@@ -152,4 +178,4 @@ with sync_playwright() as p:
  assert not errors,errors
  browser.close()
 server.shutdown()
-print('PASS: login and first-password change; role navigation; per-user preferences; hidden Oracle configuration; connection messages; users and grants editor; administrator restrictions; update tab and history; escaped release notes; own-password change; compact layout; no JS errors.')
+print('PASS: shared pharmacy profile; provincial catalog pending; explicit tenencia query; results, filters and detail; stale results cleared on error; utility access grant; login and first-password change; role navigation; per-user preferences; hidden Oracle configuration; connection messages; users and grants editor; administrator restrictions; update tab and history; escaped release notes; own-password change; compact layout; no JS errors.')

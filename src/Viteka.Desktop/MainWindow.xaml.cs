@@ -153,7 +153,14 @@ public partial class MainWindow : Window
             if(JsonSerializer.Serialize(state).Contains(secret)||legacy.Exists)throw new InvalidOperationException("Protected migration failed.");
             var result=await Access.OracleAsync("test");
             if(result.GetProperty("success").GetBoolean()||result.GetProperty("code").GetString()!="dsn_missing")throw new InvalidOperationException("Service ODBC missing-DSN diagnostic failed.");
+            var schemaProbe=await Access.UtilityAsync("tenencia.schema");
+            if(schemaProbe.GetProperty("code").GetString()!="dsn_missing")throw new InvalidOperationException("Tenencia schema probe must diagnose the missing DSN.");
             await Access.OracleAsync("forget");
+            stage="pharmacy-profile";
+            var savedPharmacy=await Access.UtilityAsync("pharmacy.save",JsonSerializer.SerializeToElement(new{name="Farmacia de prueba",province="29",town="Málaga",email="fixture@example.test",phone="",address="",postcode="29001"}));
+            if(savedPharmacy.GetProperty("profile").GetProperty("province").GetString()!="29")throw new InvalidOperationException("Central pharmacy profile failed.");
+            var pendingTenencia=await Access.UtilityAsync("tenencia.query");
+            if(pendingTenencia.GetProperty("code").GetString()!="catalog_pending")throw new InvalidOperationException("No provincial list must mean no compliance evaluation.");
             stage="sidebar";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
             await WaitForScript("document.querySelector('.layout')?.classList.contains('collapsed') === true");
@@ -176,6 +183,11 @@ public partial class MainWindow : Window
             await WaitForScript("document.querySelector('h1')?.textContent === 'Configuración'");
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Usuarios').click()");
             await WaitForScript("document.querySelector('h1')?.textContent === 'Usuarios'");
+            stage="tenencia-navigation";
+            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Aplicaciones').click()");
+            await WaitForScript("document.querySelector('h1')?.textContent === 'Aplicaciones'");
+            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.resource')].find(b=>b.querySelector('strong')?.textContent==='Tenencia obligatoria').click()");
+            await WaitForScript("document.querySelector('h1')?.textContent === 'Tenencia obligatoria' && document.querySelector('viteka-tenencia')?.textContent.includes('Lista de tenencia pendiente para Málaga') === true");
             stage="preference";
             await OpenAccountSmoke();
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Pantalla al iniciar').click()");
@@ -195,12 +207,18 @@ public partial class MainWindow : Window
             await LoginSmoke("usuario","0000","SmokeUserPassword1");
             await WaitForScript("![...document.querySelectorAll('nav button')].some(b=>b.textContent.includes('Usuarios')||b.textContent.includes('Mi cuenta'))");
             await DeniedSmoke("nixfarma.status");await DeniedSmoke("update.install");
+            await DeniedSmoke("tenencia.query");await DeniedSmoke("tenencia.schema");await DeniedSmoke("pharmacy.state");
+            foreach(var action in new[]{"tenencia.query","tenencia.schema","pharmacy.state"}){
+                try{await Access.UtilityAsync(action);throw new InvalidOperationException("Service accepted a forbidden utility action.");}catch(AccessDeniedException){}
+            }
             await DeniedSmoke("users.create",new{name="forbidden",role="SuperAdministrator",password="SmokeForbiddenPassword1",utilityIds=Array.Empty<string>()});
             stage="administrator-guards";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"Cerrar sesión\"]').click()");
             await LoginSmoke("F. titular","1234","SmokeAdminPassword1");
             await WaitForScript("[...document.querySelectorAll('nav button')].some(b=>b.textContent.includes('Configuración'))");
             await DeniedSmoke("nixfarma.status");await DeniedSmoke("users.password",new{id=superId,password="SmokeForbiddenPassword1"});
+            var sharedPharmacy=await Access.UtilityAsync("pharmacy.state");if(sharedPharmacy.GetProperty("profile").GetProperty("province").GetString()!="29")throw new InvalidOperationException("Pharmacy profile must be shared across accounts.");
+            try{await Access.UtilityAsync("tenencia.schema");throw new InvalidOperationException("Titular must not inspect technical metadata.");}catch(AccessDeniedException){}
             FinishSmoke(true,"complete");
         }
         catch(Exception error)
@@ -268,6 +286,12 @@ public partial class MainWindow : Window
             }
             AccessUserView? actor = null;
             if (command is not ("app.state" or "window.appearance" or "window.zoom")) actor = await Access.RequireUserAsync();
+            if(command is "pharmacy.state" or "pharmacy.save" or "tenencia.state" or "tenencia.query" or "tenencia.schema")
+            {
+                if(actor is null)throw new AccessSessionException();
+                if(command.StartsWith("pharmacy.",StringComparison.Ordinal)&&!AccessPolicy.CanManageUsers(actor)||command=="tenencia.schema"&&!AccessPolicy.CanConfigure(actor)||command is "tenencia.state" or "tenencia.query"&&!AccessPolicy.CanUse(actor,Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items))throw new AccessDeniedException();
+                Reply(id,await Access.UtilityAsync(command,root.TryGetProperty("payload",out var payload)?payload:null));return;
+            }
             switch (command)
             {
                 case "nixfarma.status":

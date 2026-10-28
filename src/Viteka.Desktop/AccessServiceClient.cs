@@ -53,12 +53,17 @@ internal sealed class AccessServiceClient : IDisposable
         if (action is not ("state" or "configure" or "forget" or "test")) throw new ArgumentException();
         return RequestAsync(HttpMethod.Post, "access/oracle/" + action, JsonSerializer.SerializeToElement(payload ?? new { }));
     }
+    internal Task<JsonElement> UtilityAsync(string command, JsonElement? payload=null)
+    {
+        var path=command switch{"pharmacy.state"=>"access/pharmacy/state","pharmacy.save"=>"access/pharmacy/save","tenencia.state"=>"access/tenencia/state","tenencia.query"=>"access/tenencia/query","tenencia.schema"=>"access/tenencia/schema",_=>throw new AccessDeniedException()};
+        return RequestAsync(HttpMethod.Post,path,payload??JsonSerializer.SerializeToElement(new{}));
+    }
     private async Task<JsonElement> RequestAsync(HttpMethod method, string path, JsonElement? body = null)
     {
         using var request = new HttpRequestMessage(method, path);
         if (token is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         if (body is not null) request.Content = JsonContent.Create(body.Value);
-        using var timeout = new CancellationTokenSource(path == "access/oracle/test" ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20));
+        using var timeout = new CancellationTokenSource((path == "access/oracle/test" || path.StartsWith("access/tenencia/",StringComparison.Ordinal)) ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20));
         using var response = await trust.Client.SendAsync(request, timeout.Token);
         if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new AccessDeniedException("Demasiados intentos. Espera un minuto antes de volver a intentarlo.");
         if (response.StatusCode == HttpStatusCode.Unauthorized) { token = null; throw new AccessSessionException(); }

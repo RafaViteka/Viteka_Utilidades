@@ -50,6 +50,32 @@ internal sealed class OracleService(string directory)
         }
         finally { gate.Release(); }
     }
+    internal async Task<Viteka.Contracts.TenenciaResponse> TenenciaAsync(string province, Viteka.Contracts.TenenciaList? list, bool inspectOnly, CancellationToken ct)
+    {
+        if(tester.IsRunning || !await gate.WaitAsync(0,ct))return new("busy","Hay una operación Oracle en curso.",province);
+        var operation=Task.Run(()=>{
+            using var deadline=CancellationTokenSource.CreateLinkedTokenSource(ct);deadline.CancelAfter(TimeSpan.FromSeconds(28));
+            try{
+                if(!OperatingSystem.IsWindows())return new Viteka.Contracts.TenenciaResponse("driver","Se requiere Windows.",province);
+                var profile=Read();if(profile is null)return new("not_configured","Configura primero la conexión a NixFarma.",province);
+                var builder=new System.Data.Odbc.OdbcConnectionStringBuilder{Dsn=profile.Dsn};builder["UID"]=profile.User;builder["PWD"]=profile.Password;
+                using var connection=new System.Data.Odbc.OdbcConnection(builder.ConnectionString);
+                return Viteka.Core.TenenciaStockQuery.ReadOnly(connection,tx=>{
+                    deadline.Token.ThrowIfCancellationRequested();var schema=Viteka.Core.TenenciaStockQuery.Inspect(connection,tx);
+                    if(inspectOnly)return new Viteka.Contracts.TenenciaResponse("schema_verified","Estructura verificada: ARTICULOS y EXISTENCIAS; columna de stock "+schema.Stock+". No se han leído existencias.",province);
+                    if(list is null)throw new InvalidOperationException();
+                    var stocks=Viteka.Core.TenenciaStockQuery.Read(connection,tx,schema,list.Groups.SelectMany(g=>g.Codes).Distinct().ToArray(),deadline.Token);
+                    return new Viteka.Contracts.TenenciaResponse("ok","Consulta de solo lectura completada.",province,list.Version,list.Source,DateTimeOffset.UtcNow,Viteka.Core.TenenciaRules.Evaluate(list,stocks));
+                });
+            }catch(OperationCanceledException){return new("timeout","La lectura se ha cancelado o ha agotado el tiempo disponible.",province);}
+            catch(System.Data.Odbc.OdbcException error){
+                if(!OperatingSystem.IsWindows())throw;var result=NixFarmaConnectionTester.Classify(error);return new Viteka.Contracts.TenenciaResponse(result.Code,result.Message,province);
+            }catch(InvalidDataException error){return new("schema_or_data",error.Message.Length>0?error.Message:"No se reconoce la estructura o los datos. Viteka debe revisarlos.",province);}
+            catch(Exception error) when(error is InvalidOperationException or ArgumentException or DllNotFoundException or BadImageFormatException or NotSupportedException or FormatException or OverflowException or InvalidCastException){return new("driver_or_data","No se pudo completar la lectura. Revisa el controlador, las tablas y los datos con Viteka.",province);}
+            finally{gate.Release();}
+        });
+        try{return await operation.WaitAsync(TimeSpan.FromSeconds(30),ct);}catch(TimeoutException){return new("timeout","El controlador no respondió en 30 segundos. Espera a que termine antes de repetir.",province);}
+    }
     private object State(OracleProfile? profile)
     {
         bool available = false;

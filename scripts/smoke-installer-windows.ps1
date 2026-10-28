@@ -23,10 +23,12 @@ try{
     Run-Owned -Exe (Join-Path $install 'Cliente/Viteka.Desktop.exe') -Arguments @('--smoke-ui') -Seconds 90
     $report=Get-Content $env:VITEKA_UI_SMOKE_REPORT -Raw|ConvertFrom-Json
     if(-not $report.passed){throw "Installed native checks failed: $($report.stage) $($report.error)"}
+    $profileHash=(Get-FileHash (Join-Path $state 'Private/pharmacy.dat') -Algorithm SHA256).Hash
     $before=(Get-FileHash (Join-Path $state 'Private/access.dat') -Algorithm SHA256).Hash
     Run-Owned -Exe $setup -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$install+'"'),('/LOG="'+(Join-Path $directory 'upgrade.log')+'"'))
     if((Get-FileHash (Join-Path $state 'Private/access.dat') -Algorithm SHA256).Hash -ne $before){throw 'Installer upgrade changed the user authority.'}
     Run-Owned -Exe $server -Arguments @('--access-health',('"'+(Join-Path $install 'Cliente/access-server.json')+'"')) -Seconds 10
+    if((Get-FileHash (Join-Path $state 'Private/pharmacy.dat') -Algorithm SHA256).Hash -ne $profileHash){throw 'Installer upgrade changed the pharmacy profile.'}
     Write-Output 'PASS: actual installer, installed native client with role guards, in-place upgrade and account preservation.'
 } catch {
     Get-Content (Join-Path $directory '*.log') -Tail 15 -ErrorAction SilentlyContinue

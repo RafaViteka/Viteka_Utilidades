@@ -1,0 +1,1 @@
+Listas provinciales revisadas por Viteka, código INE NN.json. No se distribuye ninguna lista hasta extraer y verificar los grupos, códigos y unidades de la referencia aportada por el usuario. Consulte docs/existencias-minimas.md.

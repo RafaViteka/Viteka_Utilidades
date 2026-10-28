@@ -1,9 +1,11 @@
-Organización de Configuración:
+Primera utilidad: Tenencia obligatoria, con el diseño de Viteka y organización por filtros, tabla y detalle.
 
-- Auditoría dentro de Configuración para titular y Viteka; se retira Actividad del menú principal.
-- La pantalla refleja que todavía no hay registro de operaciones implementado; no se generan eventos ficticios.
-- Se conservan Mi cuenta, Usuarios y Actualizaciones dentro de Configuración y la conexión técnica solo para Viteka.
+- Datos de la farmacia en Configuración: nombre, provincia, localidad, correo y contacto, compartidos para todos los puestos. Editables por titular/Viteka.
+- Permiso específico para Tenencia obligatoria en Usuarios.
+- Lector de ARTICULOS/EXISTENCIAS en el servidor, con transacción de solo lectura, parámetros y diagnóstico de columnas ACTUAL/STOCK ACTUAL.
+- Comprobar tablas de tenencia, solo Viteka, dentro de Conexión a NixFarma.
+- Auditoría dentro de Configuración. El registro persistente de operaciones sigue pendiente.
 
-La primera utilidad solicitada es Consulta de existencias mínimas. Su integración queda pendiente de revisar el vídeo de referencia (el adjunto supera el límite de descarga del entorno), concretar el criterio y verificar el esquema de NixFarma. Esta entrega no añade consultas ni una aplicación funcional de existencias.
+IMPORTANTE: no se distribuye todavía la lista de Málaga ni otras listas provinciales. El vídeo de referencia supera el límite de descarga del entorno; faltan sus códigos, grupos y mínimos. Se muestra Lista pendiente y no se evalúa el cumplimiento hasta incorporar una lista revisada. No se incluyen artículos ni resultados ficticios en la app.
 
-Actualizar encima desde el servidor, sin desinstalar, cerrando antes los clientes compartidos. Se conservan cuentas, permisos y conexión.
+Actualizar encima desde el servidor, sin desinstalar, cerrando antes los clientes compartidos. Se conservan cuentas, permisos, datos de farmacia y conexión. La estructura y el stock reales deben comprobarse allí.

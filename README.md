@@ -1,4 +1,4 @@
-# Viteka Utilidades · Centro de accesos 0.12.3
+# Viteka Utilidades · Centro de accesos 0.13.0
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
@@ -34,7 +34,7 @@ bash scripts/setup-cloud.sh
 python scripts/smoke-ui.py
 ```
 
-El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 55 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 63 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
 
 Para editar la interfaz en navegador:
 
@@ -69,3 +69,5 @@ La ventana se ajusta al área útil de su monitor y respeta la barra de tareas a
 Ctrl + rueda aumenta/reduce el contenido; la rueda normal desplaza la página. La barra nativa muestra porcentaje y botones − / 100 % / + fuera del área escalada. Ctrl + 0 vuelve al 100 %. Rango 50–200 %, guardado por usuario. Se actualiza desde Configuración sin desinstalar. Las pruebas Windows comprueban iconos Win32, área útil y rueda de ratón con Ctrl mediante entrada real de prueba.
 
 La propuesta para diseñar e implementar la primera utilidad está en [docs/primera-aplicacion.md](docs/primera-aplicacion.md); pendiente de concretar su objetivo con el usuario.
+
+Tenencia obligatoria y datos de farmacia: [docs/existencias-minimas.md](docs/existencias-minimas.md). La lista provincial sigue pendiente de recibir el vídeo reducido o capturas; no se evalúa cumplimiento sin ella.
