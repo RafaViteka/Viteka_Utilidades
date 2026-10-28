@@ -1,4 +1,4 @@
-# Viteka Utilidades · Centro de accesos 0.13.1
+# Viteka Utilidades · Centro de accesos 0.13.2
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
@@ -14,7 +14,7 @@ Actualizaciones tiene una pantalla propia dentro de Configuración: búsqueda ca
 - Inicio con portal de soporte, AnyDesk local, manuales, formación, web y contactos.
 - Menú lateral plegable, logotipo inferior sin eslogan y apariencia clara/oscura/automática persistente.
 - Isotipo bicolor transparente original en ventana, ejecutable e instalador.
-- Aplicaciones incluye Tenencia obligatoria:83 grupos de Málaga del Excel, asociaciones por ATC y lectura de stock de NixFarma. Favoritos y Auditoría conservan estados vacíos.
+- Aplicaciones incluye Tenencia obligatoria:83 grupos de Málaga del Excel, 2.089 asociaciones explícitas por CN de los vídeos y lectura de stock de NixFarma. Favoritos y Auditoría conservan estados vacíos.
 - Preferencias locales por usuario, conservadas entre versiones.
 - Canal de pruebas GitHub: búsqueda, descarga verificada y apertura del instalador con confirmación/UAC.
 - Instalador x64 autocontenido para .NET, con bootstrapper de WebView2 verificado como Microsoft. Si falta el runtime, su instalación inicial puede requerir internet.
@@ -34,7 +34,7 @@ bash scripts/setup-cloud.sh
 python scripts/smoke-ui.py
 ```
 
-El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 69 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 72 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
 
 Para editar la interfaz en navegador:
 
@@ -72,6 +72,4 @@ La propuesta histórica de módulos está en [docs/primera-aplicacion.md](docs/p
 
 Tenencia obligatoria y datos de farmacia: [docs/existencias-minimas.md](docs/existencias-minimas.md). Málaga dispone de83 grupos del Excel del usuario. Las demás provincias no usan esa lista por defecto.
 
-La interfaz muestra todos los grupos a la izquierda y sus coincidencias a la derecha. El catálogo se ve antes de consultar stock. El vídeo recortado permitirá completar las condiciones que el ATC por sí solo no acredita.
-
-Lista de Málaga incorporada desde el Excel del usuario:83 grupos. La consulta busca asociaciones por ATC en NixFarma. Vías/dosis/tamaños y clasificaciones sanitarias pendientes quedan marcadas para revisión; no se acredita cumplimiento por una suma ATC incorrecta. Ver docs/existencias-minimas.md y data/tenencia.
+La interfaz muestra los 83 grupos a la izquierda y los medicamentos asociados a la derecha, antes de consultar stock. Las dos referencias en vídeo incorporan 2.089 asociaciones (2.087 CN distintos), incluidos los productos sanitarios. La bolsa pediátrica requiere 2 unidades según el vídeo. Se mantienen pendientes las condiciones de dosis/tamaño de fentanilo y Foley y una asociación de Valium inyectable en el grupo de microenemas. Ver [fuentes y reglas](docs/existencias-minimas.md).

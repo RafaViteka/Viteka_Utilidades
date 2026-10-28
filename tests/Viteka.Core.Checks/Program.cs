@@ -321,10 +321,28 @@ try
     });
     Check("The supplied Malaga Excel preserves all83 groups minima duplicate ATCs and source rows",()=>{
         var path=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../../src/Viteka.Server/Catalogs/tenencia"));var list=TenenciaRules.Load(path,"29")??throw new Exception("Missing Excel catalogue");
-        Require(list.Groups.Length==83&&list.Groups.Sum(g=>g.Minimum)==180&&list.Groups.Select(g=>g.Id).Distinct().Count()==83);
-        Require(list.Groups.Count(g=>g.AtcPrefix is not null)==75&&list.Groups.Count(g=>g.ClassificationCode is not null)==7&&list.Groups.SelectMany(g=>g.Codes).Single()=="123299");
-        Require(list.Groups.Count(g=>g.AtcPrefix=="C01AA05")==2&&list.Groups.Single(g=>g.SourceRow==53).RequiresReview&&list.Groups.Single(g=>g.SourceRow==84).Minimum==4&&list.Groups.Single(g=>g.SourceRow==84).RequiresReview);
+        Require(list.Groups.Length==83&&list.Groups.Sum(g=>g.Minimum)==178&&list.Groups.Select(g=>g.Id).Distinct().Count()==83);
+        Require(list.Groups.Count(g=>g.AtcPrefix is not null)==75&&list.Groups.Count(g=>g.ClassificationCode is not null)==7&&list.Groups.SelectMany(g=>g.Codes).Count()==2089&&list.Groups.SelectMany(g=>g.Codes).Distinct().Count()==2087);
+        Require(list.Groups.Count(g=>g.AtcPrefix=="C01AA05")==2&&list.Groups.Single(g=>g.SourceRow==53).RequiresReview&&list.Groups.Single(g=>g.SourceRow==84).Minimum==2&&!list.Groups.Single(g=>g.SourceRow==84).RequiresReview);
         Require(TenenciaRules.Preview(list).Length==83&&TenenciaRules.Preview(list).All(r=>r.Stock is null));
+    });
+    Check("Video associations preserve explicit routes sanitary products and all first highlighted rows",()=>{
+        var path=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../../src/Viteka.Server/Catalogs/tenencia"));var list=TenenciaRules.Load(path,"29")!;
+        Require(list.Groups.All(g=>g.Codes.Length>0&&g.Descriptions?.Count==g.Codes.Length));
+        var bag=list.Groups.Single(g=>g.SourceRow==84);Require(bag.Codes.Order().SequenceEqual(new[]{"165727","205500","337261"}));
+        var knife=list.Groups.Single(g=>g.SourceRow==80);Require(knife.Codes.Length==18&&knife.Codes.Contains("175550")&&!knife.Codes.Contains("123299"));
+        Require(list.Groups.Single(g=>g.SourceRow==33).Codes.Single()=="971523"&&list.Groups.Single(g=>g.SourceRow==59).Codes.Single()=="653109");
+        Require(list.Groups.Single(g=>g.SourceRow==53).Codes.Length==30&&!list.Groups.Single(g=>g.SourceRow==53).Codes.Contains("680610")&&list.Groups.Single(g=>g.SourceRow==53).Codes.Contains("679740"));
+    });
+    Check("All video groups use their fixed references without broadening through ATC",()=>{
+        var path=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../../src/Viteka.Server/Catalogs/tenencia"));var list=TenenciaRules.Load(path,"29")!;
+        using var c=new TenenciaFixture{AtcColumn="ATC"};TenenciaStockQuery.ReadOnly(c,tx=>{var resolution=TenenciaArticleResolver.Resolve(c,tx,TenenciaStockQuery.Inspect(c,tx),list,CancellationToken.None);Require(resolution.Groups.Count==83&&resolution.Groups.Values.Sum(v=>v.Length)==2089&&!c.Steps.Any(s=>s.Contains("LIKE ?")));return true;});
+    });
+    Check("Per-dose per-size and inconsistent rectal associations remain reviewable",()=>{
+        var path=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../../src/Viteka.Server/Catalogs/tenencia"));var list=TenenciaRules.Load(path,"29")!;
+        Require(list.Groups.Where(g=>g.RequiresReview).Select(g=>g.SourceRow!.Value).Order().SequenceEqual(new[]{53,61,83}));
+        var rectal=list.Groups.Single(g=>g.SourceRow==61);Require(rectal.Codes.Contains("718796")&&rectal.SelectionNote!.Contains("ampollas"));
+        var stocks=list.Groups.SelectMany(g=>g.Codes).Distinct().ToDictionary(c=>c,c=>new Viteka.Contracts.StockArticle(c,"Fixture",99));var result=TenenciaRules.Evaluate(list,stocks);Require(result.Single(r=>r.SourceRow==61).Status=="unresolved"&&result.Single(r=>r.SourceRow==84).Status=="covered");
     });
     var atcList=tenenciaList with{Groups=[new("a","ATC A",3,[]){AtcPrefix="A01AB"},new("b","ATC B",2,[]){AtcPrefix="A02B"},new("c","Producto sanitario",4,[]){ClassificationCode="M02BC",RequiresReview=true}]};
     Check("ATC prefixes resolve exact code associations using parameters without mixing sanitary codes",()=>{

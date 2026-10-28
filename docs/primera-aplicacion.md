@@ -47,6 +47,6 @@ Consulta de existencias mínimas, con referencia Unycop y estilo NixFarma/Viteka
 
 Tenencia obligatoria ya tiene módulo Angular, contratos, permiso por utilidad, lector parametrizado de solo lectura y datos centrales de farmacia/provincia. No se distribuye lista provincial hasta recibir la referencia reducida o capturas y revisar los códigos/grupos/mínimos. El catálogo de acceso ya incluye la aplicación; no confundir lista provincial pendiente con catálogo de aplicaciones vacío. Ver [existencias-minimas.md](existencias-minimas.md).
 
-## Catálogo incorporado · 0.13.1
+## Catálogo incorporado · 0.13.2
 
-Excel recibido:83 grupos de Málaga,75 selectores ATC,7 clasificaciones sanitarias yCN123299. Se incorporan todos los grupos y la búsqueda de coincidencias ATC; el vídeo recortado cerrará asociaciones de vía/dosis/tamaño y la diferencia del mínimo de bolsa pediátrica. Estado vigente en existencias-minimas.md.
+Excel y dos vídeos reducidos recibidos y revisados: 83 grupos de Málaga y 2.089 asociaciones explícitas por CN. Los párrafos anteriores describen la propuesta histórica; el estado vigente, las fuentes y las tres condiciones pendientes están en [existencias-minimas.md](existencias-minimas.md).

@@ -1,0 +1,855 @@
+{
+  "schema": 1,
+  "clips": [
+    {
+      "id": "v3",
+      "fileName": "Diseño sin título (3).mp4",
+      "sha256": "5de797d6f84f46bb1691c0c329d85fa5c30636fc7ba59daf5d7e7df1768f7d56"
+    },
+    {
+      "id": "v4",
+      "fileName": "Diseño sin título (4).mp4",
+      "sha256": "38ccd292a15fedf492357a69b05eb5bd2fd26b448c1db0aa897c6030081ba247"
+    }
+  ],
+  "groups": [
+    {
+      "sourceRow": 2,
+      "minimum": 2,
+      "codes": 41,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 3.5
+    },
+    {
+      "sourceRow": 3,
+      "minimum": 4,
+      "codes": 8,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 10.0
+    },
+    {
+      "sourceRow": 4,
+      "minimum": 4,
+      "codes": 178,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 12.0
+    },
+    {
+      "sourceRow": 5,
+      "minimum": 2,
+      "codes": 1,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 32.0
+    },
+    {
+      "sourceRow": 6,
+      "minimum": 1,
+      "codes": 4,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 34.0
+    },
+    {
+      "sourceRow": 7,
+      "minimum": 1,
+      "codes": 7,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 36.5
+    },
+    {
+      "sourceRow": 8,
+      "minimum": 2,
+      "codes": 6,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 39.5
+    },
+    {
+      "sourceRow": 9,
+      "minimum": 2,
+      "codes": 4,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 41.5
+    },
+    {
+      "sourceRow": 10,
+      "minimum": 2,
+      "codes": 19,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 44.5
+    },
+    {
+      "sourceRow": 11,
+      "minimum": 2,
+      "codes": 17,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 46.5
+    },
+    {
+      "sourceRow": 12,
+      "minimum": 2,
+      "codes": 4,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 48.5
+    },
+    {
+      "sourceRow": 13,
+      "minimum": 1,
+      "codes": 12,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 50.5
+    },
+    {
+      "sourceRow": 14,
+      "minimum": 1,
+      "codes": 27,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 51.5
+    },
+    {
+      "sourceRow": 15,
+      "minimum": 2,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 52.5
+    },
+    {
+      "sourceRow": 16,
+      "minimum": 3,
+      "codes": 16,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 54.5
+    },
+    {
+      "sourceRow": 17,
+      "minimum": 1,
+      "codes": 1,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 56.5
+    },
+    {
+      "sourceRow": 18,
+      "minimum": 1,
+      "codes": 3,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 58.5
+    },
+    {
+      "sourceRow": 19,
+      "minimum": 2,
+      "codes": 4,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 60.5
+    },
+    {
+      "sourceRow": 20,
+      "minimum": 2,
+      "codes": 3,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 63.5
+    },
+    {
+      "sourceRow": 21,
+      "minimum": 1,
+      "codes": 1,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 64.5
+    },
+    {
+      "sourceRow": 22,
+      "minimum": 1,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 67.5
+    },
+    {
+      "sourceRow": 23,
+      "minimum": 1,
+      "codes": 16,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 70.0
+    },
+    {
+      "sourceRow": 24,
+      "minimum": 2,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 71.0
+    },
+    {
+      "sourceRow": 25,
+      "minimum": 3,
+      "codes": 22,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 73.0
+    },
+    {
+      "sourceRow": 26,
+      "minimum": 1,
+      "codes": 1,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 74.0
+    },
+    {
+      "sourceRow": 27,
+      "minimum": 2,
+      "codes": 75,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 76.0
+    },
+    {
+      "sourceRow": 28,
+      "minimum": 1,
+      "codes": 67,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 78.0
+    },
+    {
+      "sourceRow": 29,
+      "minimum": 1,
+      "codes": 25,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 94.5
+    },
+    {
+      "sourceRow": 30,
+      "minimum": 2,
+      "codes": 3,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 96.0
+    },
+    {
+      "sourceRow": 31,
+      "minimum": 2,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 98.0
+    },
+    {
+      "sourceRow": 32,
+      "minimum": 2,
+      "codes": 20,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 100.0
+    },
+    {
+      "sourceRow": 33,
+      "minimum": 2,
+      "codes": 1,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 102.0
+    },
+    {
+      "sourceRow": 34,
+      "minimum": 3,
+      "codes": 249,
+      "status": "complete",
+      "clips": [
+        "v3",
+        "v4"
+      ],
+      "firstSeconds": 0.0
+    },
+    {
+      "sourceRow": 35,
+      "minimum": 3,
+      "codes": 15,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 9.5
+    },
+    {
+      "sourceRow": 36,
+      "minimum": 1,
+      "codes": 44,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 12.0
+    },
+    {
+      "sourceRow": 37,
+      "minimum": 1,
+      "codes": 10,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 22.0
+    },
+    {
+      "sourceRow": 38,
+      "minimum": 3,
+      "codes": 10,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 24.0
+    },
+    {
+      "sourceRow": 39,
+      "minimum": 1,
+      "codes": 1,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 26.5
+    },
+    {
+      "sourceRow": 40,
+      "minimum": 4,
+      "codes": 90,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 32.0
+    },
+    {
+      "sourceRow": 41,
+      "minimum": 4,
+      "codes": 3,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 40.5
+    },
+    {
+      "sourceRow": 42,
+      "minimum": 6,
+      "codes": 81,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 42.5
+    },
+    {
+      "sourceRow": 43,
+      "minimum": 2,
+      "codes": 97,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 53.5
+    },
+    {
+      "sourceRow": 44,
+      "minimum": 1,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 62.5
+    },
+    {
+      "sourceRow": 45,
+      "minimum": 1,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 64.5
+    },
+    {
+      "sourceRow": 46,
+      "minimum": 4,
+      "codes": 14,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 68.5
+    },
+    {
+      "sourceRow": 47,
+      "minimum": 2,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 70.0
+    },
+    {
+      "sourceRow": 48,
+      "minimum": 6,
+      "codes": 93,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 71.5
+    },
+    {
+      "sourceRow": 49,
+      "minimum": 3,
+      "codes": 35,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 80.5
+    },
+    {
+      "sourceRow": 50,
+      "minimum": 1,
+      "codes": 22,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 83.5
+    },
+    {
+      "sourceRow": 51,
+      "minimum": 1,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 85.5
+    },
+    {
+      "sourceRow": 52,
+      "minimum": 1,
+      "codes": 5,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 88.0
+    },
+    {
+      "sourceRow": 53,
+      "minimum": 1,
+      "codes": 30,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 90.0
+    },
+    {
+      "sourceRow": 54,
+      "minimum": 2,
+      "codes": 6,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 92.5
+    },
+    {
+      "sourceRow": 55,
+      "minimum": 6,
+      "codes": 29,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 94.0
+    },
+    {
+      "sourceRow": 56,
+      "minimum": 2,
+      "codes": 4,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 96.0
+    },
+    {
+      "sourceRow": 57,
+      "minimum": 6,
+      "codes": 128,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 98.0
+    },
+    {
+      "sourceRow": 58,
+      "minimum": 3,
+      "codes": 24,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 112.0
+    },
+    {
+      "sourceRow": 59,
+      "minimum": 1,
+      "codes": 1,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 114.0
+    },
+    {
+      "sourceRow": 60,
+      "minimum": 2,
+      "codes": 40,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 116.5
+    },
+    {
+      "sourceRow": 61,
+      "minimum": 1,
+      "codes": 3,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 122.0
+    },
+    {
+      "sourceRow": 62,
+      "minimum": 2,
+      "codes": 77,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 123.5
+    },
+    {
+      "sourceRow": 63,
+      "minimum": 1,
+      "codes": 27,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 131.0
+    },
+    {
+      "sourceRow": 64,
+      "minimum": 4,
+      "codes": 7,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 145.5
+    },
+    {
+      "sourceRow": 65,
+      "minimum": 2,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 147.0
+    },
+    {
+      "sourceRow": 66,
+      "minimum": 1,
+      "codes": 4,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 149.5
+    },
+    {
+      "sourceRow": 67,
+      "minimum": 1,
+      "codes": 26,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 151.5
+    },
+    {
+      "sourceRow": 68,
+      "minimum": 1,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 153.5
+    },
+    {
+      "sourceRow": 69,
+      "minimum": 1,
+      "codes": 29,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 155.5
+    },
+    {
+      "sourceRow": 70,
+      "minimum": 1,
+      "codes": 20,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 156.5
+    },
+    {
+      "sourceRow": 71,
+      "minimum": 1,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 158.5
+    },
+    {
+      "sourceRow": 72,
+      "minimum": 2,
+      "codes": 11,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 161.0
+    },
+    {
+      "sourceRow": 73,
+      "minimum": 2,
+      "codes": 6,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 163.0
+    },
+    {
+      "sourceRow": 74,
+      "minimum": 1,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 165.0
+    },
+    {
+      "sourceRow": 75,
+      "minimum": 1,
+      "codes": 2,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 166.5
+    },
+    {
+      "sourceRow": 76,
+      "minimum": 1,
+      "codes": 3,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 171.0
+    },
+    {
+      "sourceRow": 77,
+      "minimum": 4,
+      "codes": 9,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 104.0
+    },
+    {
+      "sourceRow": 78,
+      "minimum": 4,
+      "codes": 20,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 106.0
+    },
+    {
+      "sourceRow": 79,
+      "minimum": 4,
+      "codes": 27,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 20.0
+    },
+    {
+      "sourceRow": 80,
+      "minimum": 1,
+      "codes": 18,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 29.5
+    },
+    {
+      "sourceRow": 81,
+      "minimum": 6,
+      "codes": 16,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 65.5
+    },
+    {
+      "sourceRow": 82,
+      "minimum": 4,
+      "codes": 109,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 134.5
+    },
+    {
+      "sourceRow": 83,
+      "minimum": 1,
+      "codes": 31,
+      "status": "complete",
+      "clips": [
+        "v4"
+      ],
+      "firstSeconds": 168.5
+    },
+    {
+      "sourceRow": 84,
+      "minimum": 2,
+      "codes": 3,
+      "status": "complete",
+      "clips": [
+        "v3"
+      ],
+      "firstSeconds": 61.5
+    }
+  ],
+  "notes": [
+    "Tiempos aproximados de muestreo a2fps; fotograma identifica la imagen revisada.",
+    "Denominaciones parciales visibles en el vídeo; NixFarma aporta su denominación completa al consultar.",
+    "Solo se transcriben identidades, asociaciones y mínimos. No se importan stocks, precios ni información de la farmacia del vídeo.",
+    "Se revisaron las filas resaltadas en azul y alternativas de OCR contra el fotograma.",
+    "La referencia123299 del Excel no está en la lista derecha de bisturíes del vídeo. Se conserva en el CSV original, pero la asociación usa las18 referencias observadas."
+  ]
+}
