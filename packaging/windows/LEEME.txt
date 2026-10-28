@@ -1,4 +1,4 @@
-VITEKA UTILIDADES 0.12.1 - CANAL DE PRUEBAS
+VITEKA UTILIDADES 0.12.2 - CANAL DE PRUEBAS
 
 INSTALACION
 Instalar o actualizar en el servidor de NixFarma, sobre la version anterior.
@@ -37,7 +37,7 @@ HTTPS del servidor. El puerto 7447 solo se habilita para red local Privada/Domin
 Las preferencias de cada cuenta se conservan localmente, separadas entre usuarios.
 
 ACTUALIZACIONES
-Actualizaciones tiene pestana propia, fuera de Configuracion. Busca cada 24 horas
+Actualizaciones se encuentra dentro de Configuracion. Busca cada 24 horas
 con la app abierta o al siguiente arranque si queda pendiente. Mantiene el boton
 Buscar actualizaciones, el aviso y un historial de publicaciones y ejecuciones.
 Solo titular/Viteka y desde el servidor pueden iniciar el instalador, con confirmacion.

@@ -1,4 +1,4 @@
-# Usuarios compartidos y actualizaciones · 0.12.1
+# Usuarios compartidos y actualizaciones · 0.12.2
 
 La autoridad de usuarios reside en el servicio Windows `VitekaUtilidadesAccess` del servidor. Todos los puestos que utilicen su cliente y bootstrap comparten cuentas, roles y permisos; no hay registros de usuarios independientes por puesto ni se confía en el rol enviado por Angular.
 
@@ -50,7 +50,7 @@ Configuración aparece para todos. Dentro, Mi cuenta reúne filas de contraseña
 
 ## Actualizaciones e historial
 
-Actualizaciones está en el menú inicial, fuera de Configuración, para todos los roles. Se consulta GitHub cada 24 h con la app abierta y al abrir si la búsqueda está pendiente; con la app cerrada no hay notificación de escritorio. El instante de búsqueda persiste, evita peticiones duplicadas y permite búsqueda manual aunque todavía no hayan pasado 24 h. Una avería de red no se interpreta como «actualizado».
+Actualizaciones está dentro de Configuración, disponible para todos los roles. El aviso de nueva versión sigue abriendo directamente esta pantalla y Configuración muestra un indicador de versión pendiente. Se consulta GitHub cada 24 h con la app abierta y al abrir si la búsqueda está pendiente; con la app cerrada no hay notificación de escritorio. El instante de búsqueda persiste, evita peticiones duplicadas y permite búsqueda manual aunque todavía no hayan pasado 24 h. Una avería de red no se interpreta como «actualizado».
 
 El aviso abre la pestaña; la instalación exige titular/Viteka, ejecutarse desde el servidor y confirmación/UAC. No se inicia un instalador de servidor desde un puesto remoto. Se vuelve a consultar la oferta real antes de descargar, conserva HTTPS, destinos permitidos, tamaño y SHA256; las credenciales del servicio nunca viajan a GitHub. El instalador para el servicio, reemplaza sus archivos y lo inicia de nuevo conservando usuarios, contraseñas, CA y Oracle. Los puestos deberán cerrar el cliente compartido antes de reemplazar sus archivos y volver a iniciar sesión después del reinicio del servicio.
 

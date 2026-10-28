@@ -91,7 +91,7 @@ with sync_playwright() as p:
    page.get_by_label('Contraseña actual',exact=True).fill(password);page.get_by_label('Nueva contraseña',exact=True).fill(new_password);page.get_by_label('Repetir nueva contraseña',exact=True).fill(new_password);page.get_by_role('button',name='Guardar contraseña',exact=True).click()
   page.get_by_role('heading',name='Portal de soporte',exact=True).wait_for()
  def go(name):
-  if name in ('Mi cuenta','Usuarios'):
+  if name in ('Mi cuenta','Usuarios','Actualizaciones'):
    go('Configuración');page.locator('.setting-row').filter(has=page.get_by_text(name,exact=True)).click()
   else:page.get_by_role('navigation').get_by_role('button',name=name,exact=True).click()
   page.get_by_role('heading',name=name,exact=True).wait_for()
@@ -99,6 +99,7 @@ with sync_playwright() as p:
   page.locator('.setting-row').filter(has=page.get_by_text('Apariencia',exact=True)).click();dialog=page.get_by_role('dialog',name='Apariencia',exact=True);dialog.get_by_label('Apariencia',exact=True).select_option(theme);dialog.get_by_role('button',name='Guardar cambios',exact=True).click();dialog.wait_for(state='hidden')
  login('Viteka','jupiter','FixtureSuperPass1')
  assert page.get_by_label('Apariencia',exact=True).count()==0
+ assert page.get_by_role('navigation').get_by_role('button',name='Actualizaciones',exact=True).count()==0
  page.screenshot(path=str(artifacts/'angular-desktop.png'),full_page=True)
  page.keyboard.down('Control');page.mouse.wheel(0,-120);page.keyboard.up('Control');page.wait_for_function("() => document.documentElement.style.zoom==='1.1'")
  page.keyboard.press('Control+0');page.wait_for_function("() => document.documentElement.style.zoom==='1'")
@@ -117,7 +118,8 @@ with sync_playwright() as p:
  page.get_by_role('button',name='Configurar conexión',exact=True).click();page.get_by_text('Conexión guardada. Pulsa Probar conexión para verificarla.',exact=True).wait_for()
  page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Conexión verificada: prueba de solo lectura correcta.',exact=True).wait_for()
  fixture.probe_fail=True;page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Diagnóstico: 28000 · ORA-01017',exact=True).wait_for()
- page.keyboard.press('Escape');go('Actualizaciones');page.get_by_role('button',name='Buscar actualizaciones',exact=True).click();page.get_by_text('Versión 0.13.0 disponible.',exact=True).wait_for()
+ page.keyboard.press('Escape');page.screenshot(path=str(artifacts/'angular-settings.png'),full_page=True);go('Actualizaciones');page.get_by_role('button',name='Buscar actualizaciones',exact=True).click();page.get_by_text('Versión 0.13.0 disponible.',exact=True).wait_for()
+ assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).get_attribute('aria-current')=='page'
  page.get_by_role('button',name='Descargar e instalar',exact=True).click();page.get_by_text('Instalación cancelada. Puedes seguir usando esta versión.',exact=True).wait_for()
  page.get_by_role('button',name='Historial de actualizaciones',exact=True).click();page.get_by_role('dialog',name='Historial de actualizaciones',exact=True).wait_for();page.get_by_text('Versión ejecutada 0.12.0',exact=True).wait_for()
  page.get_by_role('dialog').get_by_role('group').count() if False else None

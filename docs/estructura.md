@@ -179,3 +179,7 @@ El usuario solicita adoptar el diseño de Viteka_Portal_Estudio_2026.html en tod
 ## Estado actual 0.12.0
 
 La autoridad de usuarios es ahora central, con servicio Windows e identidad HTTPS por instalación, bootstrap público del cliente y roles comprobados en servidor y anfitrión. La conexión Oracle se configura y prueba en ese servicio, bajo LocalService; se migra desde el perfil original al entrar Viteka en el servidor. No hay consultas de negocio ni utilidades publicadas todavía. Las secciones históricas que describen conexión directa por puesto o ausencia de servicio se mantienen como contexto; consultar accesos.md para el modelo actual.
+
+## Preparación de aplicaciones · 0.12.2
+
+Actualizaciones se agrupa dentro de Configuración, con acceso para todos y ejecución del instalador según permisos. Configuración usa rueda dentada. Catálogo todavía vacío: consultar [primera-aplicacion.md](primera-aplicacion.md) para diseño, separación de componentes, permisos y operación de lectura que se acordarán antes de implementar la primera aplicación.

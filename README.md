@@ -1,10 +1,10 @@
-# Viteka Utilidades · Centro de accesos 0.12.1
+# Viteka Utilidades · Centro de accesos 0.12.2
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
 ## Accesos y administración
 
-Cuentas y permisos centralizados en el servicio Windows de la farmacia, con HTTPS y confianza privada fijada en el cliente. Usuario: Inicio y aplicaciones autorizadas; titular: todas las aplicaciones y gestión de usuarios normales; Viteka: superadministración y configuración técnica. Configuración agrupa Mi cuenta (filas con ventanas de edición), Usuarios para titulares/Viteka y conexión técnica solo para Viteka. Contraseñas nuevas desde 3 caracteres.
+Cuentas y permisos centralizados en el servicio Windows de la farmacia, con HTTPS y confianza privada fijada en el cliente. Usuario: Inicio y aplicaciones autorizadas; titular: todas las aplicaciones y gestión de usuarios normales; Viteka: superadministración y configuración técnica. Configuración agrupa Mi cuenta (filas con ventanas de edición), Actualizaciones, Usuarios para titulares/Viteka y conexión técnica solo para Viteka. Contraseñas nuevas desde 3 caracteres.
 
 Actualizaciones tiene una pestaña propia: búsqueda cada 24 horas mientras la app está abierta o al siguiente arranque, botón manual, aviso e historial de versiones publicadas y ejecuciones locales. Solo titular/Viteka pueden iniciar el instalador y deben hacerlo en el servidor. Ver [usuarios y accesos](docs/accesos.md).
 
@@ -67,3 +67,5 @@ El workflow manual windows-preview.yml compila/ejecuta pruebas del núcleo y ser
 La ventana se ajusta al área útil de su monitor y respeta la barra de tareas al abrir y maximizar, con DPI por monitor. Se asignan explícitamente iconos Win32 grandes/pequeños y una identidad estable Viteka.Utilidades, compartida con el acceso directo del instalador. Se incluye un icono físico transparente para el shell. Un acceso antiguo ya anclado puede conservar la caché anterior: desanclar y volver a anclar desde el acceso actualizado si ocurre.
 
 Ctrl + rueda aumenta/reduce el contenido; la rueda normal desplaza la página. La barra nativa muestra porcentaje y botones − / 100 % / + fuera del área escalada. Ctrl + 0 vuelve al 100 %. Rango 50–200 %, guardado por usuario. Se actualiza desde Configuración sin desinstalar. Las pruebas Windows comprueban iconos Win32, área útil y rueda de ratón con Ctrl mediante entrada real de prueba.
+
+La propuesta para diseñar e implementar la primera utilidad está en [docs/primera-aplicacion.md](docs/primera-aplicacion.md); pendiente de concretar su objetivo con el usuario.
