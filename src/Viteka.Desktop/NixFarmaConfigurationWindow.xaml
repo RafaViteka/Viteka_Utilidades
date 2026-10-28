@@ -1,0 +1,15 @@
+<Window x:Class="Viteka.Desktop.NixFarmaConfigurationWindow" x:ClassModifier="internal" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" Title="Conexión a NixFarma" Width="540" SizeToContent="Height" MaxHeight="660" MinWidth="380" ResizeMode="CanResize" WindowStartupLocation="CenterOwner" ShowInTaskbar="False" Background="{DynamicResource ChromeBackground}" Foreground="{DynamicResource ChromeForeground}" FontFamily="Segoe UI">
+<ScrollViewer VerticalScrollBarVisibility="Auto"><StackPanel Margin="26">
+<TextBlock Text="Conexión a NixFarma" FontSize="24" FontWeight="SemiBold"/>
+<TextBlock Text="Configura esta conexión en el servidor que tiene Oracle ODBC de 64 bits. Usa una cuenta facilitada por el administrador de NixFarma con permisos de solo lectura." TextWrapping="Wrap" Margin="0,12,0,20"/>
+<Label Content="DSN de sistema (64 bits)" Target="{Binding ElementName=DsnInput}" Foreground="{DynamicResource ChromeForeground}" Padding="0"/>
+<TextBox x:Name="DsnInput" MaxLength="32" Padding="9" Margin="0,7,0,15" AutomationProperties.Name="DSN de sistema"/>
+<Label Content="Usuario de Oracle" Target="{Binding ElementName=UserInput}" Foreground="{DynamicResource ChromeForeground}" Padding="0"/>
+<TextBox x:Name="UserInput" MaxLength="128" Padding="9" Margin="0,7,0,15" AutomationProperties.Name="Usuario de Oracle"/>
+<Label Content="Contraseña de Oracle" Target="{Binding ElementName=PasswordInput}" Foreground="{DynamicResource ChromeForeground}" Padding="0"/>
+<PasswordBox x:Name="PasswordInput" MaxLength="1024" Padding="9" Margin="0,7,0,8" AutomationProperties.Name="Contraseña de Oracle"/>
+<TextBlock x:Name="PasswordHint" TextWrapping="Wrap" FontSize="12"/>
+<TextBlock Text="Se guardará cifrada para este usuario de Windows en este servidor. La contraseña no se envía a la interfaz web ni a GitHub. El DSN existente no se modifica." TextWrapping="Wrap" FontSize="12" Margin="0,18,0,0"/>
+<TextBlock x:Name="ValidationMessage" TextWrapping="Wrap" Foreground="#D18365" Margin="0,12,0,0" AutomationProperties.LiveSetting="Polite"/>
+<StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,18,0,0"><Button Content="Cancelar" IsCancel="True" Margin="0,0,10,0"/><Button Content="Guardar conexión" IsDefault="True" Click="SaveConnection" Background="#07555C" Foreground="White"/></StackPanel>
+</StackPanel></ScrollViewer></Window>

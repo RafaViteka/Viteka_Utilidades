@@ -14,6 +14,7 @@ public partial class MainWindow : Window
     private const string Origin = "https://app.viteka.local";
     private readonly LocalStateStore store = App.SmokeTest ? new LocalStateStore(Path.Combine(Path.GetTempPath(), "VitekaUiSmoke-" + Guid.NewGuid().ToString("N"))) : LocalStateStore.ForCurrentUser();
     private readonly WindowsShellIntegration shell;
+    private readonly NixFarmaConnectionController nixfarma;
     private bool smokeStarted;
     private readonly CancellationTokenSource lifetime = new();
     private readonly HttpClient http = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMinutes(10) };
@@ -24,6 +25,7 @@ public partial class MainWindow : Window
     {
         InitializeComponent();
         shell = new WindowsShellIntegration(this);
+        nixfarma = new NixFarmaConnectionController(this, store.DirectoryPath);
         StateChanged += (_, _) => MaximizeButton.Content = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
         Loaded += async (_, _) => await InitializeBrowser();
         Closed += (_, _) => { closing = true; lifetime.Cancel(); Browser.Dispose(); shell.Dispose(); http.Dispose(); lifetime.Dispose(); };
@@ -109,6 +111,21 @@ public partial class MainWindow : Window
             if (Math.Round(Browser.ZoomFactor * 100) != 110 || !Equals(ZoomLabel.Content, "110 %") || store.Load().ZoomPercent != 110) throw new InvalidOperationException();
             ResetZoom(this, new RoutedEventArgs());
             if (Math.Round(Browser.ZoomFactor * 100) != 100) throw new InvalidOperationException();
+            stage = "nixfarma-local";
+            var smokeSecret = "fixture-" + Guid.NewGuid().ToString("N");
+            var missingDsn = "Viteka_" + Guid.NewGuid().ToString("N")[..16];
+            var setup = new NixFarmaConfigurationWindow(null) { Owner = this };
+            setup.ContentRendered += (_, _) => setup.CompleteSmoke(missingDsn, "fixture-user", smokeSecret);
+            if (setup.ShowDialog() != true || setup.Settings is null) throw new InvalidOperationException("Native configuration dialog failed.");
+            var connectionStore = new NixFarmaConnectionStore(store.DirectoryPath);
+            connectionStore.Save(setup.Settings);
+            var restored = connectionStore.Load() ?? throw new InvalidOperationException("Missing encrypted settings.");
+            if (restored.Password != smokeSecret || System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(connectionStore.FilePath)).Contains(smokeSecret)) throw new InvalidOperationException("DPAPI roundtrip failed.");
+            if (JsonSerializer.Serialize(nixfarma.Status()).Contains(smokeSecret)) throw new InvalidOperationException("Secret exposed by connection status.");
+            var missingResult = await new NixFarmaConnectionTester().TestAsync(restored, lifetime.Token);
+            if (missingResult.Success || missingResult.Code != "dsn_missing") throw new InvalidOperationException("ODBC missing DSN classification failed: " + missingResult.Code);
+            connectionStore.Forget();
+            if (connectionStore.Exists) throw new InvalidOperationException("Credential removal failed.");
             stage = "sidebar";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
             await WaitForScript("document.querySelector('.layout')?.classList.contains('collapsed') === true");
@@ -122,6 +139,7 @@ public partial class MainWindow : Window
                 await Browser.CoreWebView2.ExecuteScriptAsync($"[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==={JsonSerializer.Serialize(section)}).click()");
                 await WaitForScript($"document.querySelector('h1')?.textContent === {JsonSerializer.Serialize(section)}");
             }
+            await WaitForScript("document.querySelector('[aria-label=\"Conexión a NixFarma\"]') !== null");
             stage = "preference";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click()");
             await WaitForPreference(true);
@@ -164,6 +182,13 @@ public partial class MainWindow : Window
             var command = root.GetProperty("command").GetString();
             switch (command)
             {
+                case "nixfarma.status":
+                case "nixfarma.configure":
+                case "nixfarma.test":
+                case "nixfarma.forget":
+                    if (updateBusy) { Reply(id, error: "Espera a que termine la actualización."); break; }
+                    Reply(id, await nixfarma.HandleAsync(command, lifetime.Token));
+                    break;
                 case "app.state":
                     var state = store.Load();
                     Reply(id, new { version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3), openFavorites = state.OpenFavoritesOnStart, sidebarCollapsed = state.SidebarCollapsed, theme = state.Theme, zoomPercent = (int)Math.Round(Browser.ZoomFactor * 100) });
@@ -231,6 +256,7 @@ public partial class MainWindow : Window
                     finally { updateBusy = false; }
                     break;
                 case "update.install":
+                    if (nixfarma.IsBusy) { Reply(id, error: "Espera a que termine la prueba de conexión antes de actualizar."); break; }
                     if (updateBusy || availableUpdate is null) { Reply(id, error: "Busca primero una actualización disponible."); break; }
                     updateBusy = true;
                     try { await InstallUpdate(id, availableUpdate); } finally { updateBusy = false; }

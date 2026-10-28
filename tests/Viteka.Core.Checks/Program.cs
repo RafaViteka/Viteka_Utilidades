@@ -1,3 +1,6 @@
+using System.Data;
+using System.Data.Common;
+using System.Diagnostics.CodeAnalysis;
 using Viteka.Core;
 using System.Text.Json;
 
@@ -280,6 +283,24 @@ try
             using var response = client.GetAsync(url).GetAwaiter().GetResult();
         }
     });
+    Check("Oracle probe enables read-only before its fixed query and rolls back", () =>
+    {
+        using var connection = new OracleProbeFixture();
+        NixFarmaReadProbe.Execute(connection);
+        Require(connection.Steps.SequenceEqual(new[] { "open", "begin", "SET TRANSACTION READ ONLY", "SELECT 1 FROM DUAL", "rollback" }));
+    });
+    Check("Oracle probe never queries when read-only cannot be enabled", () =>
+    {
+        using var connection = new OracleProbeFixture { FailReadOnly = true };
+        try { NixFarmaReadProbe.Execute(connection); throw new Exception("Expected failure"); } catch (ProbeFixtureException) { }
+        Require(connection.Steps.SequenceEqual(new[] { "open", "begin", "SET TRANSACTION READ ONLY", "rollback" }));
+    });
+    Check("Oracle probe rolls back when its query fails", () =>
+    {
+        using var connection = new OracleProbeFixture { FailQuery = true };
+        try { NixFarmaReadProbe.Execute(connection); throw new Exception("Expected failure"); } catch (ProbeFixtureException) { }
+        Require(connection.Steps.Last() == "rollback");
+    });
     Console.WriteLine($"{passed} checks passed.");
 }
 finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }
@@ -328,5 +349,63 @@ sealed class SmokeAuthenticationProbe(bool expected) : HttpMessageHandler
     {
         if ((request.Headers.Authorization?.Scheme == "Bearer") != expected) throw new Exception("Unexpected CI authentication destination.");
         return Task.FromResult(new HttpResponseMessage(System.Net.HttpStatusCode.OK));
+    }
+}
+
+sealed class ProbeFixtureException : DbException { }
+sealed class OracleProbeFixture : DbConnection
+{
+    public List<string> Steps { get; } = [];
+    public bool FailReadOnly { get; init; }
+    public bool FailQuery { get; init; }
+    private ConnectionState state;
+    [AllowNull] public override string ConnectionString { get; set; } = "";
+    public override string Database => "Fixture";
+    public override string DataSource => "Fixture";
+    public override string ServerVersion => "Fixture";
+    public override ConnectionState State => state;
+    public override void Open() { Steps.Add("open"); state = ConnectionState.Open; }
+    public override void Close() { state = ConnectionState.Closed; }
+    public override void ChangeDatabase(string databaseName) => throw new NotSupportedException();
+    protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel) { Steps.Add("begin"); return new OracleProbeTransaction(this); }
+    protected override DbCommand CreateDbCommand() => new OracleProbeCommand(this);
+}
+sealed class OracleProbeTransaction(OracleProbeFixture owner) : DbTransaction
+{
+    public override IsolationLevel IsolationLevel => IsolationLevel.ReadCommitted;
+    protected override DbConnection DbConnection => owner;
+    public override void Commit() => throw new Exception("Probe must never commit.");
+    public override void Rollback() => owner.Steps.Add("rollback");
+}
+sealed class OracleProbeCommand(OracleProbeFixture owner) : DbCommand
+{
+    [AllowNull] public override string CommandText { get; set; } = "";
+    public override int CommandTimeout { get; set; }
+    public override CommandType CommandType { get; set; }
+    public override bool DesignTimeVisible { get; set; }
+    public override UpdateRowSource UpdatedRowSource { get; set; }
+    protected override DbConnection? DbConnection { get => owner; set => throw new NotSupportedException(); }
+    protected override DbTransaction? DbTransaction { get; set; }
+    protected override DbParameterCollection DbParameterCollection => throw new NotSupportedException();
+    public override void Cancel() => throw new NotSupportedException();
+    public override void Prepare() => throw new NotSupportedException();
+    protected override DbParameter CreateDbParameter() => throw new NotSupportedException();
+    protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => throw new NotSupportedException();
+    private void Record()
+    {
+        if (DbTransaction is null || CommandTimeout != 15) throw new Exception("Unbounded command or missing transaction.");
+        owner.Steps.Add(CommandText);
+    }
+    public override int ExecuteNonQuery()
+    {
+        Record();
+        if (CommandText != "SET TRANSACTION READ ONLY" || owner.FailReadOnly) throw new ProbeFixtureException();
+        return -1;
+    }
+    public override object ExecuteScalar()
+    {
+        Record();
+        if (CommandText != "SELECT 1 FROM DUAL" || owner.FailQuery) throw new ProbeFixtureException();
+        return 1;
     }
 }

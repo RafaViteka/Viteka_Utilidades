@@ -1,5 +1,5 @@
 #ifndef AppVersion
-#define AppVersion "0.10.1"
+#define AppVersion "0.11.0"
 #endif
 #define PublishRoot "..\..\artifacts\windows-x64"
 

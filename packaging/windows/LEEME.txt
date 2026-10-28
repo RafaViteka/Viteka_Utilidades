@@ -1,4 +1,4 @@
-VITEKA UTILIDADES 0.10.1 - CANAL DE PRUEBAS
+VITEKA UTILIDADES 0.11.0 - CANAL DE PRUEBAS
 
 Instala sobre la version anterior. No hace falta desinstalar; las preferencias
 se conservan en la carpeta local de tu usuario.
@@ -11,8 +11,14 @@ ni conceder acceso desatendido. Debes autorizar cada sesion.
 El menu lateral se puede plegar y desplegar. Puedes elegir apariencia clara,
 oscura o automatica. Ambos ajustes se conservan entre sesiones.
 
-No hay utilidades de base de datos ni conexion a NixFarma. La interfaz Angular
-esta incluida en el paquete. No necesitas iniciar un servidor para abrirla.
+Configuracion incluye conexion local a NixFarma mediante Oracle ODBC x64.
+Introduce DSN, usuario y contrasena Oracle en la ventana de Windows y pulsa
+Probar conexion. Las credenciales se guardan cifradas para tu usuario Windows.
+La prueba usa una transaccion de solo lectura, SELECT 1 FROM DUAL y rollback.
+Requiere el DSN en este equipo; no modifica el DSN ni instala Oracle.
+Las utilidades de datos y el acceso desde puestos siguen pendientes.
+La interfaz Angular esta incluida en el paquete. No necesitas iniciar el
+servicio de desarrollo para abrirla o probar esta conexion local.
 El instalador prepara Microsoft Edge WebView2 si falta: puede necesitar internet.
 No requiere instalar Node ni el SDK .NET en el equipo del usuario.
 
