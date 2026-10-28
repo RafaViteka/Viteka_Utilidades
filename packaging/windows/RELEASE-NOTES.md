@@ -1,3 +1,15 @@
+CORRECCIÓN EN PREPARACIÓN · NO PUBLICAR SIN INCORPORAR LA LISTA REAL
+
+- Grupos a la izquierda y todos sus medicamentos asociados a la derecha.
+- Catálogo visible antes de consultar NixFarma; códigos, nombres de referencia y mínimo por grupo.
+- Los fallos de stock conservan el catálogo sin mostrar existencias antiguas.
+
+Continúa pendiente recibir el vídeo dividido en partes inferiores a32MB o capturas legibles. No hay una lista real de Málaga incorporada. No confundir las pruebas con los datos del vídeo.
+
+---
+
+Notas de la entrega anterior0.13.0:
+
 Primera utilidad: Tenencia obligatoria, con el diseño de Viteka y organización por filtros, tabla y detalle.
 
 - Datos de la farmacia en Configuración: nombre, provincia, localidad, correo y contacto, compartidos para todos los puestos. Editables por titular/Viteka.

@@ -309,6 +309,16 @@ try
         try{directory.Save(profile with{Postcode="28001"});throw new Exception("Expected rejection");}catch(ArgumentException){}
         Require(directory.Load()==profile);
     });
+    Check("All catalog groups and their medications are available before querying stock",()=>{
+        var named=tenenciaList with{Groups=[new("a","Grupo A",3,["650001","650002"]){Descriptions=new(){{"650001","Medicamento A1"},{"650002","Medicamento A2"}}},new("b","Grupo B",1,["650003"])]};
+        var preview=TenenciaRules.Preview(named);Require(preview.Length==2&&preview[0].Articles.Length==2&&preview[1].Articles.Single().Code=="650003");Require(preview[0].Articles[0].Description=="Medicamento A1"&&preview.All(r=>r.Status=="not_checked"&&r.Stock is null&&r.Missing is null));
+        Require(preview.SelectMany(r=>r.Articles).All(a=>a.Stock is null&&a.Issue=="not_checked"));
+    });
+    Check("Reference medicine names survive unavailable NixFarma articles without inventing stock",()=>{
+        var named=tenenciaList with{Groups=[new("a","Grupo A",3,["650001"]){Descriptions=new(){{"650001","Medicamento de referencia"}}}]};
+        var row=TenenciaRules.Evaluate(named,new Dictionary<string,Viteka.Contracts.StockArticle>()).Single();Require(row.Articles.Single().Description=="Medicamento de referencia"&&row.Status=="unresolved"&&row.Stock is null);
+        try{TenenciaRules.Validate(named with{Groups=[new("a","A",1,["650001"]){Descriptions=new(){{"650099","No pertenece al grupo"}}}]});throw new Exception("Expected invalid association");}catch(InvalidDataException){}
+    });
     Check("Tenencia groups aggregate only known codes and compute shortfalls",()=>{
         var stocks=new Dictionary<string,Viteka.Contracts.StockArticle>{{"650001",new("650001","A",1)},{"650002",new("650002","B",1)}};
         var row=TenenciaRules.Evaluate(tenenciaList,stocks).Single();Require(row.Stock==2&&row.Missing==1&&row.Status=="shortfall");stocks["650001"]=new("650001","A",3);Require(TenenciaRules.Evaluate(tenenciaList,stocks).Single().Status=="covered");

@@ -71,3 +71,5 @@ Ctrl + rueda aumenta/reduce el contenido; la rueda normal desplaza la página. L
 La propuesta para diseñar e implementar la primera utilidad está en [docs/primera-aplicacion.md](docs/primera-aplicacion.md); pendiente de concretar su objetivo con el usuario.
 
 Tenencia obligatoria y datos de farmacia: [docs/existencias-minimas.md](docs/existencias-minimas.md). La lista provincial sigue pendiente de recibir el vídeo reducido o capturas; no se evalúa cumplimiento sin ella.
+
+Corrección de interfaz en preparación (0.13.1, sin publicar): grupos a la izquierda, medicamentos asociados a la derecha y catálogo visible antes de consultar stock. El catálogo real de Málaga sigue bloqueado por la falta de vídeo/capturas accesibles; no se ha publicado otro instalador como solución a esa ausencia.

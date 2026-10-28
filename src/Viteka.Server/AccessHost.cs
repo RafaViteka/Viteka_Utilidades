@@ -136,11 +136,11 @@ internal static class AccessHost
             TenenciaList? list;
             try{list=TenenciaRules.Load(Path.Combine(AppContext.BaseDirectory,"Catalogs","tenencia"),profile.Province);}
             catch(Exception error) when(error is InvalidDataException or JsonException){return Results.Ok(new TenenciaResponse("catalog_invalid","La lista provincial no es válida; Viteka debe revisarla antes de consultar.",profile.Province));}
-            if(list is null)return Results.Ok(new TenenciaResponse("catalog_pending","Lista de tenencia pendiente para "+SpanishProvinces.Items[profile.Province]+". No se ha evaluado el cumplimiento.",profile.Province));
-            if(action=="state")return Results.Ok(new TenenciaResponse("ready","Lista disponible. Pulsa Consultar para leer las existencias actuales.",profile.Province,list.Version,list.Source){ProvinceName=SpanishProvinces.Items[profile.Province]});
+            if(list is null)return Results.Ok(new TenenciaResponse("catalog_pending","Lista de tenencia pendiente para "+SpanishProvinces.Items[profile.Province]+". No se ha evaluado el cumplimiento.",profile.Province){ProvinceName=SpanishProvinces.Items[profile.Province]});
+            if(action=="state")return Results.Ok(new TenenciaResponse("ready","Lista disponible. Pulsa Consultar para leer las existencias actuales.",profile.Province,list.Version,list.Source,Rows:TenenciaRules.Preview(list)){ProvinceName=SpanishProvinces.Items[profile.Province]});
             var response=await oracle.TenenciaAsync(profile.Province,list,false,context.RequestAborted);
             if(!AccessPolicy.CanUse(Agent(context).RequireUser(),UtilityCatalog.TenenciaId,UtilityCatalog.Items))throw new AccessDeniedException();
-            return Results.Ok(response with{ProvinceName=SpanishProvinces.Items[profile.Province],ListVersion=list.Version,Source=list.Source});
+            return Results.Ok(response with{ProvinceName=SpanishProvinces.Items[profile.Province],ListVersion=list.Version,Source=list.Source,Rows=response.Code=="ok"?response.Rows:TenenciaRules.Preview(list)});
         });
         await app.RunAsync();
     }
