@@ -62,10 +62,12 @@ internal sealed class OracleService(string directory)
                 using var connection=new System.Data.Odbc.OdbcConnection(builder.ConnectionString);
                 return Viteka.Core.TenenciaStockQuery.ReadOnly(connection,tx=>{
                     deadline.Token.ThrowIfCancellationRequested();var schema=Viteka.Core.TenenciaStockQuery.Inspect(connection,tx);
-                    if(inspectOnly)return new Viteka.Contracts.TenenciaResponse("schema_verified","Estructura verificada: ARTICULOS y EXISTENCIAS; columna de stock "+schema.Stock+". No se han leído existencias.",province);
+                    if(inspectOnly)return new Viteka.Contracts.TenenciaResponse("schema_verified","Estructura verificada: ARTICULOS y EXISTENCIAS; stock "+schema.Stock+"; ATC "+(schema.Atc??"pendiente de identificar por coincidencias")+". Columnas de ARTICULOS: "+string.Join(", ",schema.ArticleColumns.Take(250))+". No se han leído existencias.",province);
                     if(list is null)throw new InvalidOperationException();
-                    var stocks=Viteka.Core.TenenciaStockQuery.Read(connection,tx,schema,list.Groups.SelectMany(g=>g.Codes).Distinct().ToArray(),deadline.Token);
-                    return new Viteka.Contracts.TenenciaResponse("ok","Consulta de solo lectura completada.",province,list.Version,list.Source,DateTimeOffset.UtcNow,Viteka.Core.TenenciaRules.Evaluate(list,stocks));
+                    var resolution=Viteka.Core.TenenciaArticleResolver.Resolve(connection,tx,schema,list,deadline.Token);
+                    var codes=resolution.Groups.Values.SelectMany(c=>c).Distinct().ToArray();
+                    var stocks=codes.Length==0?new Dictionary<string,Viteka.Contracts.StockArticle>():Viteka.Core.TenenciaStockQuery.Read(connection,tx,schema,codes,deadline.Token);
+                    return new Viteka.Contracts.TenenciaResponse("ok","Consulta de solo lectura completada.",province,list.Version,list.Source,DateTimeOffset.UtcNow,Viteka.Core.TenenciaRules.Evaluate(list,stocks,resolution.Groups,resolution.Notes));
                 });
             }catch(OperationCanceledException){return new("timeout","La lectura se ha cancelado o ha agotado el tiempo disponible.",province);}
             catch(System.Data.Odbc.OdbcException error){

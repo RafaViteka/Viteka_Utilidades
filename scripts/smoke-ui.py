@@ -1,5 +1,5 @@
 from pathlib import Path
-import threading,functools,http.server,os,shutil,re,copy
+import threading,functools,http.server,os,shutil,re,copy,json
 from playwright.sync_api import sync_playwright,expect
 repository=Path(__file__).resolve().parents[1]
 root=repository/'frontend/dist/viteka-ui/browser'
@@ -12,7 +12,7 @@ url=f'http://127.0.0.1:{server.server_port}'
 class AuthorityFixture:
  def __init__(self):
   self.accounts=[dict(id=f'{i:032x}',name=name,role=role,active=True,mustChangePassword=True,utilityIds=[],password=password) for i,(name,role,password) in enumerate([('Viteka','SuperAdministrator','jupiter'),('F. titular','Administrator','1234'),('usuario','User','0000')],1)]
-  self.current=None;self.calls=[];self.prefs={};self.nix=dict(configured=False,saved=False,dsn='NIXFARMA',user='',dsnAvailable=True);self.probe_fail=False;self.pharmacy=None;self.tenencia_ready=False;self.stock_error=False;self.tenencia_queries=0;self.many_groups=False;self.transport_error=False
+  self.current=None;self.calls=[];self.prefs={};self.nix=dict(configured=False,saved=False,dsn='NIXFARMA',user='',dsnAvailable=True);self.probe_fail=False;self.pharmacy=None;self.tenencia_ready=False;self.stock_error=False;self.tenencia_queries=0;self.many_groups=False;self.transport_error=False;self.use_excel=False
  def view(self,u):
   if u is None:return None
   ready=not u['mustChangePassword'];admin=u['role'] in ('Administrator','SuperAdministrator')
@@ -62,6 +62,9 @@ class AuthorityFixture:
    if self.pharmacy is None:return dict(code='pharmacy_pending',message='El titular o Viteka deben guardar la provincia en Datos de la farmacia.',province='')
    if not self.tenencia_ready:return dict(code='catalog_pending',message='Lista de tenencia pendiente para Málaga. No se ha evaluado el cumplimiento.',province='29',provinceName='Málaga')
    groups=[dict(id='a',name='Grupo ficticio A',minimum=3,stock=1,missing=2,status='shortfall',articles=[dict(code='650001',description='Artículo ficticio A1',stock=1),dict(code='650004',description='Artículo ficticio A2',stock=0)]),dict(id='b',name='Grupo ficticio B',minimum=1,stock=None,missing=None,status='unresolved',articles=[dict(code='650002',description='Artículo desconocido',stock=None,issue='ambiguous_stock')]),dict(id='c',name='Grupo ficticio C',minimum=1,stock=2,missing=0,status='covered',articles=[dict(code='650003',description='Artículo suficiente',stock=2)])]
+   if self.use_excel:
+    catalog=json.loads((repository/'src/Viteka.Server/Catalogs/tenencia/29.json').read_text(encoding='utf-8'))
+    groups=[dict(id=g['id'],name=g['name'],minimum=g['minimum'],stock=None,missing=None,status='unresolved',classification=g.get('atcPrefix') or g.get('classificationCode'),selectionNote=g.get('selectionNote'),sourceRow=g['sourceRow'],articles=[dict(code=c,description=g.get('descriptions',{}).get(c,'Artículo CN '+c),stock=None) for c in g['codes']]) for g in catalog['groups']]
    if self.many_groups:groups.extend(dict(id='extra-'+str(i),name='Grupo adicional '+str(i),minimum=1,stock=1,missing=0,status='covered',articles=[dict(code=str(650000+i),description='Medicamento adicional '+str(i),stock=1)]) for i in range(4,31))
    preview=[dict(**{**r,'stock':None,'missing':None,'status':'not_checked','articles':[dict(**{**a,'stock':None,'issue':'not_checked'}) for a in r['articles']]}) for r in groups]
    response=dict(code='ready',message='Lista disponible. Pulsa Consultar para leer las existencias actuales.',province=self.pharmacy['province'],provinceName='Málaga',listVersion='Fixture de pruebas',source='Datos ficticios exclusivos del smoke UI',rows=preview)
@@ -158,6 +161,9 @@ with sync_playwright() as p:
  page.get_by_label('Estado',exact=True).select_option('shortfall');expect(page.locator('.group-button')).to_have_count(1);expect(page.locator('.tenencia-medications tbody tr')).to_have_count(2);page.get_by_label('Buscar grupo, artículo o CN',exact=True).fill('650099');page.get_by_text('No hay grupos que coincidan con estos filtros.',exact=True).wait_for();page.get_by_label('Buscar grupo, artículo o CN',exact=True).fill('');page.get_by_label('Estado',exact=True).select_option('all')
  fixture.stock_error=True;page.get_by_role('button',name='Consultar existencias',exact=True).click();page.get_by_text('No se alcanza el servicio Oracle.',exact=True).wait_for();expect(page.locator('.group-button')).to_have_count(3);expect(page.locator('.drug-stock').first).to_have_text('Sin consultar');fixture.stock_error=False
  page.get_by_label('Estado',exact=True).select_option('covered');fixture.transport_error=True;page.get_by_role('button',name='Consultar existencias',exact=True).click();page.get_by_text('Servicio no disponible.',exact=True).wait_for();expect(page.locator('.group-button')).to_have_count(3);expect(page.locator('.drug-stock').first).to_have_text('Sin consultar');fixture.transport_error=False
+ fixture.use_excel=True;go('Aplicaciones');page.get_by_role('button',name='Tenencia obligatoria',exact=False).click();expect(page.locator('.group-button')).to_have_count(83)
+ page.get_by_role('button',name='Seleccionar grupo DIGOXINA ORAL 2 ENVASES',exact=True).wait_for();page.get_by_role('button',name='Seleccionar grupo DIGOXINA INYECTABLE 1 ENVASE',exact=True).click();page.get_by_role('region',name='Medicamentos del grupo',exact=True).get_by_text('Clasificación de referencia · C01AA05',exact=True).wait_for()
+ page.get_by_role('button',name='Seleccionar grupo HOJA BISTURÍ CON MANGO 1 UNIDAD',exact=True).click();page.get_by_role('region',name='Medicamentos del grupo',exact=True).get_by_text('123299',exact=True).wait_for();page.screenshot(path=str(artifacts/'angular-tenencia-excel.png'),full_page=True);fixture.use_excel=False
  go('Usuarios');page.get_by_role('button',name='Crear usuario',exact=True).click();editor=page.get_by_role('dialog',name='Editar cuenta y permisos',exact=True)
  editor.get_by_label('Nombre de usuario',exact=True).fill('Personal');editor.get_by_label('Contraseña inicial',exact=True).fill('FixtureStaffPass1');editor.get_by_label('Repetir contraseña inicial',exact=True).fill('FixtureStaffPass1');editor.get_by_label('Aplicación de prueba A',exact=True).check();editor.get_by_role('button',name='Guardar cuenta',exact=True).click();editor.wait_for(state='hidden');page.get_by_role('button',name='Editar Personal',exact=True).wait_for()
  page.screenshot(path=str(artifacts/'angular-users.png'),full_page=True)

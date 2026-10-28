@@ -1,4 +1,4 @@
-# Viteka Utilidades · Centro de accesos 0.13.0
+# Viteka Utilidades · Centro de accesos 0.13.1
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
@@ -6,7 +6,7 @@ Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NE
 
 Cuentas y permisos centralizados en el servicio Windows de la farmacia, con HTTPS y confianza privada fijada en el cliente. Usuario: Inicio y aplicaciones autorizadas; titular: todas las aplicaciones y gestión de usuarios normales; Viteka: superadministración y configuración técnica. Configuración agrupa Mi cuenta (filas con ventanas de edición), Actualizaciones, Auditoría, Usuarios para titulares/Viteka y conexión técnica solo para Viteka. Contraseñas nuevas desde 3 caracteres.
 
-Actualizaciones tiene una pestaña propia: búsqueda cada 24 horas mientras la app está abierta o al siguiente arranque, botón manual, aviso e historial de versiones publicadas y ejecuciones locales. Solo titular/Viteka pueden iniciar el instalador y deben hacerlo en el servidor. Ver [usuarios y accesos](docs/accesos.md).
+Actualizaciones tiene una pantalla propia dentro de Configuración: búsqueda cada 24 horas mientras la app está abierta o al siguiente arranque, botón manual, aviso e historial de versiones publicadas y ejecuciones locales. Solo titular/Viteka pueden iniciar el instalador y deben hacerlo en el servidor. Ver [usuarios y accesos](docs/accesos.md).
 
 ## Incluido
 
@@ -14,12 +14,12 @@ Actualizaciones tiene una pestaña propia: búsqueda cada 24 horas mientras la a
 - Inicio con portal de soporte, AnyDesk local, manuales, formación, web y contactos.
 - Menú lateral plegable, logotipo inferior sin eslogan y apariencia clara/oscura/automática persistente.
 - Isotipo bicolor transparente original en ventana, ejecutable e instalador.
-- Utilidades, Favoritos y Actividad conservan estados vacíos, sin acceso a datos de NixFarma.
+- Aplicaciones incluye Tenencia obligatoria:83 grupos de Málaga del Excel, asociaciones por ATC y lectura de stock de NixFarma. Favoritos y Auditoría conservan estados vacíos.
 - Preferencias locales por usuario, conservadas entre versiones.
 - Canal de pruebas GitHub: búsqueda, descarga verificada y apertura del instalador con confirmación/UAC.
 - Instalador x64 autocontenido para .NET, con bootstrapper de WebView2 verificado como Microsoft. Si falta el runtime, su instalación inicial puede requerir internet.
 
-La configuración Oracle y la prueba fija de solo lectura se ejecutan ahora en el servicio del servidor, bajo LocalService y con DSN de sistema de 64 bits. Las credenciales previas se migran desde el perfil original al entrar Viteka en el propio servidor. Todavía no hay consultas de negocio de utilidades. Ver [conexión a NixFarma](docs/conexion-nixfarma.md).
+La configuración Oracle y la prueba fija de solo lectura se ejecutan ahora en el servicio del servidor, bajo LocalService y con DSN de sistema de 64 bits. Las credenciales previas se migran desde el perfil original al entrar Viteka en el propio servidor. Tenencia obligatoria incorpora consultas de clasificación y existencias de solo lectura; las restricciones de vía/dosis/tamaño se revisan por separado. Ver [conexión a NixFarma](docs/conexion-nixfarma.md).
 
 [Descargar desde GitHub Releases](https://github.com/RafaViteka/Viteka_Utilidades/releases). Instalar sobre la versión anterior sin desinstalar. Desde 0.6 se puede actualizar desde Configuración; desde 0.5 hay que incorporar el actualizador mediante una descarga manual una vez. Paquetes de prueba sin firma digital del editor, no certificados para distribuir a farmacias.
 
@@ -34,7 +34,7 @@ bash scripts/setup-cloud.sh
 python scripts/smoke-ui.py
 ```
 
-El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 63 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 69 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
 
 Para editar la interfaz en navegador:
 
@@ -68,8 +68,10 @@ La ventana se ajusta al área útil de su monitor y respeta la barra de tareas a
 
 Ctrl + rueda aumenta/reduce el contenido; la rueda normal desplaza la página. La barra nativa muestra porcentaje y botones − / 100 % / + fuera del área escalada. Ctrl + 0 vuelve al 100 %. Rango 50–200 %, guardado por usuario. Se actualiza desde Configuración sin desinstalar. Las pruebas Windows comprueban iconos Win32, área útil y rueda de ratón con Ctrl mediante entrada real de prueba.
 
-La propuesta para diseñar e implementar la primera utilidad está en [docs/primera-aplicacion.md](docs/primera-aplicacion.md); pendiente de concretar su objetivo con el usuario.
+La propuesta histórica de módulos está en [docs/primera-aplicacion.md](docs/primera-aplicacion.md); el estado vigente de Tenencia obligatoria está en [docs/existencias-minimas.md](docs/existencias-minimas.md).
 
-Tenencia obligatoria y datos de farmacia: [docs/existencias-minimas.md](docs/existencias-minimas.md). La lista provincial sigue pendiente de recibir el vídeo reducido o capturas; no se evalúa cumplimiento sin ella.
+Tenencia obligatoria y datos de farmacia: [docs/existencias-minimas.md](docs/existencias-minimas.md). Málaga dispone de83 grupos del Excel del usuario. Las demás provincias no usan esa lista por defecto.
 
-Corrección de interfaz en preparación (0.13.1, sin publicar): grupos a la izquierda, medicamentos asociados a la derecha y catálogo visible antes de consultar stock. El catálogo real de Málaga sigue bloqueado por la falta de vídeo/capturas accesibles; no se ha publicado otro instalador como solución a esa ausencia.
+La interfaz muestra todos los grupos a la izquierda y sus coincidencias a la derecha. El catálogo se ve antes de consultar stock. El vídeo recortado permitirá completar las condiciones que el ATC por sí solo no acredita.
+
+Lista de Málaga incorporada desde el Excel del usuario:83 grupos. La consulta busca asociaciones por ATC en NixFarma. Vías/dosis/tamaños y clasificaciones sanitarias pendientes quedan marcadas para revisión; no se acredita cumplimiento por una suma ATC incorrecta. Ver docs/existencias-minimas.md y data/tenencia.

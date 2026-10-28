@@ -68,7 +68,7 @@ internal sealed class AccessServiceClient : IDisposable
         if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new AccessDeniedException("Demasiados intentos. Espera un minuto antes de volver a intentarlo.");
         if (response.StatusCode == HttpStatusCode.Unauthorized) { token = null; throw new AccessSessionException(); }
         var text = await response.Content.ReadAsStringAsync(timeout.Token);
-        if (text.Length > 1_048_576) throw new InvalidDataException();
+        if (text.Length > 16_777_216) throw new InvalidDataException();
         using var document = JsonDocument.Parse(text);
         if (!response.IsSuccessStatusCode)
         {

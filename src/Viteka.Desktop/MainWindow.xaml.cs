@@ -160,7 +160,7 @@ public partial class MainWindow : Window
             var savedPharmacy=await Access.UtilityAsync("pharmacy.save",JsonSerializer.SerializeToElement(new{name="Farmacia de prueba",province="29",town="Málaga",email="fixture@example.test",phone="",address="",postcode="29001"}));
             if(savedPharmacy.GetProperty("profile").GetProperty("province").GetString()!="29")throw new InvalidOperationException("Central pharmacy profile failed.");
             var pendingTenencia=await Access.UtilityAsync("tenencia.query");
-            if(pendingTenencia.GetProperty("code").GetString()!="catalog_pending")throw new InvalidOperationException("No provincial list must mean no compliance evaluation.");
+            if(pendingTenencia.GetProperty("code").GetString()!="not_configured"||pendingTenencia.GetProperty("rows").GetArrayLength()!=83)throw new InvalidOperationException("Excel groups must remain visible without an Oracle connection.");
             stage="sidebar";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
             await WaitForScript("document.querySelector('.layout')?.classList.contains('collapsed') === true");
@@ -187,7 +187,7 @@ public partial class MainWindow : Window
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Aplicaciones').click()");
             await WaitForScript("document.querySelector('h1')?.textContent === 'Aplicaciones'");
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.resource')].find(b=>b.querySelector('strong')?.textContent==='Tenencia obligatoria').click()");
-            await WaitForScript("document.querySelector('h1')?.textContent === 'Tenencia obligatoria' && document.querySelector('viteka-tenencia')?.textContent.includes('Lista de tenencia pendiente para Málaga') === true");
+            await WaitForScript("document.querySelector('h1')?.textContent === 'Tenencia obligatoria' && document.querySelectorAll('viteka-tenencia .group-button').length === 83");
             stage="preference";
             await OpenAccountSmoke();
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Pantalla al iniciar').click()");

@@ -1,0 +1,843 @@
+{
+  "schema": 1,
+  "province": "29",
+  "version": "Malaga-Excel-2026-10-28",
+  "source": "existencias minimas.xlsx aportado por el usuario; transcripción de83 grupos. No acredita revisión normativa oficial.",
+  "reviewedOn": "2026-10-28",
+  "groups": [
+    {
+      "id": "malaga-002",
+      "name": "ANTIINFECCIOSOS Y ANTISÉPTICOS PARA EL TRATAMIENTO ORAL-LOCAL",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 2,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "A01AB"
+    },
+    {
+      "id": "malaga-003",
+      "name": "COMBINACIONES Y COMPLEJOS DE COMPUESTOS DE AL, CA Y MG",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 3,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "A02AD"
+    },
+    {
+      "id": "malaga-004",
+      "name": "AGENTES CONTRA LA ÚLCERA PÉPTICA Y EL REFLUJO GASTROESOFÁGICO",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 4,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "A02B"
+    },
+    {
+      "id": "malaga-005",
+      "name": "ALCALOIDES DE LA BELLADONA, AMINAS TERCIARIAS",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 5,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "A03BA01"
+    },
+    {
+      "id": "malaga-006",
+      "name": "ALCALOIDES SEMISINTÉTICOS DE LA BELLADONA, COMPUESTOS DE AMONIO CUATERNARIO",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 6,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "A03BB01"
+    },
+    {
+      "id": "malaga-007",
+      "name": "PROPULSIVOS",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 7,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "A03FA01"
+    },
+    {
+      "id": "malaga-008",
+      "name": "ENEMAS",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 8,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "A06AG01"
+    },
+    {
+      "id": "malaga-009",
+      "name": "FORMULACIONES DE SALES DE REHIDRATACIÓN ORAL",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 9,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "A07CA"
+    },
+    {
+      "id": "malaga-010",
+      "name": "ANTIPROPULSIVOS",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 10,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "A07DA03"
+    },
+    {
+      "id": "malaga-011",
+      "name": "INSULINAS Y ANÁLOGOS DE ACCIÓN RÁPIDA PARA INYECCIÓN INYECTABLE 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 11,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "A10AB"
+    },
+    {
+      "id": "malaga-012",
+      "name": "INSULINAS Y ANÁLOGOS DE ACCIÓN INTERMEDIA PARA INYECCIÓN INYECTABLE 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 12,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "A10AC"
+    },
+    {
+      "id": "malaga-013",
+      "name": "INSULINAS Y ANÁLOGOS DE ACCIÓN PROLONGADA PARA INYECCIÓN INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 13,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "A10AE"
+    },
+    {
+      "id": "malaga-014",
+      "name": "BIGUANIDAS",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 14,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "A10BA"
+    },
+    {
+      "id": "malaga-015",
+      "name": "ACENOCUMAROL ORAL 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 15,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "B01AA07"
+    },
+    {
+      "id": "malaga-016",
+      "name": "ÁCIDO ACETILSALICÍLICO 100 MG ORAL 3 ENVASES",
+      "minimum": 3,
+      "codes": [],
+      "sourceRow": 16,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "B01AC06"
+    },
+    {
+      "id": "malaga-017",
+      "name": "ÁCIDO TRANEXÁMICO INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 17,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "B02AA02"
+    },
+    {
+      "id": "malaga-018",
+      "name": "FITOMENADIONA 10 MG ORAL/INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 18,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "B02BA01"
+    },
+    {
+      "id": "malaga-019",
+      "name": "SOLUCIONES QUE AFECTAN EL BALANCE ELECTROLÍTICO",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 19,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "B05BB"
+    },
+    {
+      "id": "malaga-020",
+      "name": "DIGOXINA ORAL 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 20,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "C01AA05"
+    },
+    {
+      "id": "malaga-021",
+      "name": "DIGOXINA INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 21,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "C01AA05"
+    },
+    {
+      "id": "malaga-022",
+      "name": "AMIODARONA ORAL 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 22,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "C01BD01"
+    },
+    {
+      "id": "malaga-023",
+      "name": "EPINEFRINA INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 23,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "C01CA24"
+    },
+    {
+      "id": "malaga-024",
+      "name": "NITROGLICERINA ORAL 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 24,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "C01DA02"
+    },
+    {
+      "id": "malaga-025",
+      "name": "FUROSEMIDA ORAL 3 ENVASES",
+      "minimum": 3,
+      "codes": [],
+      "sourceRow": 25,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "C03CA01"
+    },
+    {
+      "id": "malaga-026",
+      "name": "FUROSEMIDA INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 26,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "C03CA01"
+    },
+    {
+      "id": "malaga-027",
+      "name": "INHIBIDORES DE LA ECA, MONODROGAS",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 27,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "C09AA"
+    },
+    {
+      "id": "malaga-028",
+      "name": "INHIBIDORES HMG COA REDUCTASA",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 28,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "C10AA"
+    },
+    {
+      "id": "malaga-029",
+      "name": "ACICLOVIR TÓPICO 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 29,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "D06BB03"
+    },
+    {
+      "id": "malaga-030",
+      "name": "CORTICOSTEROIDES DE BAJA POTENCIA (GRUPO I)",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 30,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "D07AA"
+    },
+    {
+      "id": "malaga-031",
+      "name": "CORTICOSTEROIDES MODERADAMENTE POTENTES (GRUPO II) TÓPICO 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 31,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "D07AB"
+    },
+    {
+      "id": "malaga-032",
+      "name": "POVIDONA YODADA TÓPICO 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 32,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "D08AG02"
+    },
+    {
+      "id": "malaga-033",
+      "name": "APÓSITOS CON POMADA CON ANTIINFECCIOSOS",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 33,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "D09AA"
+    },
+    {
+      "id": "malaga-034",
+      "name": "PROGESTÁGENOS Y ESTRÓGENOS, PREPARADOS DE DOSIS FIJAS",
+      "minimum": 3,
+      "codes": [],
+      "sourceRow": 34,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "G03AA"
+    },
+    {
+      "id": "malaga-035",
+      "name": "LEVONORGESTREL ORAL 3 ENVASES",
+      "minimum": 3,
+      "codes": [],
+      "sourceRow": 35,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "G03AC03"
+    },
+    {
+      "id": "malaga-036",
+      "name": "TAMSULOSINA ORAL 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 36,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "G04CA02"
+    },
+    {
+      "id": "malaga-037",
+      "name": "DEXAMETASONA ORAL 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 37,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "H02AB02"
+    },
+    {
+      "id": "malaga-038",
+      "name": "METILPREDNISOLONA (VARIAS DOSIS) INYECTABLE 3 ENVASES",
+      "minimum": 3,
+      "codes": [],
+      "sourceRow": 38,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "H02AB04"
+    },
+    {
+      "id": "malaga-039",
+      "name": "GLUCAGÓN INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 39,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "H04AA01"
+    },
+    {
+      "id": "malaga-040",
+      "name": "PENICILINAS CON ESPECTRO AMPLIADO",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 40,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "J01CA"
+    },
+    {
+      "id": "malaga-041",
+      "name": "PENICILINAS SENSIBLES A LA BETALACTAMASA",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 41,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "J01CE"
+    },
+    {
+      "id": "malaga-042",
+      "name": "COMBINACIONES DE PENICILINAS, INCLUYENDO INHIBIDORES DE LA BETALACTAMASA",
+      "minimum": 6,
+      "codes": [],
+      "sourceRow": 42,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "J01CR"
+    },
+    {
+      "id": "malaga-043",
+      "name": "MACRÓLIDOS",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 43,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "J01FA"
+    },
+    {
+      "id": "malaga-044",
+      "name": "INMUNOGLOBULINA ANTIRH (D) INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 44,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "J06BB01"
+    },
+    {
+      "id": "malaga-045",
+      "name": "INMUNOGLOBULINA TETÁNICA INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 45,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "J06BB02"
+    },
+    {
+      "id": "malaga-046",
+      "name": "DICLOFENACO ORAL 4 ENVASES",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 46,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "M01AB05"
+    },
+    {
+      "id": "malaga-047",
+      "name": "DICLOFENACO INYECTABLE 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 47,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "M01AB05"
+    },
+    {
+      "id": "malaga-048",
+      "name": "IBUPROFENO ORAL 6 ENVASES",
+      "minimum": 6,
+      "codes": [],
+      "sourceRow": 48,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "M01AE01"
+    },
+    {
+      "id": "malaga-049",
+      "name": "IBUPROFENO ORAL PEDIÁTRICO 3 ENVASES",
+      "minimum": 3,
+      "codes": [],
+      "sourceRow": 49,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "M01AE01"
+    },
+    {
+      "id": "malaga-050",
+      "name": "ÁCIDO ALENDRÓNICO ORAL 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 50,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "M05BA04"
+    },
+    {
+      "id": "malaga-051",
+      "name": "MORFINA 10 MG ORAL 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 51,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N02AA01"
+    },
+    {
+      "id": "malaga-052",
+      "name": "CLORURO MÓRFICO INYECTABLE 1% 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 52,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N02AA01"
+    },
+    {
+      "id": "malaga-053",
+      "name": "FENTANILO 25 Y 50 MCG/H PARCHES 1 DE CADA",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 53,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones. El título exige1 envase de25 y otro de50mcg/h; no se acredita sumando todos los fentanilos.",
+      "atcPrefix": "N02AB03"
+    },
+    {
+      "id": "malaga-054",
+      "name": "ÁCIDO ACETILSALICÍLICO 500 MG ORAL 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 54,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N02BA01"
+    },
+    {
+      "id": "malaga-055",
+      "name": "METAMIZOL ORAL 6 ENVASES",
+      "minimum": 6,
+      "codes": [],
+      "sourceRow": 55,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N02BB02"
+    },
+    {
+      "id": "malaga-056",
+      "name": "METAMIZOL INYECTABLE 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 56,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N02BB02"
+    },
+    {
+      "id": "malaga-057",
+      "name": "PARACETAMOL ORAL 6 ENVASES",
+      "minimum": 6,
+      "codes": [],
+      "sourceRow": 57,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N02BE01"
+    },
+    {
+      "id": "malaga-058",
+      "name": "PARACETAMOL ORAL PEDIÁTRICO 3 ENVASES",
+      "minimum": 3,
+      "codes": [],
+      "sourceRow": 58,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N02BE01"
+    },
+    {
+      "id": "malaga-059",
+      "name": "HALOPERIDOL INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 59,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N05AD01"
+    },
+    {
+      "id": "malaga-060",
+      "name": "DIAZEPAM ORAL 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 60,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N05BA01"
+    },
+    {
+      "id": "malaga-061",
+      "name": "DIAZEPAM MICROENEMAS 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 61,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N05BA01"
+    },
+    {
+      "id": "malaga-062",
+      "name": "ALPRAZOLAM ORAL 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 62,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N05BA12"
+    },
+    {
+      "id": "malaga-063",
+      "name": "FLUOXETINA ORAL 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 63,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "N06AB03"
+    },
+    {
+      "id": "malaga-064",
+      "name": "SALBUTAMOL INHALADOR 4 ENVASES",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 64,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "R03AC02"
+    },
+    {
+      "id": "malaga-065",
+      "name": "CODEINA ORAL/COMPRIMIDOS 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 65,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "R05DA04"
+    },
+    {
+      "id": "malaga-066",
+      "name": "CODEINA SUSPENSIÓN 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 66,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "R05DA04"
+    },
+    {
+      "id": "malaga-067",
+      "name": "DEXTROMETORFANO ORAL 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 67,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "R05DA09"
+    },
+    {
+      "id": "malaga-068",
+      "name": "DEXCLORFENIRAMINA INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 68,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "R06AB02"
+    },
+    {
+      "id": "malaga-069",
+      "name": "CETIRIZINA ORAL 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 69,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "R06AE07"
+    },
+    {
+      "id": "malaga-070",
+      "name": "OTROS ANTIHISTAMÍNICOS PARA USO SISTÉMICO",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 70,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "R06AX"
+    },
+    {
+      "id": "malaga-071",
+      "name": "ACICLOVIR POMADA OFTALMOLÓGICA 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 71,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "S01AD03"
+    },
+    {
+      "id": "malaga-072",
+      "name": "DEXAMETASONA COLIRIO O POMADA OFTÁMICA 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 72,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "S01BA01"
+    },
+    {
+      "id": "malaga-073",
+      "name": "TIMOLOL COLIRIO 2 ENVASES",
+      "minimum": 2,
+      "codes": [],
+      "sourceRow": 73,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "S01ED01"
+    },
+    {
+      "id": "malaga-074",
+      "name": "ATROPINA COLIRIO 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 74,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "S01FA01"
+    },
+    {
+      "id": "malaga-075",
+      "name": "OTROS OFTALMOLÓGICOS",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 75,
+      "requiresReview": false,
+      "selectionNote": null,
+      "atcPrefix": "S01XA"
+    },
+    {
+      "id": "malaga-076",
+      "name": "NALOXONA INYECTABLE 1 ENVASE",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 76,
+      "requiresReview": true,
+      "selectionNote": "Verificar vía, forma y dosis del título: el ATC por sí solo no acredita esas restricciones.",
+      "atcPrefix": "V03AB15"
+    },
+    {
+      "id": "malaga-077",
+      "name": "ENVASES ANÁLISIS DE ORINA ESTÁNDAR ESTÉRIL 4 UNIDADES",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 77,
+      "requiresReview": true,
+      "selectionNote": "Código de productos sanitarios de la columna D; pendiente de identificar la clasificación equivalente en NixFarma.",
+      "classificationCode": "M02BC"
+    },
+    {
+      "id": "malaga-078",
+      "name": "ESPARADRAPO DE PAPEL HIPOALERGÉNICO 5X2,5 5X5 4 UNIDADES",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 78,
+      "requiresReview": true,
+      "selectionNote": "Código de productos sanitarios de la columna D; pendiente de identificar la clasificación equivalente en NixFarma.",
+      "classificationCode": "B01DB"
+    },
+    {
+      "id": "malaga-079",
+      "name": "GASA ESTÉRIL 20X20 100 UNIDADES 4 ENVASES",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 79,
+      "requiresReview": true,
+      "selectionNote": "Código de productos sanitarios de la columna D; pendiente de identificar la clasificación equivalente en NixFarma.",
+      "classificationCode": "B01BA"
+    },
+    {
+      "id": "malaga-080",
+      "name": "HOJA BISTURÍ CON MANGO 1 UNIDAD",
+      "minimum": 1,
+      "codes": [
+        "123299"
+      ],
+      "sourceRow": 80,
+      "requiresReview": false,
+      "selectionNote": null,
+      "descriptions": {
+        "123299": "HOJA BISTURÍ CON MANGO 1 UNIDAD"
+      }
+    },
+    {
+      "id": "malaga-081",
+      "name": "JERINGAS DE INSULINA CON AGUJA",
+      "minimum": 6,
+      "codes": [],
+      "sourceRow": 81,
+      "requiresReview": true,
+      "selectionNote": "Código de productos sanitarios de la columna D; pendiente de identificar la clasificación equivalente en NixFarma.",
+      "classificationCode": "M03AA"
+    },
+    {
+      "id": "malaga-082",
+      "name": "PRESERVATIVOS LÁTEX 4 UNIDADES",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 82,
+      "requiresReview": true,
+      "selectionNote": "Código de productos sanitarios de la columna D; pendiente de identificar la clasificación equivalente en NixFarma.",
+      "classificationCode": "S01AA01"
+    },
+    {
+      "id": "malaga-083",
+      "name": "SONDAS FOLEY CH 16, CH 18 1 UNIDAD",
+      "minimum": 1,
+      "codes": [],
+      "sourceRow": 83,
+      "requiresReview": true,
+      "selectionNote": "Código de productos sanitarios de la columna D; pendiente de identificar la clasificación equivalente en NixFarma. El título exige CH16 y CH18; debe comprobarse cada tamaño.",
+      "classificationCode": "F02AA01B"
+    },
+    {
+      "id": "malaga-084",
+      "name": "BOLSA DE RECOGIDA DE ORINA PEDIÁTRICA 2 UNIDADES",
+      "minimum": 4,
+      "codes": [],
+      "sourceRow": 84,
+      "requiresReview": true,
+      "selectionNote": "Código de productos sanitarios de la columna D; pendiente de identificar la clasificación equivalente en NixFarma. Discrepancia del Excel: título2 unidades, columna Ten. Mín.4. Se conserva4 pendiente de confirmación.",
+      "classificationCode": "F03A"
+    }
+  ]
+}

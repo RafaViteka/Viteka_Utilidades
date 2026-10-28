@@ -17,6 +17,8 @@ try {
         & npm run build
         if ($LASTEXITCODE -ne 0) { throw 'Angular production build failed.' }
     } finally { Pop-Location }
+    & python scripts/build-tenencia-catalog.py --check
+    if ($LASTEXITCODE -ne 0) { throw 'Catalog transcription check failed.' }
     & python scripts/copy-ui.py
     if ($LASTEXITCODE -ne 0) { throw 'UI packaging failed.' }
     Invoke-Dotnet -Arguments @('restore', 'Viteka.Utilidades.slnx', '--locked-mode')

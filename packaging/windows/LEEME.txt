@@ -1,4 +1,4 @@
-VITEKA UTILIDADES 0.13.0 - CANAL DE PRUEBAS
+VITEKA UTILIDADES 0.13.1 - CANAL DE PRUEBAS
 
 INSTALACION
 Instalar o actualizar en el servidor de NixFarma, sobre la version anterior.
@@ -27,8 +27,9 @@ Probar la conexion despues de actualizar: LocalService debe poder utilizar
 el DSN de sistema Oracle de 64 bits y resolver su TNS. La prueba es solo lectura.
 Las credenciales se protegen en el servidor; no se copian a los puestos.
 Primera utilidad: Tenencia obligatoria. Configurar Datos de la farmacia y provincia.
-Las listas provinciales todavia estan pendientes del video de referencia; no se
-evalua cumplimiento hasta incorporarlas. Viteka puede Comprobar tablas de tenencia
+La lista de Malaga incorpora83 grupos del Excel aportado. Se buscan coincidencias
+por ATC; las restricciones de via/dosis/tamano y codigos sanitarios se revisan
+por separado. No se acreditan por sumar presentaciones incorrectas. Viteka puede Comprobar tablas de tenencia
 dentro de Conexion a NixFarma. Ver las notas de version.
 
 PUESTOS

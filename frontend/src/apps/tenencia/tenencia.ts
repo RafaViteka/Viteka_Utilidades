@@ -3,7 +3,7 @@ import {FormsModule} from '@angular/forms';
 import {DesktopBridge} from '../../bridge';
 import {IconComponent} from '../../icon';
 interface Article{code:string;description:string;stock:number|null;issue?:string}
-interface Row{id:string;name:string;minimum:number;stock:number|null;missing:number|null;status:string;articles:Article[]}
+interface Row{id:string;name:string;minimum:number;stock:number|null;missing:number|null;status:string;articles:Article[];classification?:string;selectionNote?:string;sourceRow?:number}
 interface Result{code:string;message:string;province:string;provinceName?:string;listVersion?:string;source?:string;checkedAt?:string;rows?:Row[]}
 @Component({selector:'viteka-tenencia',standalone:true,imports:[FormsModule,IconComponent],templateUrl:'./tenencia.html',styleUrl:'./tenencia.css'})
 export class TenenciaComponent implements OnInit{

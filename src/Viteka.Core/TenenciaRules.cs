@@ -16,21 +16,33 @@ public static class TenenciaRules
     public static void Validate(TenenciaList list)
     {
         if(list is null||list.Schema!=1||!SpanishProvinces.Items.ContainsKey(list.Province??"")||string.IsNullOrWhiteSpace(list.Version)||list.Version.Length>100||string.IsNullOrWhiteSpace(list.Source)||list.Source.Length>500||list.ReviewedOn==default||list.ReviewedOn>DateOnly.FromDateTime(DateTime.UtcNow)||list.Groups is null||list.Groups.Length is <1 or >250)throw new InvalidDataException("La lista de tenencia no es válida.");
-        if(list.Groups.Any(g=>g is null||string.IsNullOrWhiteSpace(g.Id)||g.Id.Length>80||string.IsNullOrWhiteSpace(g.Name)||g.Name.Length>200||g.Minimum is <1 or >10000||g.Codes is null||g.Codes.Length is <1 or >100||g.Codes.Any(c=>!ValidCode(c))||g.Codes.Distinct().Count()!=g.Codes.Length||g.Descriptions is not null&&g.Descriptions.Any(p=>!g.Codes.Contains(p.Key)||string.IsNullOrWhiteSpace(p.Value)||p.Value.Length>200))||list.Groups.Select(g=>g.Id).Distinct().Count()!=list.Groups.Length||list.Groups.SelectMany(g=>g.Codes).Distinct().Count()>1000)throw new InvalidDataException("Revisa los grupos, códigos y unidades de la lista.");
+        foreach(var g in list.Groups){
+            if(g is null||string.IsNullOrWhiteSpace(g.Id)||g.Id.Length>80||string.IsNullOrWhiteSpace(g.Name)||g.Name.Length>200||g.Minimum is <1 or >10000||g.Codes is null||g.Codes.Length>100||g.Codes.Any(c=>!ValidCode(c))||g.Codes.Distinct().Count()!=g.Codes.Length)throw new InvalidDataException("Revisa los grupos, códigos y unidades de la lista.");
+            if(g.Codes.Length==0&&g.AtcPrefix is null&&g.ClassificationCode is null)throw new InvalidDataException("Falta un selector de artículos en el grupo.");
+            if(g.AtcPrefix is not null&&!ValidAtc(g.AtcPrefix)||g.ClassificationCode is not null&&!Regex.IsMatch(g.ClassificationCode,"^[A-Z0-9]{3,12}$")||g.SelectionNote?.Length>600||g.SourceRow is <1 or >10000)throw new InvalidDataException("Selector o nota de grupo no válido.");
+            if(g.Descriptions is not null&&g.Descriptions.Any(p=>!g.Codes.Contains(p.Key)||string.IsNullOrWhiteSpace(p.Value)||p.Value.Length>200))throw new InvalidDataException("Nombre de medicamento sin código asociado.");
+        }
+        if(list.Groups.Select(g=>g.Id).Distinct().Count()!=list.Groups.Length||list.Groups.SelectMany(g=>g.Codes).Distinct().Count()>1000)throw new InvalidDataException("Demasiados códigos o grupos duplicados.");
     }
+    public static bool ValidAtc(string? value)=>value is not null&&Regex.IsMatch(value,"^[A-Z](?:[0-9]{2}(?:[A-Z](?:[A-Z](?:[0-9]{2})?)?)?)?$",RegexOptions.CultureInvariant);
     public static bool ValidCode(string? code)=>code is not null&&Regex.IsMatch(code,"^[0-9]{6,7}$",RegexOptions.CultureInvariant);
     public static TenenciaRow[] Preview(TenenciaList list)
     {
         Validate(list);
-        return list.Groups.Select(g=>new TenenciaRow(g.Id,g.Name,g.Minimum,null,null,"not_checked",g.Codes.Select(c=>new StockArticle(c,g.Descriptions?.GetValueOrDefault(c)??("Artículo CN "+c),null,"not_checked")).ToArray())).ToArray();
+        return list.Groups.Select(g=>Decorate(g,new TenenciaRow(g.Id,g.Name,g.Minimum,null,null,"not_checked",g.Codes.Select(c=>new StockArticle(c,g.Descriptions?.GetValueOrDefault(c)??("Artículo CN "+c),null,"not_checked")).ToArray()))).ToArray();
     }
-    public static TenenciaRow[] Evaluate(TenenciaList list,IReadOnlyDictionary<string,StockArticle> stocks)
+    public static TenenciaRow[] Evaluate(TenenciaList list,IReadOnlyDictionary<string,StockArticle> stocks)=>Evaluate(list,stocks,null,null);
+    public static TenenciaRow[] Evaluate(TenenciaList list,IReadOnlyDictionary<string,StockArticle> stocks,IReadOnlyDictionary<string,string[]>? resolved,IReadOnlyDictionary<string,string>? notes)
     {
         Validate(list);
         return list.Groups.Select(g=>{
-            var articles=g.Codes.Select(c=>stocks.TryGetValue(c,out var a)?a with{Description=a.Description=="Artículo no identificado"?g.Descriptions?.GetValueOrDefault(c)??a.Description:a.Description}:new StockArticle(c,g.Descriptions?.GetValueOrDefault(c)??"Artículo no identificado",null,"not_found")).ToArray();
-            decimal? total=articles.All(a=>a.Stock is not null&&a.Issue is null)?articles.Sum(a=>a.Stock!.Value):null;
-            return new TenenciaRow(g.Id,g.Name,g.Minimum,total,total is {} value?Math.Max(0,g.Minimum-value):null,total is null?"unresolved":total>=g.Minimum?"covered":"shortfall",articles);
+            var codes=resolved?.GetValueOrDefault(g.Id)??g.Codes;
+            var articles=codes.Select(c=>stocks.TryGetValue(c,out var a)?a with{Description=a.Description=="Artículo no identificado"?g.Descriptions?.GetValueOrDefault(c)??a.Description:a.Description}:new StockArticle(c,g.Descriptions?.GetValueOrDefault(c)??"Artículo no identificado",null,"not_found")).ToArray();
+            decimal? total=articles.Length>0&&!g.RequiresReview&&articles.All(a=>a.Stock is not null&&a.Issue is null)?articles.Sum(a=>a.Stock!.Value):null;
+            var row=Decorate(g,new TenenciaRow(g.Id,g.Name,g.Minimum,total,total is {} value?Math.Max(0,g.Minimum-value):null,total is null?"unresolved":total>=g.Minimum?"covered":"shortfall",articles));
+            if(notes?.TryGetValue(g.Id,out var note)==true)row=row with{SelectionNote=string.Join(" ",new[]{row.SelectionNote,note}.Where(x=>!string.IsNullOrWhiteSpace(x)))};
+            return row;
         }).ToArray();
     }
+    private static TenenciaRow Decorate(TenenciaGroup group,TenenciaRow row)=>row with{Classification=group.AtcPrefix??group.ClassificationCode,SelectionNote=group.SelectionNote,SourceRow=group.SourceRow};
 }

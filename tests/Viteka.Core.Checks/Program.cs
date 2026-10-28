@@ -319,6 +319,24 @@ try
         var row=TenenciaRules.Evaluate(named,new Dictionary<string,Viteka.Contracts.StockArticle>()).Single();Require(row.Articles.Single().Description=="Medicamento de referencia"&&row.Status=="unresolved"&&row.Stock is null);
         try{TenenciaRules.Validate(named with{Groups=[new("a","A",1,["650001"]){Descriptions=new(){{"650099","No pertenece al grupo"}}}]});throw new Exception("Expected invalid association");}catch(InvalidDataException){}
     });
+    Check("The supplied Malaga Excel preserves all83 groups minima duplicate ATCs and source rows",()=>{
+        var path=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../../src/Viteka.Server/Catalogs/tenencia"));var list=TenenciaRules.Load(path,"29")??throw new Exception("Missing Excel catalogue");
+        Require(list.Groups.Length==83&&list.Groups.Sum(g=>g.Minimum)==180&&list.Groups.Select(g=>g.Id).Distinct().Count()==83);
+        Require(list.Groups.Count(g=>g.AtcPrefix is not null)==75&&list.Groups.Count(g=>g.ClassificationCode is not null)==7&&list.Groups.SelectMany(g=>g.Codes).Single()=="123299");
+        Require(list.Groups.Count(g=>g.AtcPrefix=="C01AA05")==2&&list.Groups.Single(g=>g.SourceRow==53).RequiresReview&&list.Groups.Single(g=>g.SourceRow==84).Minimum==4&&list.Groups.Single(g=>g.SourceRow==84).RequiresReview);
+        Require(TenenciaRules.Preview(list).Length==83&&TenenciaRules.Preview(list).All(r=>r.Stock is null));
+    });
+    var atcList=tenenciaList with{Groups=[new("a","ATC A",3,[]){AtcPrefix="A01AB"},new("b","ATC B",2,[]){AtcPrefix="A02B"},new("c","Producto sanitario",4,[]){ClassificationCode="M02BC",RequiresReview=true}]};
+    Check("ATC prefixes resolve exact code associations using parameters without mixing sanitary codes",()=>{
+        using var c=new TenenciaFixture{AtcColumn="ATC"};TenenciaStockQuery.ReadOnly(c,tx=>{var schema=TenenciaStockQuery.Inspect(c,tx);var r=TenenciaArticleResolver.Resolve(c,tx,schema,atcList,CancellationToken.None);Require(r.Groups["a"].SequenceEqual(new[]{"650001","650002"})&&r.Groups["b"].Single()=="650003"&&r.Groups["c"].Length==0);Require(c.ParametersSeen.Contains("A01AB%")&&!c.ParametersSeen.Contains("M02BC%"));return true;});Require(c.Steps.Last()=="rollback");
+    });
+    Check("Unknown therapeutic fields are identified by unique value coincidences and ambiguity stays unresolved",()=>{
+        using(var c=new TenenciaFixture{AtcColumn="GRUPO_TERAPEUTICO"}){TenenciaStockQuery.ReadOnly(c,tx=>{var r=TenenciaArticleResolver.Resolve(c,tx,TenenciaStockQuery.Inspect(c,tx),atcList,CancellationToken.None);Require(r.AtcColumn=="\"GRUPO_TERAPEUTICO\""&&r.Groups["a"].Length==2);return true;});}
+        using(var c=new TenenciaFixture{AtcColumn="GRUPO_TERAPEUTICO",TwoAtcCandidates=true}){TenenciaStockQuery.ReadOnly(c,tx=>{var r=TenenciaArticleResolver.Resolve(c,tx,TenenciaStockQuery.Inspect(c,tx),atcList,CancellationToken.None);Require(r.AtcColumn is null&&r.Groups["a"].Length==0&&r.Notes.ContainsKey("a"));return true;});}
+    });
+    Check("Route and dose constraints never pass from an ATC aggregate alone",()=>{
+        var constrained=atcList with{Groups=[atcList.Groups[0] with{RequiresReview=true,SelectionNote="Solo inyectable"}]};var mapping=new Dictionary<string,string[]>{{"a",["650001"]}};var stocks=new Dictionary<string,Viteka.Contracts.StockArticle>{{"650001",new("650001","Oral",99)}};var row=TenenciaRules.Evaluate(constrained,stocks,mapping,null).Single();Require(row.Status=="unresolved"&&row.Stock is null&&row.Articles.Single().Stock==99&&row.SelectionNote=="Solo inyectable");
+    });
     Check("Tenencia groups aggregate only known codes and compute shortfalls",()=>{
         var stocks=new Dictionary<string,Viteka.Contracts.StockArticle>{{"650001",new("650001","A",1)},{"650002",new("650002","B",1)}};
         var row=TenenciaRules.Evaluate(tenenciaList,stocks).Single();Require(row.Stock==2&&row.Missing==1&&row.Status=="shortfall");stocks["650001"]=new("650001","A",3);Require(TenenciaRules.Evaluate(tenenciaList,stocks).Single().Status=="covered");

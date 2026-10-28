@@ -1,23 +1,11 @@
-CORRECCIÓN EN PREPARACIÓN · NO PUBLICAR SIN INCORPORAR LA LISTA REAL
+Tenencia obligatoria: incorporada la lista de Málaga del Excel aportado.
 
-- Grupos a la izquierda y todos sus medicamentos asociados a la derecha.
-- Catálogo visible antes de consultar NixFarma; códigos, nombres de referencia y mínimo por grupo.
-- Los fallos de stock conservan el catálogo sin mostrar existencias antiguas.
+- Los83 grupos aparecen completos a la izquierda; sus coincidencias de medicamentos se muestran a la derecha.
+- Se conservan los ATC repetidos como grupos separados y los mínimos de la columna Ten. Mín.
+- La consulta busca coincidencias por ATC en ARTICULOS y lee el stock de EXISTENCIAS en modo de solo lectura. Puede identificar campos terapéuticos por coincidencias de sus valores; si hay varias posibilidades no elige una a ciegas.
+- Los grupos que restringen vía, dosis o tamaño quedan pendientes de revisión: un total ATC no basta para acreditarlos. Las7 clasificaciones sanitarias no se confunden con ATC. El CN123299 se conserva como referencia explícita.
+- El diagnóstico muestra los nombres de columnas de ARTICULOS para completar la conexión en el servidor real.
 
-Continúa pendiente recibir el vídeo dividido en partes inferiores a32MB o capturas legibles. No hay una lista real de Málaga incorporada. No confundir las pruebas con los datos del vídeo.
+La bolsa de orina pediátrica conserva provisionalmente el mínimo4 de la columna C, aunque el título dice2. El vídeo recortado pendiente permitirá cerrar esta discrepancia y las asociaciones específicas. El Excel no contiene la lista completa de códigos nacionales por presentación: no se inventan medicamentos ni resultados de cumplimiento.
 
----
-
-Notas de la entrega anterior0.13.0:
-
-Primera utilidad: Tenencia obligatoria, con el diseño de Viteka y organización por filtros, tabla y detalle.
-
-- Datos de la farmacia en Configuración: nombre, provincia, localidad, correo y contacto, compartidos para todos los puestos. Editables por titular/Viteka.
-- Permiso específico para Tenencia obligatoria en Usuarios.
-- Lector de ARTICULOS/EXISTENCIAS en el servidor, con transacción de solo lectura, parámetros y diagnóstico de columnas ACTUAL/STOCK ACTUAL.
-- Comprobar tablas de tenencia, solo Viteka, dentro de Conexión a NixFarma.
-- Auditoría dentro de Configuración. El registro persistente de operaciones sigue pendiente.
-
-IMPORTANTE: no se distribuye todavía la lista de Málaga ni otras listas provinciales. El vídeo de referencia supera el límite de descarga del entorno; faltan sus códigos, grupos y mínimos. Se muestra Lista pendiente y no se evalúa el cumplimiento hasta incorporar una lista revisada. No se incluyen artículos ni resultados ficticios en la app.
-
-Actualizar encima desde el servidor, sin desinstalar, cerrando antes los clientes compartidos. Se conservan cuentas, permisos, datos de farmacia y conexión. La estructura y el stock reales deben comprobarse allí.
+Actualizar encima desde el servidor, sin desinstalar, cerrando antes los clientes compartidos. Se conservan cuentas, permisos, datos de farmacia y conexión.
