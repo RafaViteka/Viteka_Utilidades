@@ -17,6 +17,8 @@ internal sealed class AccessServiceClient : IDisposable
     internal AccessServiceClient()
     {
         var bootstrap = App.SmokeTest ? Environment.GetEnvironmentVariable("VITEKA_ACCESS_BOOTSTRAP") : null;
+        if (App.SmokeTest && (string.IsNullOrEmpty(bootstrap) || !Path.GetFullPath(bootstrap).StartsWith(Path.GetFullPath(Path.GetTempPath()), StringComparison.OrdinalIgnoreCase)))
+            throw new InvalidOperationException("El smoke requiere un bootstrap explícito en el directorio temporal, nunca la configuración de producción.");
         trust = new AccessServiceTrust(bootstrap ?? System.IO.Path.Combine(AppContext.BaseDirectory, "access-server.json"));
         trust.Client.Timeout = Timeout.InfiniteTimeSpan;
     }

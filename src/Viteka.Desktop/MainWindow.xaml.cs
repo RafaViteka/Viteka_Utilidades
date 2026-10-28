@@ -48,6 +48,8 @@ public partial class MainWindow : Window
             var core = Browser.CoreWebView2;
             core.SetVirtualHostNameToFolderMapping("app.viteka.local", files, CoreWebView2HostResourceAccessKind.DenyCors);
             core.Settings.AreHostObjectsAllowed = false;
+            core.Settings.IsPasswordAutosaveEnabled = false;
+            core.Settings.IsGeneralAutofillEnabled = false;
             core.Settings.AreDefaultContextMenusEnabled = false;
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.IsStatusBarEnabled = false;

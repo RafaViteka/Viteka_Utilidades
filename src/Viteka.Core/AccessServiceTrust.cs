@@ -26,23 +26,27 @@ public sealed class AccessServiceTrust : IDisposable
         // Local bootstrap remains on loopback, even when the public hostname resolves to a LAN address.
         Server = uri.Host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)
             ? new UriBuilder(uri) { Host = "localhost" }.Uri : uri;
-        var handler = new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = false };
-        handler.ServerCertificateCustomValidationCallback = (_, certificate, _, errors) =>
+        var policy = new X509ChainPolicy
         {
-            if (certificate is null || (errors & (SslPolicyErrors.RemoteCertificateNameMismatch | SslPolicyErrors.RemoteCertificateNotAvailable)) != 0) { ValidationFailure = errors.ToString(); return false; }
-            using var chain = new X509Chain();
-            chain.ChainPolicy.TrustMode = X509ChainTrustMode.CustomRootTrust;
-            chain.ChainPolicy.CustomTrustStore.Add(root);
-            chain.ChainPolicy.ExtraStore.Add(root);
-            chain.ChainPolicy.DisableCertificateDownloads = true;
-            chain.ChainPolicy.UrlRetrievalTimeout = TimeSpan.FromSeconds(2);
-            // This installation-specific CA has no external CRL service. Trust is pinned
-            // to its protected bootstrap; chain signatures, hostname, EKU and dates still apply.
-            chain.ChainPolicy.RevocationMode = X509RevocationMode.NoCheck;
-            chain.ChainPolicy.ApplicationPolicy.Add(new Oid("1.3.6.1.5.5.7.3.1"));
-            var valid = chain.Build(certificate);
-            if (!valid) ValidationFailure = string.Join(",", chain.ChainStatus.Select(s => s.Status.ToString()));
-            return valid;
+            TrustMode = X509ChainTrustMode.CustomRootTrust,
+            RevocationMode = X509RevocationMode.NoCheck,
+            DisableCertificateDownloads = true,
+            UrlRetrievalTimeout = TimeSpan.FromSeconds(2)
+        };
+        policy.CustomTrustStore.Add(root); policy.ExtraStore.Add(root);
+        policy.ApplicationPolicy.Add(new Oid("1.3.6.1.5.5.7.3.1"));
+        // Configure the chain before SslStream validation, rather than rebuilding it
+        // after the OS has tried to discover this private installation's issuer.
+        var handler = new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = false };
+        handler.SslOptions.CertificateChainPolicy = policy;
+        handler.SslOptions.RemoteCertificateValidationCallback = (_, certificate, chain, errors) =>
+        {
+            if (certificate is null || errors != SslPolicyErrors.None)
+            {
+                ValidationFailure = errors + "; " + string.Join(",", chain?.ChainStatus.Select(s => s.Status.ToString()) ?? []);
+                return false;
+            }
+            return true;
         };
         Client = new HttpClient(handler) { BaseAddress = Server, Timeout = TimeSpan.FromSeconds(20) };
     }

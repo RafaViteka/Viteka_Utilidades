@@ -15,7 +15,7 @@ permissions:
 jobs:
   package:
     runs-on: windows-2022
-    timeout-minutes: 12
+    timeout-minutes: 16
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-dotnet@v4
@@ -50,7 +50,8 @@ jobs:
         timeout-minutes: 4
         shell: pwsh
         run: |
-          & pwsh -NoProfile -File ./scripts/prepare-access-smoke.ps1 *> access-smoke.log
+          $ErrorActionPreference = 'Continue'
+          & pwsh -NoProfile -File ./scripts/prepare-access-smoke.ps1 2>&1 | Tee-Object -FilePath access-smoke.log
           $result = $LASTEXITCODE
           if ($result -ne 0) {
             $events = Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=(Get-Date).AddMinutes(-3)} -ErrorAction SilentlyContinue | Where-Object { $_.ProviderName -in @('.NET Runtime','Application Error','VitekaUtilidadesAccess') } | Select-Object -First 2
@@ -103,9 +104,24 @@ jobs:
           dotnet run --project tests/Viteka.Core.Checks -c Release --no-build -- --download-smoke
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Compile validated Windows installer
-        if: ${{ !inputs.validate_only && !startsWith(github.ref_name, 'ci/') }}
+        if: ${{ !inputs.validate_only }}
         shell: pwsh
         run: ./scripts/publish-windows.ps1 -InstallerOnly
+      - name: Actual installer, upgrade and removal
+        if: ${{ !inputs.validate_only }}
+        timeout-minutes: 5
+        shell: pwsh
+        run: |
+          & pwsh -NoProfile -File ./scripts/smoke-installer-windows.ps1 *> installer-smoke.log
+          $result = $LASTEXITCODE
+          if ($result -ne 0) {
+            $detail = (Get-Content installer-smoke.log -Tail 40) -join "`n"
+            if ($detail.Length -gt 3800) { $detail = $detail.Substring($detail.Length-3800) }
+            $detail = $detail.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error::$detail"
+            exit $result
+          }
+          Get-Content installer-smoke.log
       - uses: actions/upload-artifact@v4
         if: ${{ !inputs.validate_only && !startsWith(github.ref_name, 'ci/') }}
         with:
@@ -129,7 +145,7 @@ jobs:
           "$hash  $([System.IO.Path]::GetFileName($zip))" | Set-Content -Encoding ascii "$zip.sha256"
           gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
           if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "Viteka Utilidades $version - Conexion local a NixFarma" --notes-file packaging/windows/RELEASE-NOTES.md
+            gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --title "Viteka Utilidades $version - Usuarios y actualizaciones" --notes-file packaging/windows/RELEASE-NOTES.md
             if ($LASTEXITCODE -ne 0) { throw 'Release creation failed' }
           }
           gh release upload $tag $zip "$zip.sha256" artifacts/installer/*.exe --repo $env:GITHUB_REPOSITORY --clobber
