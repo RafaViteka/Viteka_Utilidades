@@ -90,6 +90,11 @@ jobs:
             Write-Output "::error::$detail"
             exit 1
           }
+      - name: Remove owned access smoke authority
+        if: ${{ always() }}
+        timeout-minutes: 2
+        shell: pwsh
+        run: ./scripts/cleanup-access-smoke.ps1
       - name: HTTP authorization smoke check
         shell: pwsh
         run: |
@@ -153,11 +158,8 @@ jobs:
           gh release edit $tag --repo $env:GITHUB_REPOSITORY --draft=false --prerelease
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }
 
-      - name: Stop isolated access test authority
+      - name: Final access test cleanup
         if: ${{ always() }}
+        timeout-minutes: 2
         shell: pwsh
-        run: |
-          if ($env:VITEKA_ACCESS_FIXTURE_PID) {
-            $process = Get-Process -Id ([int]$env:VITEKA_ACCESS_FIXTURE_PID) -ErrorAction SilentlyContinue
-            if ($process -and $process.Path -eq (Join-Path $env:GITHUB_WORKSPACE 'artifacts/windows-x64/Servidor/Viteka.Server.exe')) { Stop-Process -Id $process.Id }
-          }
+        run: ./scripts/cleanup-access-smoke.ps1
