@@ -1,13 +1,12 @@
-Tenencia obligatoria: listas de medicamentos incorporadas desde los dos vídeos aportados.
+Pantalla de trabajo compacta, arranque maximizado y cierre de sesión al pie del menú.
 
-- 83 grupos con 2.089 asociaciones por código nacional (2.087 CN distintos), incluidos los productos sanitarios.
-- Medicamentos asociados visibles desde el inicio en la columna derecha; NixFarma aporta su descripción completa y sus existencias al consultar.
-- La consulta utiliza los CN concretos de cada grupo, sin ampliar las listas mediante ATC.
-- Bolsa de orina pediátrica: mínimo corregido a 2 unidades según el vídeo.
-- Bisturíes: las 18 referencias del vídeo sustituyen la asociación única anterior del Excel.
+- Tenencia ocupa todo el espacio disponible: cabecera de acciones, filtros y resumen en línea, grupos y medicamentos en tablas con desplazamiento independiente.
+- Información de la selección en el panel inferior y mínimo/existencias/faltas a su derecha. Selección de artículos con ratón o flechas; cabeceras visibles al desplazarse.
+- Se mantienen los 83 grupos y las 2.089 asociaciones por CN de los dos vídeos, visibles antes de consultar NixFarma. Los vídeos reenviados coinciden con los ya incorporados.
+- La aplicación se abre siempre maximizada, respetando la barra de tareas y permitiendo restaurar, minimizar y cerrar.
+- Cerrar sesión aparece justo encima del logotipo, con icono de apagado y espacio de separación, también con el menú plegado.
+- La prueba de conexión y la comprobación de tablas sustituyen los avisos anteriores para evitar mensajes contradictorios. Los fallos de lectura muestran diagnóstico SQLSTATE/ORA cuando está disponible, sin exponer datos de conexión.
 
-Fentanilo (25/50 mcg/h) y Foley (CH16/CH18) siguen pendientes de comprobar por dosis/tamaño. El grupo de microenemas conserva una advertencia porque el vídeo incluye el CN 718796 como Valium inyectable. Ninguno de estos tres grupos acredita cumplimiento automático. Artículos ausentes, stock nulo o ambiguo tampoco cuentan como cero.
+Actualizar desde Configuración → Actualizaciones en el servidor, con los clientes cerrados. Instalar encima, sin desinstalar; se conservan cuentas, permisos, conexión y datos de farmacia.
 
-Los nombres iniciales son abreviados de referencia; no se importan las existencias del vídeo ni se afirma revisión normativa oficial. La lectura real debe validarse en el servidor de la farmacia.
-
-Actualizar encima desde el servidor, sin desinstalar, cerrando antes los clientes compartidos. Se conservan cuentas, permisos, datos de farmacia y conexión.
+Las existencias reales deben verificarse en el servidor de NixFarma. Fentanilo y Foley conservan revisión por dosis/tamaño; microenemas señala la referencia Valium inyectable del vídeo. No se importan stocks de los vídeos ni se afirma revisión normativa oficial.

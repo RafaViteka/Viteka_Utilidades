@@ -30,6 +30,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         shell = new WindowsShellIntegration(this);
         StateChanged += (_, _) => MaximizeButton.Content = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
+        // Install the monitor work-area hook before maximizing; keep restore/minimize controls available.
+        SourceInitialized += (_, _) => WindowState = WindowState.Maximized;
         Loaded += async (_, _) => await InitializeBrowser();
         Closed += (_, _) => { closing = true; lifetime.Cancel(); maintenance?.Stop(); Browser.Dispose(); shell.Dispose(); updates?.Dispose(); access?.Dispose(); lifetime.Dispose(); };
     }
@@ -124,19 +126,23 @@ public partial class MainWindow : Window
     }
     private async Task RunNativeSmoke()
     {
-        var stage = "login";
+        var stage = "window-startup";
         try
         {
+            if (WindowState != WindowState.Maximized || !shell.WithinWorkArea()) throw new InvalidOperationException(shell.Diagnostics());
+            stage = "login";
             await LoginSmoke("Viteka", "jupiter", "SmokeSuperPassword1");
             var superId = (await Access.RequireUserAsync()).Id;
             await WaitForScript($"document.querySelector('footer')?.textContent.includes({JsonSerializer.Serialize(typeof(MainWindow).Assembly.GetName().Version?.ToString(3))}) === true");
             await WaitForScript("Math.round(document.querySelector('aside').getBoundingClientRect().width) === 220");
             stage = "window-controls";
-            if (Icon is null || !shell.HasNativeIcons || !shell.WithinWorkArea()) throw new InvalidOperationException(shell.Diagnostics());
+            if (Icon is null || !shell.HasNativeIcons || WindowState != WindowState.Maximized || !shell.WithinWorkArea()) throw new InvalidOperationException(shell.Diagnostics());
+            MaximizeWindow(this, new RoutedEventArgs()); await Task.Delay(200);
+            if (WindowState != WindowState.Normal || !shell.WithinWorkArea()) throw new InvalidOperationException(shell.Diagnostics());
             MaximizeWindow(this, new RoutedEventArgs()); await Task.Delay(200);
             if (WindowState != WindowState.Maximized || !shell.WithinWorkArea()) throw new InvalidOperationException(shell.Diagnostics());
             MaximizeWindow(this, new RoutedEventArgs()); await Task.Delay(200);
-            if (WindowState != WindowState.Normal) throw new InvalidOperationException();
+            if (WindowState != WindowState.Normal || !shell.WithinWorkArea()) throw new InvalidOperationException(shell.Diagnostics());
             stage = "zoom";
             shell.SmokeCtrlWheel();
             for (var attempt=0;attempt<50&&Math.Round(Browser.ZoomFactor*100)!=110;attempt++) await Task.Delay(100);

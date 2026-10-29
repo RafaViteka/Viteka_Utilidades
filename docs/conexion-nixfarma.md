@@ -32,3 +32,5 @@ La prueba real contra el servidor Oracle de la farmacia debe realizarse allí: n
 ## Actualización 0.12.0: autoridad central
 
 La sección local anterior describe 0.11.x. Desde 0.12.0, solo Viteka puede abrir Configuración y la conexión se protege y ejecuta en el servicio central del servidor bajo LocalService. La configuración del perfil original se migra al entrar el superadministrador en ese servidor. Ver [usuarios compartidos](accesos.md), incluido TNS, bootstrap, permisos y pruebas tras actualizar.
+
+Desde 0.14, el diálogo elimina resultados anteriores al iniciar una acción y bloquea acciones concurrentes. Probar conexión verifica una consulta fija; Comprobar tablas verifica la estructura y puede fallar aun con conexión correcta. Los fallos de tenencia muestran los códigos SQLSTATE/ORA proporcionados por el controlador, con mensajes fijos sin datos de conexión. ORA-00942 señala acceso/esquema de tabla y ORA-00904 una columna no reconocida; deben revisarse con el diagnóstico del servidor, sin modificar tablas.

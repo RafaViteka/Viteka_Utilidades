@@ -25,6 +25,9 @@ internal sealed class WindowsShellIntegration : IDisposable
             ApplyIcons();
         };
         window.ContentRendered += (_, _) => { ApplyIcons(); ClampNormalWindow(); };
+        // A maximized launch skips the normal-window clamp; apply it when the user restores.
+        window.StateChanged += (_, _) =>
+            window.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(ClampNormalWindow));
     }
     internal static void RegisterIdentity() => Marshal.ThrowExceptionForHR(SetCurrentProcessExplicitAppUserModelID(AppId));
     private IntPtr Handle => new WindowInteropHelper(window).Handle;

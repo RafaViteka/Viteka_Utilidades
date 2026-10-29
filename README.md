@@ -1,4 +1,4 @@
-# Viteka Utilidades · Centro de accesos 0.13.2
+# Viteka Utilidades · Centro de accesos 0.14.0
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
@@ -73,3 +73,11 @@ La propuesta histórica de módulos está en [docs/primera-aplicacion.md](docs/p
 Tenencia obligatoria y datos de farmacia: [docs/existencias-minimas.md](docs/existencias-minimas.md). Málaga dispone de83 grupos del Excel del usuario. Las demás provincias no usan esa lista por defecto.
 
 La interfaz muestra los 83 grupos a la izquierda y los medicamentos asociados a la derecha, antes de consultar stock. Las dos referencias en vídeo incorporan 2.089 asociaciones (2.087 CN distintos), incluidos los productos sanitarios. La bolsa pediátrica requiere 2 unidades según el vídeo. Se mantienen pendientes las condiciones de dosis/tamaño de fentanilo y Foley y una asociación de Valium inyectable en el grupo de microenemas. Ver [fuentes y reglas](docs/existencias-minimas.md).
+
+## Pantalla de trabajo · 0.14
+
+Tenencia usa todo el espacio disponible, con cabecera compacta de acciones, filtros/resumen en línea, tabla de grupos a la izquierda y medicamentos a la derecha. Las listas se desplazan por separado y conservan sus cabeceras visibles. Seleccionar un artículo actualiza el panel inferior de información; a su derecha se muestran mínimo, existencias y falta del grupo. Fuente/versión se despliega al pie. Navegación por flechas en ambas listas y vista ampliada disponibles.
+
+La aplicación arranca siempre maximizada dentro del área útil del monitor, respetando la barra de tareas y los controles para restaurar/minimizar/cerrar. Cerrar sesión se sitúa al pie del menú, con icono de apagado y separación sobre el logotipo; también funciona con el menú plegado.
+
+El diagnóstico de tablas y la prueba de conexión limpian resultados anteriores y no se ejecutan simultáneamente. Un fallo de lectura muestra códigos sanitizados SQLSTATE/ORA cuando el controlador los proporciona. Una prueba de conexión correcta no acredita que la consulta de tablas haya funcionado.

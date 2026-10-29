@@ -12,7 +12,7 @@ url=f'http://127.0.0.1:{server.server_port}'
 class AuthorityFixture:
  def __init__(self):
   self.accounts=[dict(id=f'{i:032x}',name=name,role=role,active=True,mustChangePassword=True,utilityIds=[],password=password) for i,(name,role,password) in enumerate([('Viteka','SuperAdministrator','jupiter'),('F. titular','Administrator','1234'),('usuario','User','0000')],1)]
-  self.current=None;self.calls=[];self.prefs={};self.nix=dict(configured=False,saved=False,dsn='NIXFARMA',user='',dsnAvailable=True);self.probe_fail=False;self.pharmacy=None;self.tenencia_ready=False;self.stock_error=False;self.tenencia_queries=0;self.many_groups=False;self.transport_error=False;self.use_excel=False
+  self.current=None;self.calls=[];self.prefs={};self.nix=dict(configured=False,saved=False,dsn='NIXFARMA',user='',dsnAvailable=True);self.probe_fail=False;self.schema_fail=False;self.pharmacy=None;self.tenencia_ready=False;self.stock_error=False;self.tenencia_queries=0;self.many_groups=False;self.transport_error=False;self.use_excel=False
  def view(self,u):
   if u is None:return None
   ready=not u['mustChangePassword'];admin=u['role'] in ('Administrator','SuperAdministrator')
@@ -57,7 +57,7 @@ class AuthorityFixture:
   if cmd.startswith('tenencia.'):
    if cmd=='tenencia.schema':
     if not superadmin:deny()
-    return dict(code='schema_verified',message='Estructura verificada: ARTICULOS y EXISTENCIAS; columna de stock ACTUAL.')
+    return dict(code='column',message='Comprobación de tablas: Oracle no reconoce una columna. Diagnóstico: column · SQLSTATE 42000 · ORA-00904') if self.schema_fail else dict(code='schema_verified',message='Estructura verificada: ARTICULOS y EXISTENCIAS; columna de stock ACTUAL.')
    if not admin and 'tenencia-obligatoria' not in self.current['utilityIds']:deny()
    if self.pharmacy is None:return dict(code='pharmacy_pending',message='El titular o Viteka deben guardar la provincia en Datos de la farmacia.',province='')
    if not self.tenencia_ready:return dict(code='catalog_pending',message='Lista de tenencia pendiente para Málaga. No se ha evaluado el cumplimiento.',province='29',provinceName='Málaga')
@@ -123,6 +123,7 @@ with sync_playwright() as p:
   page.locator('.setting-row').filter(has=page.get_by_text('Apariencia',exact=True)).click();dialog=page.get_by_role('dialog',name='Apariencia',exact=True);dialog.get_by_label('Apariencia',exact=True).select_option(theme);dialog.get_by_role('button',name='Guardar cambios',exact=True).click();dialog.wait_for(state='hidden')
  login('Viteka','jupiter','FixtureSuperPass1')
  assert page.get_by_label('Apariencia',exact=True).count()==0
+ logout=page.get_by_role('button',name='Cerrar sesión',exact=True);brand=page.get_by_role('button',name='Web Viteka',exact=True);assert logout.bounding_box()['y']>page.get_by_role('navigation').bounding_box()['y']+page.get_by_role('navigation').bounding_box()['height'];assert logout.bounding_box()['y']+logout.bounding_box()['height']+12<=brand.bounding_box()['y'];assert page.locator('.logout-button v-icon svg').count()==1
  assert page.get_by_role('navigation').get_by_role('button',name='Actualizaciones',exact=True).count()==0
  page.screenshot(path=str(artifacts/'angular-desktop.png'),full_page=True)
  page.keyboard.down('Control');page.mouse.wheel(0,-120);page.keyboard.up('Control');page.wait_for_function("() => document.documentElement.style.zoom==='1.1'")
@@ -132,6 +133,7 @@ with sync_playwright() as p:
  go('Mi cuenta');appearance('dark');page.wait_for_function("() => document.documentElement.dataset.theme==='dark'")
  page.reload();page.wait_for_function("() => document.documentElement.dataset.theme==='dark'")
  page.get_by_role('navigation').get_by_role('button',name='Inicio',exact=True).click();page.get_by_role('button',name='Cerrar menú lateral',exact=True).click();page.wait_for_function("() => Math.round(document.querySelector('aside').getBoundingClientRect().width)===76")
+ assert page.locator('.logout-button').bounding_box()['width']<=60
  assert page.locator('.brand-bottom .isologo').evaluate('el=>getComputedStyle(el).filter')=='brightness(0) invert(1)'
  page.screenshot(path=str(artifacts/'angular-dark.png'),full_page=True)
  page.get_by_role('button',name='Abrir menú lateral',exact=True).click();go('Configuración')
@@ -141,7 +143,9 @@ with sync_playwright() as p:
  page.locator('.setting-row').filter(has=page.get_by_text('Conexión a NixFarma',exact=True)).click()
  page.get_by_role('button',name='Configurar conexión',exact=True).click();page.get_by_text('Conexión guardada. Pulsa Probar conexión para verificarla.',exact=True).wait_for()
  page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Conexión verificada: prueba de solo lectura correcta.',exact=True).wait_for()
- fixture.probe_fail=True;page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Diagnóstico: 28000 · ORA-01017',exact=True).wait_for()
+ fixture.schema_fail=True;page.get_by_role('button',name='Comprobar tablas de tenencia',exact=True).click();page.get_by_text('Comprobación de tablas: Oracle no reconoce una columna. Diagnóstico: column · SQLSTATE 42000 · ORA-00904',exact=True).wait_for();expect(page.locator('.connection-result.verified')).to_have_count(0);assert page.get_by_text('Conexión verificada: prueba de solo lectura correcta.',exact=True).count()==0
+ page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Conexión verificada: prueba de solo lectura correcta.',exact=True).wait_for();assert page.get_by_text('Comprobación de tablas: Oracle no reconoce una columna. Diagnóstico: column · SQLSTATE 42000 · ORA-00904',exact=True).count()==0
+ fixture.probe_fail=True;page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Diagnóstico: 28000 · ORA-01017',exact=True).wait_for();expect(page.locator('.connection-result.verified')).to_have_count(0)
  page.keyboard.press('Escape');go('Auditoría');page.get_by_role('heading',name='Todavía no hay registros de auditoría',exact=True).wait_for();assert page.get_by_role('navigation').get_by_role('button',name='Auditoría',exact=True).count()==0;go('Configuración');page.screenshot(path=str(artifacts/'angular-settings.png'),full_page=True);go('Actualizaciones');page.get_by_role('button',name='Buscar actualizaciones',exact=True).click();page.get_by_text('Versión 0.13.0 disponible.',exact=True).wait_for()
  assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).get_attribute('aria-current')=='page'
  page.get_by_role('button',name='Descargar e instalar',exact=True).click();page.get_by_text('Instalación cancelada. Puedes seguir usando esta versión.',exact=True).wait_for()
@@ -162,7 +166,16 @@ with sync_playwright() as p:
  fixture.stock_error=True;page.get_by_role('button',name='Consultar existencias',exact=True).click();page.get_by_text('No se alcanza el servicio Oracle.',exact=True).wait_for();expect(page.locator('.group-button')).to_have_count(3);expect(page.locator('.drug-stock').first).to_have_text('Sin consultar');fixture.stock_error=False
  page.get_by_label('Estado',exact=True).select_option('covered');fixture.transport_error=True;page.get_by_role('button',name='Consultar existencias',exact=True).click();page.get_by_text('Servicio no disponible.',exact=True).wait_for();expect(page.locator('.group-button')).to_have_count(3);expect(page.locator('.drug-stock').first).to_have_text('Sin consultar');fixture.transport_error=False
  fixture.use_excel=True;go('Aplicaciones');page.get_by_role('button',name='Tenencia obligatoria',exact=False).click();expect(page.locator('.group-button')).to_have_count(83)
- page.get_by_role('button',name='Seleccionar grupo DIGOXINA ORAL 2 ENVASES',exact=True).wait_for();page.get_by_role('button',name='Seleccionar grupo DIGOXINA INYECTABLE 1 ENVASE',exact=True).click();page.get_by_role('region',name='Medicamentos del grupo',exact=True).get_by_text('Clasificación de referencia · C01AA05',exact=True).wait_for()
+ expect(page.locator('.page-head')).to_have_count(0);expect(page.locator('footer')).to_have_count(0)
+ for size in [{'width':1366,'height':768},{'width':1920,'height':1080}]:
+  page.set_viewport_size(size)
+  page.wait_for_timeout(100)
+  geometry=page.evaluate('''() => {const table=document.querySelector('.tenencia-workspace').getBoundingClientRect(),info=document.querySelector('.tenencia-information').getBoundingClientRect();return {height:table.height,top:table.top,bottom:info.bottom,width:document.documentElement.scrollWidth,viewport:innerWidth,viewportHeight:innerHeight,scroll:document.documentElement.scrollHeight};}''')
+  assert geometry['height']>=280 and geometry['top']<250 and geometry['bottom']<=size['height'] and geometry['width']<=size['width'] and geometry['scroll']<=size['height']+1,geometry
+  page.screenshot(path=str(artifacts/f"angular-tenencia-{size['width']}.png"),full_page=True)
+ page.set_viewport_size({'width':1366,'height':768});page.evaluate("document.documentElement.dataset.theme='light'");page.screenshot(path=str(artifacts/'angular-tenencia-light.png'),full_page=True);page.evaluate("document.documentElement.dataset.theme='dark'");page.set_viewport_size({'width':1240,'height':820})
+ page.get_by_role('button',name='Seleccionar artículo 152195',exact=True).click();page.get_by_role('region',name='Información de la selección',exact=True).get_by_text('Artículo · CN 152195',exact=True).wait_for();page.keyboard.press('ArrowDown');page.get_by_role('region',name='Información de la selección',exact=True).get_by_text('Artículo · CN 349696',exact=True).wait_for()
+ page.get_by_role('button',name='Seleccionar grupo DIGOXINA ORAL 2 ENVASES',exact=True).wait_for();page.get_by_role('button',name='Seleccionar grupo DIGOXINA INYECTABLE 1 ENVASE',exact=True).click();page.get_by_role('region',name='Información de la selección',exact=True).get_by_text('C01AA05',exact=True).wait_for()
  page.get_by_role('button',name='Seleccionar grupo HOJA BISTURÍ CON MANGO 1 UNIDAD',exact=True).click();page.get_by_role('region',name='Medicamentos del grupo',exact=True).get_by_text('175550',exact=True).wait_for();expect(page.locator('.tenencia-medications tbody tr')).to_have_count(18);page.screenshot(path=str(artifacts/'angular-tenencia-excel.png'),full_page=True);page.get_by_role('button',name='Seleccionar grupo BOLSA DE RECOGIDA DE ORINA PEDIÁTRICA 2 UNIDADES',exact=True).click();expect(page.locator('.tenencia-medications tbody tr')).to_have_count(3);page.get_by_role('region',name='Medicamentos del grupo',exact=True).get_by_text('165727',exact=True).wait_for();fixture.use_excel=False
  go('Usuarios');page.get_by_role('button',name='Crear usuario',exact=True).click();editor=page.get_by_role('dialog',name='Editar cuenta y permisos',exact=True)
  editor.get_by_label('Nombre de usuario',exact=True).fill('Personal');editor.get_by_label('Contraseña inicial',exact=True).fill('FixtureStaffPass1');editor.get_by_label('Repetir contraseña inicial',exact=True).fill('FixtureStaffPass1');editor.get_by_label('Aplicación de prueba A',exact=True).check();editor.get_by_role('button',name='Guardar cuenta',exact=True).click();editor.wait_for(state='hidden');page.get_by_role('button',name='Editar Personal',exact=True).wait_for()

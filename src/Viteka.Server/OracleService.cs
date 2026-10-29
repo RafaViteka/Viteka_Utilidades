@@ -71,7 +71,10 @@ internal sealed class OracleService(string directory)
                 });
             }catch(OperationCanceledException){return new("timeout","La lectura se ha cancelado o ha agotado el tiempo disponible.",province);}
             catch(System.Data.Odbc.OdbcException error){
-                if(!OperatingSystem.IsWindows())throw;var result=NixFarmaConnectionTester.Classify(error);return new Viteka.Contracts.TenenciaResponse(result.Code,result.Message,province);
+                if(!OperatingSystem.IsWindows())throw;var result=NixFarmaConnectionTester.Classify(error);
+                // Classify exposes only fixed messages and validated structured codes, never raw ODBC text.
+                var diagnostic="Diagnóstico: "+result.Code+(result.SqlState is null?"":" · SQLSTATE "+result.SqlState)+(result.OracleCode is null?"":" · ORA-"+result.OracleCode.Value.ToString("D5",System.Globalization.CultureInfo.InvariantCulture));
+                return new Viteka.Contracts.TenenciaResponse(result.Code,(inspectOnly?"Comprobación de tablas: ":"Consulta de existencias: ")+result.Message+" "+diagnostic,province);
             }catch(InvalidDataException error){return new("schema_or_data",error.Message.Length>0?error.Message:"No se reconoce la estructura o los datos. Viteka debe revisarlos.",province);}
             catch(Exception error) when(error is InvalidOperationException or ArgumentException or DllNotFoundException or BadImageFormatException or NotSupportedException or FormatException or OverflowException or InvalidCastException){return new("driver_or_data","No se pudo completar la lectura. Revisa el controlador, las tablas y los datos con Viteka.",province);}
             finally{gate.Release();}

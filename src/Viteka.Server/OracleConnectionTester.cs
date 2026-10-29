@@ -58,10 +58,12 @@ internal sealed class NixFarmaConnectionTester
             (_, 28001) => ("password_expired", "La contraseña Oracle ha caducado. Debe actualizarla el administrador de NixFarma."),
             (_, 12154) => ("tns", "Oracle no puede resolver el servicio TNS. Revisa la configuración del cliente Oracle para este usuario de Windows."),
             (_, 12514 or 12541 or 12545 or 12170) or ("08001" or "08S01", _) => ("network", "No se alcanza el servicio Oracle. Revisa el servicio TNS, el servidor y su disponibilidad en la red."),
-            (_, 1031) => ("permissions", "La cuenta no tiene los permisos necesarios para la prueba. Solicita una cuenta de consulta con permisos mínimos."),
-            (_, 1453) => ("read_only", "Oracle no permitió iniciar la transacción de solo lectura. No se ha ejecutado la consulta de prueba."),
+            (_, 1031) => ("permissions", "La cuenta no tiene los permisos necesarios para la operación de lectura. Solicita una cuenta de consulta con permisos mínimos."),
+            (_, 942) => ("table_access", "La cuenta Oracle no puede acceder a una tabla necesaria. Revisa el esquema y los permisos de consulta con Viteka."),
+            (_, 904) => ("column", "Oracle no reconoce una columna de la consulta. Viteka debe revisar los nombres de las tablas y sus campos."),
+            (_, 1453) => ("read_only", "Oracle no permitió iniciar la transacción de solo lectura. No se ha ejecutado la consulta."),
             ("HYT00" or "HYT01", _) => ("timeout", "La conexión o consulta ha agotado su tiempo de espera."),
-            _ => ("oracle", "Oracle no pudo completar la prueba. Comunica a soporte los códigos de diagnóstico que aparecen aquí.")
+            _ => ("oracle", "Oracle no pudo completar la operación de lectura. Revisa el diagnóstico con Viteka.")
         };
         return new(false, code, message, state, oracle);
     }

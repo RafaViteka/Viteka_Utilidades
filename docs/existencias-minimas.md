@@ -1,4 +1,4 @@
-# Tenencia obligatoria · 0.13.2
+# Tenencia obligatoria · 0.14.0
 
 ## Fuentes incorporadas
 
@@ -17,6 +17,8 @@ Configuración → Datos de la farmacia: nombre, provincia INE, localidad, corre
 Aplicaciones → Tenencia obligatoria: titular/Viteka acceden por rol; usuarios normales necesitan asignación explícita. Se revalida el permiso en anfitrión, servicio y antes de devolver una consulta. Auditoría está dentro de Configuración; sigue sin un registro persistente de operaciones.
 
 ## Vista
+
+Pantalla de trabajo compacta inspirada en la organización de NixFarma 10, con identidad Viteka. Cabecera de acciones, búsqueda/estado/resumen en una banda, tablas centrales con cabeceras fijas y desplazamiento independiente. Panel inferior con grupo, clasificación y artículo seleccionado, y resumen de mínimo/existencias/faltas a la derecha. Las flechas permiten recorrer grupos/artículos. Fuente y versión se despliegan al pie. La pantalla ocupa el área disponible sin la cabecera genérica ni el pie de otras secciones.
 
 Los 83 grupos aparecen a la izquierda con mínimo, clasificación y estado. Al elegir uno, la derecha muestra todos sus medicamentos asociados por CN. El catálogo completo aparece antes de consultar existencias, con nombres abreviados y estado Sin consultar. Hay búsqueda por grupo, nombre o CN, filtro de estado y detalle ampliado. No hay consultas automáticas al abrir. Los errores conservan el catálogo y eliminan las existencias anteriores.
 
@@ -43,3 +45,5 @@ Filas duplicadas de stock, artículo ausente o stock nulo permanecen pendientes:
 ## Validación
 
 72 checks del núcleo: catálogo, 83 grupos, 2.089 asociaciones, mínimos combinados, productos sanitarios explícitos, ausencia de ampliación por ATC, condiciones pendientes, solo lectura, rollback y stock desconocido, además de accesos/actualizaciones. Navegador: 83 grupos reales, digoxinas separadas, 18 bisturíes, 3 bolsas pediátricas, filtros, detalle y errores sin stocks antiguos. Windows: servicio TLS, WebView2, perfil compartido, catálogo sin conexión, diagnóstico ODBC e instalación/actualización conservando cuentas y datos. Los stocks ficticios solo se usan en pruebas; pasar estas pruebas no confirma existencias reales de una farmacia.
+
+Los errores Oracle en lectura/diagnóstico identifican la operación y muestran códigos SQLSTATE/ORA válidos, si existen; nunca texto bruto del controlador ni credenciales. Probar conexión y Comprobar tablas son operaciones distintas y sustituyen los mensajes anteriores.
