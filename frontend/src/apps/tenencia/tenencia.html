@@ -54,12 +54,24 @@
     <section class="tenencia-summary" aria-label="Resumen del listado">
       <span
         ><strong>{{ rows().length }}</strong> grupos</span
-      ><span
-        ><i class="status-dot covered"></i><strong>{{ hasStock() ? covered() : '—' }}</strong> cubiertos</span
-      ><span
-        ><i class="status-dot shortfall"></i><strong>{{ hasStock() ? shortfalls() : '—' }}</strong> con faltas</span
-      ><span
-        ><i class="status-dot unresolved"></i><strong>{{ hasStock() ? unresolved() : '—' }}</strong> pendientes</span
+      ><span class="summary-chip"
+        ><i class="status-dot covered"></i>
+        @if (hasStock()) {
+          <strong>{{ covered() }}</strong>
+        }
+        cubiertos</span
+      ><span class="summary-chip"
+        ><i class="status-dot shortfall"></i>
+        @if (hasStock()) {
+          <strong>{{ shortfalls() }}</strong>
+        }
+        con faltas</span
+      ><span class="summary-chip"
+        ><i class="status-dot unresolved"></i>
+        @if (hasStock()) {
+          <strong>{{ unresolved() }}</strong>
+        }
+        pendientes</span
       >
     </section>
   </div>
@@ -108,7 +120,7 @@
                     (keydown.arrowdown)="move($event, 1)"
                     (keydown.arrowup)="move($event, -1)"
                   >
-                    <strong>{{ row.name }}</strong>
+                    <strong [title]="row.name">{{ row.name }}</strong>
                   </button>
                 </td>
                 <td class="numeric">{{ row.minimum }}</td>

@@ -14,7 +14,7 @@
   gap: 16px;
   padding: 12px 14px;
   background: var(--petrol);
-  color: #fff;
+  color: var(--on-brand);
   border-radius: 9px;
   flex-wrap: wrap;
   flex-shrink: 0;
@@ -26,14 +26,14 @@
   min-width: 0;
 }
 .utility-title h1 {
-  font-size: 21px;
+  font-size: var(--fs-lg);
   letter-spacing: -0.5px;
   margin: 0 0 4px;
   line-height: 1.2;
 }
 .utility-title p {
-  font-size: 11px;
-  color: #e1eeea;
+  font-size: var(--fs-xs);
+  color: var(--on-brand-soft);
 }
 .back-button {
   display: grid;
@@ -41,10 +41,10 @@
   flex: none;
   width: 30px;
   height: 32px;
-  border: 1px solid #ffffff40;
-  background: #ffffff0a;
+  border: 1px solid var(--on-brand-line-strong);
+  background: var(--on-brand-tint);
   border-radius: 5px;
-  color: #fff;
+  color: var(--on-brand);
 }
 .back-button v-icon {
   transform: rotate(180deg);
@@ -56,18 +56,18 @@
   gap: 8px;
 }
 .utility-heading .text-button {
-  color: #fff;
-  font-size: 11px;
+  color: var(--on-brand);
+  font-size: var(--fs-xs);
 }
 .utility-heading .primary {
   background: var(--lime);
   border-color: var(--lime);
-  color: #153b35;
+  color: var(--on-lime);
   padding: 9px 14px;
   min-height: 34px;
 }
 .tenencia-notice {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
   padding: 5px 9px;
   background: var(--surface);
@@ -75,7 +75,7 @@
   flex-shrink: 0;
 }
 .tenencia-notice.query-error {
-  border-left-color: #ba805a;
+  border-left-color: var(--warning);
 }
 .error {
   margin: 0;
@@ -98,7 +98,7 @@
 .tenencia-filters label {
   display: grid;
   gap: 4px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--muted);
   min-width: 0;
 }
@@ -117,7 +117,7 @@
   background: var(--card);
   color: var(--ink);
   width: 100%;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .tenencia-summary {
   display: flex;
@@ -125,7 +125,7 @@
   gap: 12px;
   flex-wrap: wrap;
   padding: 7px 2px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--muted);
 }
 .tenencia-summary > span {
@@ -136,7 +136,7 @@
 }
 .tenencia-summary strong {
   color: var(--ink);
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .status-dot {
   display: inline-block;
@@ -150,14 +150,14 @@
   background: var(--green);
 }
 .status-dot.shortfall {
-  background: #c67d3b;
+  background: var(--warning-strong);
 }
 .status-dot.unresolved {
-  background: #a583b2;
+  background: var(--pending);
 }
 .tenencia-workspace {
   display: grid;
-  grid-template-columns: minmax(270px, 0.9fr) minmax(0, 1.8fr);
+  grid-template-columns: minmax(330px, 1.1fr) minmax(0, 1.6fr);
   gap: 10px;
   flex: 1;
   min-height: 260px;
@@ -185,7 +185,7 @@
   flex-shrink: 0;
 }
 .panel-heading h2 {
-  font-size: 12px;
+  font-size: var(--fs-xs);
   letter-spacing: 0;
   margin: 0;
   line-height: 1.4;
@@ -193,14 +193,14 @@
 }
 .panel-heading p,
 .panel-heading small {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--muted);
   margin-top: 3px;
 }
 .panel-heading .text-button {
   flex: none;
   padding: 6px;
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 .group-list,
 .tenencia-table {
@@ -219,7 +219,7 @@ table {
   border-collapse: separate;
   border-spacing: 0;
   width: 100%;
-  font-size: 11px;
+  font-size: var(--fs-xs);
 }
 th,
 td {
@@ -237,7 +237,7 @@ thead th {
   top: 0;
   background: var(--surface);
   z-index: 1;
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 .numeric {
   text-align: right;
@@ -273,17 +273,29 @@ thead th {
   color: var(--ink);
 }
 .group-button strong {
-  font-size: 11px;
-  line-height: 1.4;
-  display: block;
-  font-weight: 550;
-  overflow-wrap: anywhere;
+  font-size: var(--fs-xs);
+  line-height: 1.35;
+  font-weight: 500;
+  /* Nombres largos: dos líneas como máximo; el nombre completo aparece al pasar el ratón y en Información. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.summary-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  background: var(--card);
 }
 .row-state {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--muted);
   white-space: nowrap;
 }
@@ -296,7 +308,7 @@ thead th {
 }
 .group-empty {
   padding: 24px 12px;
-  font-size: 12px;
+  font-size: var(--fs-xs);
 }
 .article-select {
   padding: 0;
@@ -305,7 +317,7 @@ thead th {
   color: inherit;
   text-align: left;
   width: 100%;
-  font-size: 11px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
@@ -319,7 +331,7 @@ td small {
   display: block;
   color: var(--muted);
   margin-top: 3px;
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 .tenencia-information {
   display: grid;
@@ -343,11 +355,11 @@ td small {
   margin-bottom: 8px;
 }
 .information-heading h2 {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   margin: 0;
 }
 .information-heading > span {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--muted);
 }
 .information-values {
@@ -357,24 +369,24 @@ td small {
 }
 .information-values small {
   display: block;
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--muted);
   margin-bottom: 4px;
 }
 .information-values strong {
-  font-size: 11px;
+  font-size: var(--fs-xs);
   font-weight: 550;
   display: block;
   overflow-wrap: anywhere;
 }
 .reference-help,
 .selection-note {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   line-height: 1.4;
   margin-top: 8px;
 }
 .selection-note {
-  border-left: 2px solid #ba805a;
+  border-left: 2px solid var(--warning);
   padding-left: 7px;
   color: var(--ink);
 }
@@ -400,21 +412,21 @@ td small {
   min-width: 0;
 }
 .group-totals dt {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   color: var(--muted);
 }
 .group-totals dd {
-  font-size: 20px;
+  font-size: var(--fs-lg);
   margin: 6px 0 0;
   font-weight: 600;
 }
 .tenencia-source {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   margin: 0;
   flex-shrink: 0;
 }
 .tenencia-source p {
-  font-size: 10px;
+  font-size: var(--fs-xs);
   margin: 4px 0;
 }
 .tenencia-empty {
@@ -423,7 +435,7 @@ td small {
   margin: 0;
 }
 .tenencia-empty h2 {
-  font-size: 19px;
+  font-size: var(--fs-lg);
 }
 .tenencia-empty v-icon {
   color: var(--green);
@@ -455,7 +467,7 @@ td small {
     display: none;
   }
   .utility-title h1 {
-    font-size: 19px;
+    font-size: var(--fs-lg);
   }
 }
 @media (max-width: 760px) {
@@ -470,7 +482,7 @@ td small {
     justify-content: end;
   }
   .utility-title h1 {
-    font-size: 18px;
+    font-size: var(--fs-lg);
   }
   .tenencia-workspace {
     grid-template-columns: 1fr;
@@ -525,7 +537,7 @@ th[aria-sort='descending'] {
 .group-code {
   font-variant-numeric: tabular-nums;
   white-space: nowrap;
-  font-size: 10px;
+  font-size: var(--fs-xs);
 }
 .classification-code {
   font-variant-numeric: tabular-nums;
