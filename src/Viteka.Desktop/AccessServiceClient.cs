@@ -134,7 +134,9 @@ internal sealed class AccessServiceClient : IDisposable
     }
     internal Task<JsonElement> UtilityAsync(string command, JsonElement? payload = null)
     {
-        var path = command switch { "pharmacy.state" => "access/pharmacy/state", "pharmacy.save" => "access/pharmacy/save", "tenencia.state" => "access/tenencia/state", "tenencia.query" => "access/tenencia/query", "tenencia.schema" => "access/tenencia/schema", _ => throw new AccessDeniedException() };
+        var path = command switch { "pharmacy.state" => "access/pharmacy/state", "pharmacy.save" => "access/pharmacy/save", "tenencia.state" => "access/tenencia/state", "tenencia.query" => "access/tenencia/query", "tenencia.schema" => "access/tenencia/schema",
+            _ when command.StartsWith("tenencia.catalog.", StringComparison.Ordinal) && command.Length <= 40 && command[17..] is "state" or "search" or "group.save" or "group.delete" or "codes.add" or "codes.remove" or "reset" => "access/tenencia-catalog/" + command[17..],
+            _ => throw new AccessDeniedException() };
         return RequestAsync(HttpMethod.Post, path, payload ?? JsonSerializer.SerializeToElement(new { }));
     }
     private async Task<JsonElement> RequestAsync(HttpMethod method, string path, JsonElement? body = null)

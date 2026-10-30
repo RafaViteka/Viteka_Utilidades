@@ -65,12 +65,12 @@ internal sealed class OracleService(string directory)
                 return Viteka.Core.TenenciaStockQuery.ReadOnly(connection, tx =>
                 {
                     deadline.Token.ThrowIfCancellationRequested(); var schema = Viteka.Core.TenenciaStockQuery.Inspect(connection, tx, nativeNixFarma: true);
-                    if (inspectOnly) return new Viteka.Contracts.TenenciaResponse("schema_verified", "Estructura verificada: APPUL.AB_ARTICULOS y APPUL.AB_ARTICULOS_FICHA_E; stock " + schema.Stock + "; lectura por CN explícitos. Columnas de AB_ARTICULOS: " + string.Join(", ", schema.ArticleColumns.Take(250)) + ". No se han leído existencias.", province);
+                    if (inspectOnly) return new Viteka.Contracts.TenenciaResponse("schema_verified", "Estructura verificada: APPUL.AB_ARTICULOS y APPUL.AB_ARTICULOS_FICHA_E; stock " + schema.Stock + "; lectura por CN explícitos. Caducidad: " + (schema.Expiry ?? "no identificada") + "; última compra: " + (schema.LastPurchase ?? "no identificada") + "; última venta: " + (schema.LastSale ?? "no identificada") + "; agrupación homogénea: " + (schema.Homogeneous.Length > 0 ? string.Join(", ", schema.Homogeneous) : "no identificada") + ". Columnas de AB_ARTICULOS: " + string.Join(", ", schema.ArticleColumns.Take(250)) + ". Columnas de AB_ARTICULOS_FICHA_E: " + string.Join(", ", schema.StockColumns.Take(250)) + ". No se han leído existencias.", province) { Fields = schema.Fields };
                     if (list is null) throw new InvalidOperationException();
                     var resolution = Viteka.Core.TenenciaArticleResolver.Resolve(connection, tx, schema, list, deadline.Token);
                     var codes = resolution.Groups.Values.SelectMany(c => c).Distinct().ToArray();
                     var stocks = codes.Length == 0 ? new Dictionary<string, Viteka.Contracts.StockArticle>() : Viteka.Core.TenenciaStockQuery.Read(connection, tx, schema, codes, deadline.Token);
-                    return new Viteka.Contracts.TenenciaResponse("ok", "Consulta de solo lectura completada.", province, list.Version, list.Source, DateTimeOffset.UtcNow, Viteka.Core.TenenciaRules.Evaluate(list, stocks, resolution.Groups, resolution.Notes));
+                    return new Viteka.Contracts.TenenciaResponse("ok", "Consulta de solo lectura completada.", province, list.Version, list.Source, DateTimeOffset.UtcNow, Viteka.Core.TenenciaRules.Evaluate(list, stocks, resolution.Groups, resolution.Notes)) { Fields = schema.Fields };
                 });
             }
             catch (OperationCanceledException) { return new("timeout", "La lectura se ha cancelado o ha agotado el tiempo disponible.", province); }
@@ -86,6 +86,32 @@ internal sealed class OracleService(string directory)
             finally { gate.Release(); }
         });
         try { return await operation.WaitAsync(TimeSpan.FromSeconds(30), ct); } catch (TimeoutException) { return new("timeout", "El controlador no respondió en 30 segundos. Espera a que termine antes de repetir.", province); }
+    }
+    /// <summary>Búsqueda de artículos de solo lectura para el editor del listado (solo Viteka).</summary>
+    internal async Task<Viteka.Contracts.ArticleSearchResult> SearchArticlesAsync(string mode, string text, string? field, CancellationToken ct)
+    {
+        if (tester.IsRunning || !await gate.WaitAsync(0, ct)) return new("busy", "Hay una operación Oracle en curso.", []);
+        var operation = Task.Run(() =>
+        {
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct); deadline.CancelAfter(TimeSpan.FromSeconds(28));
+            try
+            {
+                if (!OperatingSystem.IsWindows()) return new Viteka.Contracts.ArticleSearchResult("driver", "Se requiere Windows.", []);
+                var profile = Read(); if (profile is null) return new("not_configured", "Configura primero la conexión a NixFarma.", []);
+                var builder = new System.Data.Odbc.OdbcConnectionStringBuilder { Dsn = profile.Dsn }; builder["UID"] = profile.User; builder["PWD"] = profile.Password;
+                using var connection = new System.Data.Odbc.OdbcConnection(builder.ConnectionString);
+                return Viteka.Core.TenenciaStockQuery.ReadOnly(connection, tx => Viteka.Core.TenenciaArticleFinder.Search(connection, tx, Viteka.Core.TenenciaStockQuery.Inspect(connection, tx, nativeNixFarma: true), mode, text, field, deadline.Token));
+            }
+            catch (OperationCanceledException) { return new("timeout", "La búsqueda se ha cancelado o ha agotado el tiempo disponible.", []); }
+            catch (System.Data.Odbc.OdbcException error)
+            {
+                if (!OperatingSystem.IsWindows()) throw; var result = NixFarmaConnectionTester.Classify(error);
+                return new Viteka.Contracts.ArticleSearchResult(result.Code, "Búsqueda de artículos: " + result.Message, []);
+            }
+            catch (InvalidDataException error) { return new("schema_or_data", error.Message.Length > 0 ? error.Message : "No se reconoce la estructura o los datos.", []); }
+            finally { gate.Release(); }
+        });
+        try { return await operation.WaitAsync(TimeSpan.FromSeconds(30), ct); } catch (TimeoutException) { return new("timeout", "El controlador no respondió en 30 segundos.", []); }
     }
     private object State(OracleProfile? profile)
     {
