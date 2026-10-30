@@ -12,7 +12,7 @@ assert sys.platform=='win32'
 drivers=pyodbc.drivers()
 driver=next((d for d in drivers if 'SQL Server' in d),None)
 assert driver, 'Windows runner needs its installed SQL Server ODBC driver for the Driver Manager regression'
-with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,r'SOFTWARE\ODBC\ODBCINST.INI\'+driver) as key:
+with winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE,r'SOFTWARE\ODBC\ODBCINST.INI' + chr(92) + driver) as key:
     dll=winreg.QueryValueEx(key,'Driver')[0]
 name='VitekaMCP'+uuid.uuid4().hex[:12]
 root=r'Software\ODBC\ODBC.INI'
