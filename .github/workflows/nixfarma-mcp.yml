@@ -25,6 +25,8 @@ jobs:
         run: python tools/nixfarma-mcp/test_server.py
       - name: Real MCP STDIO handshake and tool validation
         run: python tools/nixfarma-mcp/test_protocol.py
+      - name: Windows Driver Manager DSN resolution regression
+        run: python tools/nixfarma-mcp/test_windows_dsn.py
       - name: Windows credential vault round trip
         shell: python
         run: |

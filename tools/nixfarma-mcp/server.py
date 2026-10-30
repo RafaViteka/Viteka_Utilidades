@@ -54,10 +54,19 @@ def validate_profile(value: dict):
         text = value.get(name)
         if not isinstance(text, str) or not text or len(text) > maximum or any(ord(c) < 32 for c in text):
             raise ValueError('Configuración no válida.')
+    if any(c in value['dsn'] for c in ';={}'):
+        raise ValueError('El nombre del DSN contiene caracteres no admitidos.')
 
 
 def odbc_value(text: str) -> str:
     return '{' + text.replace('}', '}}') + '}'
+
+
+def connection_string(settings: dict) -> str:
+    validate_profile(settings)
+    # Windows Driver Manager uses the DSN name literally; braces can become part of its name.
+    # Preserve delimiter escaping for UID/PWD, but send the validated DSN without braces.
+    return 'DSN=' + settings['dsn'] + ';UID=' + odbc_value(settings['user']) + ';PWD=' + odbc_value(settings['password'])
 
 
 @contextlib.contextmanager
@@ -68,7 +77,7 @@ def read_session(settings: dict | None = None):
     try:
         settings = settings or profile()
         validate_profile(settings)
-        connection = pyodbc.connect(';'.join(k + '=' + odbc_value(settings[v]) for k, v in [('DSN','dsn'), ('UID','user'), ('PWD','password')]), autocommit=False, timeout=10)
+        connection = pyodbc.connect(connection_string(settings), autocommit=False, timeout=10)
         connection.timeout = 15
         cursor = connection.cursor()
         # First SQL statement of the transaction. Failure stops every subsequent query.
@@ -196,11 +205,17 @@ if __name__ == '__main__':
                 configure()
             elif sys.argv[1:] == ['--probar']:
                 print(json.dumps(probar_conexion(), ensure_ascii=False))
+            elif sys.argv[1:] == ['--diagnostico']:
+                windows_vault()  # Require Windows x64, but do not read credentials.
+                sources = pyodbc.dataSources()
+                drivers = pyodbc.drivers()
+                driver = sources.get('NIXFARMA')
+                print(json.dumps({'python_bits': struct.calcsize('P') * 8, 'dsn': 'NIXFARMA', 'dsn_detectado': driver is not None, 'controlador_dsn': driver, 'controlador_instalado': driver in drivers if driver else False, 'controladores_disponibles': drivers}, ensure_ascii=False, indent=2))
             elif sys.argv[1:] == ['--olvidar']:
                 windows_vault().delete_password(SERVICE, ENTRY)
                 print('Credencial eliminada.')
             else:
-                raise ValueError('Opciones: --configurar, --probar, --olvidar; sin argumentos inicia MCP por STDIO.')
+                raise ValueError('Opciones: --configurar, --probar, --diagnostico, --olvidar; sin argumentos inicia MCP por STDIO.')
         except Exception as error:
             print(str(error) if isinstance(error, (ValueError, RuntimeError)) else 'No se pudo completar la operación local.', file=sys.stderr)
             sys.exit(1)

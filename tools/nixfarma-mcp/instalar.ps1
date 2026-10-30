@@ -8,12 +8,12 @@ $python = Join-Path $PSScriptRoot '.venv\Scripts\python.exe'
 & $python -m pip install -r requirements.txt
 if ($LASTEXITCODE -ne 0) { throw 'No se pudieron instalar las dependencias.' }
 & $python server.py --configurar
-if ($LASTEXITCODE -ne 0) { throw 'La conexión no se ha guardado. Revisa el DSN, controlador y credenciales.' }
+if ($LASTEXITCODE -ne 0) { throw 'La conexion no se ha guardado. Revisa el DSN, controlador y credenciales.' }
 Write-Host ''
-Write-Host 'MCP listo para añadir en la aplicación instalada EN ESTE EQUIPO y con ESTE USUARIO WINDOWS.'
+Write-Host 'MCP listo para anadir en la aplicacion instalada EN ESTE EQUIPO y con ESTE USUARIO WINDOWS.'
 Write-Host 'Nombre: Viteka NixFarma'
 Write-Host 'Tipo: STDIO'
 Write-Host "Comando: $python"
-Write-Host "Argumento único: $(Join-Path $PSScriptRoot 'server.py')"
+Write-Host "Argumento unico: $(Join-Path $PSScriptRoot 'server.py')"
 Write-Host "Directorio de trabajo: $PSScriptRoot"
-Write-Host 'Variables de entorno y paso de variables: vacíos.'
+Write-Host 'Variables de entorno y paso de variables: vacios.'

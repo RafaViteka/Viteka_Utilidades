@@ -11,7 +11,7 @@ with zipfile.ZipFile(stream,'w',compression=zipfile.ZIP_STORED) as archive:
         info.create_system=3
         info.external_attr=0o100644 << 16
         archive.writestr(info,(folder/name).read_text(encoding='utf-8').encode('utf-8'))
-result=stream.getvalue();path=root/'downloads/Viteka-NixFarma-MCP-0.1.0.zip'
+result=stream.getvalue();path=root/'downloads/Viteka-NixFarma-MCP-0.1.1.zip'
 digest=hashlib.sha256(result).hexdigest();hashpath=path.with_suffix('.zip.sha256');hashtext=digest+'  '+path.name+'\n'
 if '--check' in sys.argv:
     assert path.read_bytes()==result and hashpath.read_text()==hashtext,'Regenerar paquete MCP'

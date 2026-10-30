@@ -25,7 +25,7 @@ class Tests(unittest.TestCase):
         with patch.object(bridge.pyodbc,'connect',return_value=c) as connect:
             with bridge.read_session(self.settings) as cur:cur.execute('SELECT 1 FROM DUAL')
         self.assertEqual(c.cur.steps[0][0],'SET TRANSACTION READ ONLY');self.assertTrue(c.rolled and c.closed)
-        self.assertFalse(connect.call_args.kwargs['autocommit']);self.assertIn('PWD={a}};PWD=secret}',connect.call_args.args[0])
+        self.assertTrue(connect.call_args.args[0].startswith('DSN=NIXFARMA;'));self.assertNotIn('DSN={',connect.call_args.args[0]);self.assertFalse(connect.call_args.kwargs['autocommit']);self.assertIn('PWD={a}};PWD=secret}',connect.call_args.args[0])
     def test_readonly_failure_stops_query_and_sanitizes_error(self):
         c=Connection(True)
         with patch.object(bridge.pyodbc,'connect',return_value=c):
@@ -42,6 +42,11 @@ class Tests(unittest.TestCase):
         with patch.object(bridge.pyodbc,'connect') as connect:
             for call in [lambda:bridge.consultar_cn("123456' OR 1=1"),lambda:bridge.describir_tabla('SYS','USERS'),lambda:bridge.describir_tabla('APPUL','AB_ARTICULOS;DROP'),lambda:bridge.buscar_articulos_por_atc('N02%',3),lambda:bridge.buscar_articulos_por_atc('N02BE01',3),lambda:bridge.buscar_articulos_por_atc('N02BE01',5,10000)]:
                 with self.assertRaises(ValueError):call()
+            connect.assert_not_called()
+    def test_dsn_cannot_inject_connection_attributes(self):
+        with patch.object(bridge.pyodbc,'connect') as connect:
+            with self.assertRaises(ValueError):
+                with bridge.read_session({**self.settings,'dsn':'NIXFARMA;UID=admin'}):pass
             connect.assert_not_called()
     def test_busy_is_bounded(self):
         with bridge.GATE:

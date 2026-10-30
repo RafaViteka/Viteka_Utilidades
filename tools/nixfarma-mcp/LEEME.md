@@ -1,4 +1,4 @@
-# Viteka NixFarma MCP local · 0.1.0
+# Viteka NixFarma MCP local · 0.1.1
 
 Complemento STDIO local para Windows x64. No modifica ni actualiza Viteka Utilidades. Herramientas de lectura: probar_conexion, listar_tablas, describir_tabla, consultar_cn y buscar_articulos_por_atc. No ofrece SQL libre ni HTTP, no lee pacientes y no escribe en Oracle.
 
@@ -49,3 +49,7 @@ Basado en las columnas exportadas por la farmacia: APPUL.AB_ARTICULOS (CODIGO,EM
 Cada operación abre conexión propia, desactiva autocommit, ejecuta SET TRANSACTION READ ONLY antes de leer y termina con rollback/cierre. Una sola operación concurrente, timeout de conexión10s y consulta15s (el controlador debe soportarlos). Respuestas limitadas con indicador truncado; no usar una muestra como listado completo. No expone credenciales mediante herramientas.
 
 La conexión real y el almacenamiento Windows deben verificarse en el servidor. Las pruebas de desarrollo validan consultas parametrizadas/solo lectura y protocolo STDIO; no equivalen a probar Oracle de la farmacia.
+
+## Corrección0.1.1
+
+El DSN se envía sin llaves al Driver Manager de Windows; UID/PWD mantienen su escape de delimitadores. La versión anterior enviaba DSN={NIXFARMA}, que puede interpretarse como otro nombre y producir IM002 aun cuando SQLDataSources detecta NIXFARMA. No se cambia el DSN existente ni la contraseña. Extraer esta versión encima conservando .venv y volver a ejecutar --configurar. Si persiste IM002, ejecutar --diagnostico: muestra arquitectura y nombres de controladores, sin leer contraseñas ni consultar Oracle.
