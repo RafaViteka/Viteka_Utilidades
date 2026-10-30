@@ -714,15 +714,34 @@ details p {
 .toast {
   position: fixed;
   bottom: 22px;
-  left: 50%;
-  transform: translateX(-50%);
-  padding: 13px 20px;
+  right: 22px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: min(420px, calc(100vw - 44px));
+  padding: 12px 16px;
   border-radius: 12px;
   background: var(--ink);
   color: var(--paper);
-  font-size: var(--fs-xs);
+  font-size: var(--fs-sm);
   z-index: 120;
   box-shadow: var(--shadow-strong);
+  animation: toast-in 0.18s ease-out;
+}
+.toast v-icon {
+  width: 20px;
+  height: 20px;
+  flex: none;
+  color: #36b37e;
+}
+.toast[data-kind='warn'] v-icon {
+  color: #f2b01e;
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
 }
 .modal-overlay {
   position: fixed;
@@ -1338,5 +1357,486 @@ html[data-theme='dark'] .auth-brand {
   .dialog {
     padding: 22px;
     max-height: 94vh;
+  }
+}
+
+/* ——— Navegación: Tenencia fija, contador de faltas, búsqueda Ctrl+K y aviso de actualización ——— */
+.nav-count {
+  margin-left: auto;
+  min-width: 22px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: #f2b01e;
+  color: #3b2a00;
+  font-style: normal;
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.collapsed .nav-count {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  min-width: 18px;
+  height: 16px;
+  padding: 0 4px;
+  font-size: 11px;
+}
+.palette-trigger {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 14px 2px 0;
+  padding: 9px 12px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--muted);
+  font-size: var(--fs-xs);
+  text-align: left;
+}
+.palette-trigger span {
+  flex: 1;
+}
+.palette-trigger:hover {
+  border-color: var(--hover-line);
+}
+kbd {
+  font: inherit;
+  font-size: 11px;
+  padding: 1px 6px;
+  border: 1px solid var(--line);
+  border-bottom-width: 2px;
+  border-radius: 5px;
+  background: var(--paper);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.collapsed .palette-trigger {
+  justify-content: center;
+  padding: 10px;
+}
+.collapsed .palette-trigger span,
+.collapsed .palette-trigger kbd,
+.collapsed .update-badge span {
+  display: none;
+}
+.update-badge {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 2px 0;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--green) 40%, transparent);
+  border-radius: 10px;
+  background: var(--active);
+  color: var(--ink);
+  text-align: left;
+}
+.update-badge v-icon {
+  width: 20px;
+  height: 20px;
+  color: var(--green);
+  flex: none;
+}
+.update-badge strong,
+.update-badge small {
+  display: block;
+  font-size: var(--fs-xs);
+}
+.update-badge small {
+  color: var(--muted);
+}
+.collapsed .update-badge {
+  justify-content: center;
+  padding: 10px;
+}
+.page-head .crumb {
+  border: 0;
+  background: none;
+  padding: 0;
+  margin-bottom: 6px;
+  color: var(--green);
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  letter-spacing: 0.4px;
+}
+.page-head .crumb::after {
+  content: ' /';
+  color: var(--muted);
+}
+.settings-tabs {
+  display: flex;
+  gap: 4px;
+  flex-wrap: wrap;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 20px;
+}
+.settings-tabs button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  border: 0;
+  border-bottom: 2px solid transparent;
+  background: none;
+  padding: 10px 14px;
+  margin-bottom: -1px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.settings-tabs button:hover {
+  color: var(--ink);
+}
+.settings-tabs button.active {
+  color: var(--ink);
+  font-weight: 650;
+  border-bottom-color: var(--green);
+}
+.settings-tabs .update-dot {
+  margin-left: 0;
+}
+
+/* ——— Ventana de actualización ——— */
+.update-dialog {
+  max-width: 460px;
+  text-align: center;
+  padding: 32px 30px 24px;
+}
+.update-dialog-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--active);
+  color: var(--green);
+}
+.update-dialog-icon v-icon {
+  width: 28px;
+  height: 28px;
+}
+.update-dialog h2 {
+  font-size: var(--fs-lg);
+  margin: 0 0 8px;
+}
+.update-dialog p {
+  font-size: var(--fs-sm);
+  margin: 0 0 6px;
+}
+.update-dialog .update-dialog-note {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.update-dialog .actions {
+  justify-content: center;
+  margin-top: 20px;
+  gap: 6px;
+}
+
+/* ——— Paleta de comandos ——— */
+.palette-overlay {
+  align-items: start;
+  padding-top: 12vh;
+}
+.palette {
+  max-width: 580px;
+  padding: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.palette-search {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+.palette-search v-icon {
+  width: 20px;
+  height: 20px;
+}
+.palette-search input {
+  flex: 1;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-size: var(--fs-md);
+}
+.palette-list {
+  max-height: 50vh;
+  overflow-y: auto;
+  padding: 6px;
+}
+.palette-list button {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: 9px;
+  background: none;
+  color: var(--ink);
+  text-align: left;
+}
+.palette-list button.active {
+  background: var(--active);
+}
+.palette-list v-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--green);
+  flex: none;
+}
+.palette-list strong {
+  display: block;
+  font-size: var(--fs-sm);
+  font-weight: 600;
+}
+.palette-list small {
+  display: block;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.palette-empty {
+  padding: 16px;
+  color: var(--muted);
+  font-size: var(--fs-sm);
+}
+.palette-foot {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 8px 14px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+
+/* ——— Inicio: tarjeta de Tenencia ——— */
+.tenencia-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 16px;
+  width: 100%;
+  margin: 18px 0 16px;
+  padding: 16px 20px;
+  border: 1px solid var(--line);
+  border-left: 4px solid #36b37e;
+  border-radius: 14px;
+  background: var(--card);
+  color: var(--ink);
+  text-align: left;
+  box-shadow: var(--shadow);
+}
+.tenencia-card.has-shortfall {
+  border-left-color: #f2b01e;
+}
+.tenencia-card:hover {
+  border-color: var(--hover-line);
+}
+.tenencia-card-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  display: grid;
+  place-items: center;
+  background: var(--surface);
+  color: #36b37e;
+}
+.has-shortfall .tenencia-card-icon {
+  color: #d99a00;
+}
+.tenencia-card-icon v-icon {
+  width: 24px;
+  height: 24px;
+}
+.tenencia-card-text small {
+  display: block;
+  font-size: var(--fs-xs);
+  letter-spacing: 1px;
+  color: var(--muted);
+}
+.tenencia-card-text strong {
+  display: block;
+  font-size: var(--fs-lg);
+  margin: 2px 0;
+}
+.tenencia-card-text span {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+}
+.tenencia-card-bar {
+  grid-column: 2 / 3;
+  grid-row: 2;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.tenencia-card-bar i {
+  display: block;
+  height: 100%;
+  background: #36b37e;
+}
+
+/* ——— Aplicaciones y favoritos ——— */
+.utility-card {
+  position: relative;
+}
+.utility-card .resource {
+  width: 100%;
+  padding-right: 64px;
+}
+.favorite-toggle {
+  position: absolute;
+  top: 50%;
+  right: 44px;
+  transform: translateY(-50%);
+  border: 0;
+  background: none;
+  padding: 6px;
+  border-radius: 8px;
+  color: var(--muted);
+}
+.favorite-toggle:hover {
+  background: var(--surface);
+}
+.favorite-toggle.on {
+  color: #e0a100;
+}
+.favorite-toggle.on v-icon svg {
+  fill: currentColor;
+}
+
+/* ——— Usuarios ——— */
+.user-row {
+  flex-wrap: nowrap;
+  justify-content: flex-start;
+  padding: 14px 4px;
+}
+.user-row.inactive {
+  opacity: 0.6;
+}
+.avatar {
+  width: 40px;
+  height: 40px;
+  flex: none;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-size: var(--fs-sm);
+  font-weight: 700;
+  background: var(--active);
+  color: var(--green);
+}
+.avatar[data-role='SuperAdministrator'] {
+  background: var(--petrol);
+  color: #fff;
+}
+.avatar[data-role='Administrator'] {
+  background: var(--lime);
+  color: var(--on-lime);
+}
+.user-main {
+  flex: 1;
+}
+.user-row .you {
+  display: inline;
+  margin-left: 4px;
+}
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+.chip {
+  font-size: var(--fs-xs);
+  padding: 2px 9px;
+  border-radius: 999px;
+  background: var(--surface);
+  color: var(--muted);
+}
+.chip.warn {
+  background: #fff3cd;
+  color: #7a5600;
+}
+html[data-theme='dark'] .chip.warn {
+  background: #3d3210;
+  color: #f5d77a;
+}
+.chip.off {
+  background: transparent;
+  border: 1px solid var(--line);
+}
+.row-actions {
+  display: flex;
+  gap: 4px;
+}
+.icon-button {
+  display: inline-grid;
+  place-items: center;
+  width: 36px;
+  height: 36px;
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  background: var(--card);
+  color: var(--ink);
+}
+.icon-button:hover:not(:disabled) {
+  border-color: var(--hover-line);
+  color: var(--green);
+}
+.icon-button:disabled {
+  opacity: 0.4;
+}
+.icon-button v-icon {
+  width: 18px;
+  height: 18px;
+}
+
+/* ——— Botón principal en modo oscuro: lima, como «Consultar existencias» ——— */
+html[data-theme='dark'] .primary {
+  background: var(--lime);
+  border-color: var(--lime);
+  color: var(--on-lime);
+}
+html[data-theme='dark'] .primary:hover:not(:disabled) {
+  background: var(--lime-hover);
+}
+
+/* ——— Pantallas grandes: escala tipográfica algo mayor ——— */
+@media (min-width: 1600px) {
+  :root {
+    --fs-xs: 13px;
+    --fs-sm: 15px;
+    --fs-md: 17px;
+    --fs-lg: 22px;
+    --fs-xl: 30px;
+    --fs-2xl: 40px;
+  }
+}
+
+/* ——— Impresión: solo el informe de faltas ——— */
+@media print {
+  aside,
+  footer,
+  .toast,
+  .modal-overlay {
+    display: none !important;
+  }
+  .layout {
+    display: block !important;
   }
 }

@@ -9,9 +9,32 @@
         Consulta de existencias mínimas ·
         {{ result()?.provinceName || 'Provincia ' + (result()?.province || 'pendiente') }}
       </p>
+      @if (result()) {
+        <p
+          class="tenencia-notice"
+          role="status"
+          [class.query-error]="result()?.code !== 'ready' && result()?.code !== 'ok'"
+        >
+          {{ result()?.message }}
+        </p>
+      }
     </div>
   </div>
   <div class="actions">
+    @if (hasStock()) {
+      <span class="checked-at" title="Hora de la última consulta">Consultado a las {{ checkedTime() }}</span>
+      <button
+        class="icon-button"
+        (click)="exportShortfalls()"
+        [disabled]="!shortfalls()"
+        aria-label="Exportar faltas"
+        title="Exportar faltas a Excel (CSV)"
+      >
+        <v-icon name="sheet" /></button
+      ><button class="icon-button" (click)="print()" aria-label="Imprimir faltas" title="Imprimir faltas">
+        <v-icon name="printer" />
+      </button>
+    }
     <button class="text-button" (click)="state()" [disabled]="busy()">Revisar disponibilidad</button
     ><button class="primary" (click)="query()" [disabled]="!canQuery()">
       {{ busy() ? 'Espera…' : 'Consultar existencias' }}
@@ -20,11 +43,6 @@
 </header>
 @if (error()) {
   <p class="error" role="alert">{{ error() }}</p>
-}
-@if (result()) {
-  <p class="tenencia-notice" role="status" [class.query-error]="result()?.code !== 'ready' && result()?.code !== 'ok'">
-    {{ result()?.message }}
-  </p>
 }
 @if (rows().length) {
   <div class="tenencia-commandbar">
@@ -51,21 +69,42 @@
       >
     </div>
     <section class="tenencia-summary" aria-label="Resumen del listado">
-      <span
-        ><strong>{{ rows().length }}</strong> grupos</span
-      ><span class="summary-chip"
-        ><i class="status-dot covered" aria-hidden="true"></i>
+      @if (hasStock()) {
+        <span class="summary-progress" [title]="covered() + ' de ' + rows().length + ' grupos correctos'"
+          ><span
+            ><strong>{{ covered() }}</strong> de <strong>{{ rows().length }}</strong> correctos</span
+          ><span class="progress-track" aria-hidden="true"><i [style.width.%]="coveredPercent()"></i></span
+        ></span>
+      } @else {
+        <span
+          ><strong>{{ rows().length }}</strong> grupos</span
+        >
+      }
+      <button
+        class="summary-chip"
+        [class.on]="status() === 'covered'"
+        [attr.aria-pressed]="status() === 'covered'"
+        title="Mostrar solo correctos"
+        (click)="toggleStatus('covered')"
+      >
+        <i class="status-dot covered" aria-hidden="true"></i>
         @if (hasStock()) {
           <strong>{{ covered() }}</strong>
         }
-        correctos</span
-      ><span class="summary-chip"
-        ><i class="status-dot shortfall" aria-hidden="true"></i>
+        correctos</button
+      ><button
+        class="summary-chip"
+        [class.on]="status() === 'shortfall'"
+        [attr.aria-pressed]="status() === 'shortfall'"
+        title="Mostrar solo faltas (tecla F: siguiente falta)"
+        (click)="toggleStatus('shortfall')"
+      >
+        <i class="status-dot shortfall" aria-hidden="true"></i>
         @if (hasStock()) {
           <strong>{{ shortfalls() }}</strong>
         }
-        con falta</span
-      >
+        con falta
+      </button>
     </section>
   </div>
   <div class="tenencia-workspace">
@@ -348,4 +387,46 @@
       </div>
     </section>
   </div>
+}
+
+@if (hasStock()) {
+  <section class="tenencia-print" aria-hidden="true">
+    <h1>Tenencia obligatoria · faltas</h1>
+    <p>
+      {{ result()?.provinceName || 'Provincia ' + result()?.province }} · {{ date(result()?.checkedAt) }} ·
+      {{ covered() }} de {{ rows().length }} grupos correctos · {{ shortfalls() }} con falta
+    </p>
+    <table>
+      <thead>
+        <tr>
+          <th>Código</th>
+          <th>Grupo</th>
+          <th>Mín.</th>
+          <th>Exist.</th>
+          <th>Faltan</th>
+          <th>Medicamentos asociados (CN · existencias)</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (r of shortfallRows(); track r.id) {
+          <tr>
+            <td>{{ r.classification || '—' }}</td>
+            <td>{{ r.name }}</td>
+            <td>{{ r.minimum }}</td>
+            <td>{{ number(r.stock) }}</td>
+            <td>{{ number(r.missing) }}</td>
+            <td>
+              @for (a of sortedArticles(r); track a.code) {
+                <div>{{ a.code }} · {{ a.description }} · {{ number(a.stock ?? 0) }}</div>
+              }
+            </td>
+          </tr>
+        } @empty {
+          <tr>
+            <td colspan="6">Sin faltas en la última consulta.</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  </section>
 }

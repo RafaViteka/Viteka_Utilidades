@@ -81,7 +81,7 @@
     </section>
   </div>
 } @else {
-  <div class="layout" [class.collapsed]="collapsed()">
+  <div class="layout" [class.collapsed]="collapsed()" [attr.data-ready]="ready()">
     <aside>
       <div class="menu-heading">
         <span>NAVEGACIÓN</span
@@ -97,21 +97,37 @@
       <nav aria-label="Navegación principal">
         @for (item of nav(); track item.name) {
           <button
-            [class.active]="page() === item.name || (item.name === 'Configuración' && inSettings())"
+            [class.active]="isActive(item)"
+            [class.nav-utility]="!!item.utility"
             [attr.aria-label]="item.name"
             [attr.title]="collapsed() ? item.name : null"
-            [attr.aria-current]="
-              page() === item.name || (item.name === 'Configuración' && inSettings()) ? 'page' : null
-            "
-            (click)="go(item.name)"
+            [attr.aria-current]="isActive(item) ? 'page' : null"
+            (click)="navigate(item)"
           >
             <v-icon [name]="item.icon" /><span>{{ item.name }}</span>
-            @if (item.name === 'Configuración' && update()?.available) {
-              <i class="update-dot" aria-label="Actualización disponible"></i>
+            @if (item.utility && tenenciaSummary()?.shortfall) {
+              <i class="nav-count" [attr.aria-label]="tenenciaSummary()?.shortfall + ' faltas'">{{
+                tenenciaSummary()?.shortfall
+              }}</i>
             }
           </button>
         }
       </nav>
+      <button class="palette-trigger" (click)="openPalette()" title="Buscar en Viteka (Ctrl+K)">
+        <v-icon name="search" /><span>Buscar…</span><kbd>Ctrl K</kbd>
+      </button>
+      @if (update()?.available) {
+        <button
+          class="update-badge"
+          (click)="go('Actualizaciones')"
+          [attr.title]="'Viteka ' + update()?.version + ' disponible'"
+          aria-label="Actualización disponible"
+        >
+          <v-icon name="download" /><span
+            ><strong>Actualización</strong><small>Versión {{ update()?.version }}</small></span
+          >
+        </button>
+      }
       <div class="sidebar-bottom">
         <div class="session-strip">
           <span
@@ -136,12 +152,6 @@
       [class.utility-workspace]="page() === 'Aplicaciones' && selectedUtility() === 'tenencia-obligatoria'"
     >
       <main>
-        @if (update()?.available && page() !== 'Actualizaciones') {
-          <div class="update-banner" role="status">
-            <span>Viteka {{ update()?.version }} está disponible.</span
-            ><button (click)="go('Actualizaciones')">Ver actualización<v-icon name="arrow" /></button>
-          </div>
-        }
         @if (error() && !editorOpen() && !resetOpen() && !settingDialog()) {
           <p class="error" role="alert">{{ error() }}</p>
         }
@@ -180,6 +190,38 @@
               </div>
             </article>
           </section>
+          @if (hasTenencia()) {
+            <button
+              class="tenencia-card"
+              [class.has-shortfall]="!!tenenciaSummary()?.shortfall"
+              (click)="openTenencia()"
+              aria-label="Abrir tenencia"
+            >
+              <span class="tenencia-card-icon"
+                ><v-icon [name]="tenenciaSummary() ? (tenenciaSummary()!.shortfall ? 'warning' : 'check') : 'shield'"
+              /></span>
+              <span class="tenencia-card-text">
+                <small>TENENCIA OBLIGATORIA</small>
+                @if (tenenciaSummary(); as t) {
+                  <strong>{{
+                    t.shortfall
+                      ? t.shortfall + (t.shortfall === 1 ? ' grupo con falta' : ' grupos con falta')
+                      : 'Todo correcto'
+                  }}</strong>
+                  <span>{{ t.covered }} de {{ t.total }} correctos · consultado {{ summaryTime(t.checkedAt) }}</span>
+                } @else {
+                  <strong>Sin consultar todavía</strong>
+                  <span>Comprueba las existencias mínimas de tu provincia.</span>
+                }
+              </span>
+              @if (tenenciaSummary(); as t) {
+                <span class="tenencia-card-bar" aria-hidden="true"
+                  ><i [style.width.%]="t.total ? (t.covered * 100) / t.total : 0"></i
+                ></span>
+              }
+              <v-icon name="arrow" />
+            </button>
+          }
           <div class="section-label">Recursos</div>
           <section class="resource-grid">
             @for (resource of resources; track resource.id) {
@@ -209,32 +251,73 @@
             ><button (click)="copy('info-email')">Copiar correo de información</button>
           </div>
         } @else {
-          @if (
-            page() === 'Mi cuenta' || page() === 'Usuarios' || page() === 'Actualizaciones' || page() === 'Auditoría'
-          ) {
-            <button class="settings-back text-button" (click)="go('Configuración')">← Configuración</button>
-          }
-          @if (page() !== 'Aplicaciones' || selectedUtility() !== 'tenencia-obligatoria') {
+          @if (!inTenencia()) {
             <div class="page-head">
-              <div class="eyebrow">VITEKA / UTILIDADES</div>
+              @if (inSettings() && page() !== 'Configuración') {
+                <button class="crumb" (click)="go('Configuración')">Configuración</button>
+              }
               <h1>{{ title() }}</h1>
               <p>{{ subtitle() }}</p>
             </div>
           }
-          @if (page() === 'Aplicaciones' && selectedUtility() === 'tenencia-obligatoria') {
-            <viteka-tenencia (back)="selectedUtility.set(null)" />
+          @if (inSettings()) {
+            <div class="settings-tabs" role="group" aria-label="Secciones de configuración">
+              <button [class.active]="page() === 'Configuración'" (click)="go('Configuración')">Resumen</button>
+              @for (tab of settingsTabs(); track tab.page) {
+                <button
+                  [class.active]="page() === tab.page"
+                  [attr.aria-current]="page() === tab.page ? 'page' : null"
+                  (click)="go(tab.page)"
+                >
+                  {{ tab.label }}
+                  @if (tab.page === 'Actualizaciones' && update()?.available) {
+                    <i class="update-dot" aria-hidden="true"></i>
+                  }
+                </button>
+              }
+            </div>
+          }
+          @if (inTenencia()) {
+            <viteka-tenencia
+              [userKey]="user()?.id || ''"
+              [initialSearch]="tenenciaSearch()"
+              (summary)="onTenenciaSummary($event)"
+              (back)="selectedUtility.set(null)"
+            />
           } @else if (page() === 'Aplicaciones' || page() === 'Favoritos' || page() === 'Auditoría') {
-            @if (page() === 'Aplicaciones' && utilities().length) {
+            @if (
+              (page() === 'Aplicaciones' && utilities().length) ||
+              (page() === 'Favoritos' && favoriteUtilities().length)
+            ) {
               <section class="resource-grid">
-                @for (app of utilities(); track app.id) {
-                  <button class="resource" (click)="openUtility(app.id)">
-                    <div class="resource-icon"><v-icon name="grid" /></div>
-                    <div>
-                      <strong>{{ app.name }}</strong
-                      ><small>{{ app.description }}</small>
-                    </div>
-                    <v-icon name="arrow" />
-                  </button>
+                @for (app of page() === 'Favoritos' ? favoriteUtilities() : utilities(); track app.id) {
+                  <div class="utility-card">
+                    <button
+                      class="resource"
+                      (click)="app.id === 'tenencia-obligatoria' ? openTenencia() : openUtility(app.id)"
+                    >
+                      <div class="resource-icon">
+                        <v-icon [name]="app.id === 'tenencia-obligatoria' ? 'shield' : 'grid'" />
+                      </div>
+                      <div>
+                        <strong>{{ app.name }}</strong
+                        ><small>{{ app.description }}</small>
+                      </div>
+                      <v-icon name="arrow" />
+                    </button>
+                    @if (user()?.role !== 'User') {
+                      <button
+                        class="favorite-toggle"
+                        [class.on]="isFavorite(app.id)"
+                        [attr.aria-pressed]="isFavorite(app.id)"
+                        aria-label="Favorito"
+                        [title]="isFavorite(app.id) ? 'Quitar de favoritos' : 'Añadir a favoritos'"
+                        (click)="toggleFavorite(app.id, $event)"
+                      >
+                        <v-icon name="star" />
+                      </button>
+                    }
+                  </div>
                 }
               </section>
             } @else {
@@ -257,7 +340,7 @@
                       ? 'Las aplicaciones publicadas aparecerán aquí cuando tengas acceso autorizado.'
                       : page() === 'Auditoría'
                         ? 'La auditoría de operaciones se incorporará con las utilidades.'
-                        : 'Este espacio se completará al incorporar las primeras aplicaciones.'
+                        : 'Pulsa la estrella de una aplicación en Aplicaciones para tenerla aquí a mano.'
                   }}
                 </p>
               </section>
@@ -367,37 +450,48 @@
               }
               <div class="user-list">
                 @for (account of users(); track account.id) {
-                  <article class="user-row">
-                    <div>
-                      <strong>{{ account.name }}</strong
-                      ><small
-                        >{{ roleName(account.role) }} · {{ account.active ? 'Activa' : 'Desactivada'
-                        }}{{
-                          account.bootstrapPassword
-                            ? ' · Contraseña de instalación pendiente'
-                            : account.mustChangePassword
-                              ? ' · Cambio de contraseña pendiente'
-                              : ''
-                        }}</small
-                      >
+                  <article class="user-row" [class.inactive]="!account.active">
+                    <span class="avatar" [attr.data-role]="account.role" aria-hidden="true">{{
+                      initials(account.name)
+                    }}</span>
+                    <div class="user-main">
+                      <strong
+                        >{{ account.name }}
+                        @if (account.id === user()?.id) {
+                          <small class="you">(tú)</small>
+                        }
+                      </strong>
+                      <div class="chips">
+                        <span class="chip" [attr.data-role]="account.role">{{ roleName(account.role) }}</span>
+                        @if (!account.active) {
+                          <span class="chip off">Desactivada</span>
+                        }
+                        @if (account.bootstrapPassword) {
+                          <span class="chip warn">Contraseña de instalación pendiente</span>
+                        } @else if (account.mustChangePassword) {
+                          <span class="chip warn">Cambio de contraseña pendiente</span>
+                        }
+                      </div>
                     </div>
-                    <div class="actions">
+                    <div class="row-actions">
                       @if (canEdit(account)) {
                         <button
-                          class="text-button"
+                          class="icon-button"
                           (click)="openUser(account)"
                           [attr.aria-label]="'Editar ' + account.name"
+                          title="Editar cuenta y permisos"
                         >
-                          Editar y permisos
+                          <v-icon name="edit" />
                         </button>
                       }
                       @if (account.id === user()?.id || canEdit(account)) {
                         <button
-                          class="text-button"
+                          class="icon-button"
                           (click)="openReset(account)"
                           [attr.aria-label]="'Cambiar contraseña de ' + account.name"
+                          title="Cambiar contraseña"
                         >
-                          Contraseña
+                          <v-icon name="key" />
                         </button>
                       }
                     </div>
@@ -462,7 +556,7 @@
           }
         }
       </main>
-      @if (page() !== 'Aplicaciones' || selectedUtility() !== 'tenencia-obligatoria') {
+      @if (!inTenencia()) {
         <footer>
           <span>Centro de atención y recursos</span><span>Viteka Utilidades · {{ version() }}</span>
         </footer>
@@ -471,7 +565,73 @@
   </div>
 }
 @if (toast()) {
-  <div class="toast" role="status">{{ toast() }}</div>
+  <div class="toast" [attr.data-kind]="toastKind()" role="status">
+    <v-icon [name]="toastKind() === 'warn' ? 'warning' : 'check'" /><span>{{ toast() }}</span>
+  </div>
+}
+@if (user() && !user()?.mustChangePassword && updatePrompt() && update()?.available) {
+  <div class="modal-overlay" (click)="laterUpdate()">
+    <section
+      role="dialog"
+      aria-modal="true"
+      aria-label="Actualización disponible"
+      class="dialog update-dialog"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="update-dialog-icon"><v-icon name="download" /></div>
+      <h2>Viteka {{ update()?.version }} está disponible</h2>
+      <p>¿Quieres actualizar ahora? Tienes la versión {{ version() }}.</p>
+      <p class="update-dialog-note">
+        Se instala sola, sin asistente. Windows pedirá una confirmación de permisos y Viteka volverá a abrirse con tu
+        sesión iniciada.
+      </p>
+      <div class="actions">
+        <button class="primary" (click)="installFromPrompt()">Actualizar ahora</button
+        ><button class="text-button" (click)="laterUpdate()">Más tarde</button
+        ><button class="text-button" (click)="viewUpdate()">Ver detalles</button>
+      </div>
+    </section>
+  </div>
+}
+@if (user() && !user()?.mustChangePassword && paletteOpen()) {
+  <div class="modal-overlay palette-overlay" (click)="paletteOpen.set(false)">
+    <section
+      role="dialog"
+      aria-modal="true"
+      aria-label="Buscar en Viteka"
+      class="dialog palette"
+      (click)="$event.stopPropagation()"
+    >
+      <label class="palette-search"
+        ><v-icon name="search" /><input
+          aria-label="Buscar pantalla, opción o código nacional"
+          placeholder="Pantalla, opción o código nacional…"
+          [ngModel]="paletteQuery()"
+          (ngModelChange)="paletteQuery.set($event); paletteIndex.set(0)"
+          (keydown)="paletteKey($event)"
+        /><kbd>Esc</kbd></label
+      >
+      <div class="palette-list" role="listbox" aria-label="Resultados">
+        @for (c of paletteResults(); track c.label; let i = $index) {
+          <button
+            role="option"
+            [class.active]="i === paletteIndex()"
+            [attr.aria-selected]="i === paletteIndex()"
+            (mouseenter)="paletteIndex.set(i)"
+            (click)="runCommand(c)"
+          >
+            <v-icon [name]="c.icon" /><span
+              ><strong>{{ c.label }}</strong
+              ><small>{{ c.hint }}</small></span
+            >
+          </button>
+        } @empty {
+          <p class="palette-empty">Sin resultados.</p>
+        }
+      </div>
+      <div class="palette-foot"><kbd>↑</kbd><kbd>↓</kbd> moverse · <kbd>Intro</kbd> abrir</div>
+    </section>
+  </div>
 }
 @if (user() && !user()?.mustChangePassword && dialog()) {
   <div class="modal-overlay" (click)="closeModals()">

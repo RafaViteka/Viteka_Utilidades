@@ -69,10 +69,10 @@
 .tenencia-notice {
   font-size: var(--fs-xs);
   line-height: 1.4;
-  padding: 5px 9px;
-  background: var(--surface);
+  margin-top: 3px;
+  padding-left: 8px;
   border-left: 2px solid var(--green);
-  flex-shrink: 0;
+  color: var(--muted);
 }
 .tenencia-notice.query-error {
   border-left-color: var(--warning);
@@ -555,4 +555,80 @@ th[aria-sort='descending'] {
 }
 .group-code:empty {
   color: var(--muted);
+}
+
+.checked-at {
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  white-space: nowrap;
+}
+.utility-heading .icon-button {
+  width: 34px;
+  height: 34px;
+}
+button.summary-chip {
+  font: inherit;
+  font-size: var(--fs-xs);
+  color: var(--muted);
+  cursor: pointer;
+}
+button.summary-chip:hover {
+  border-color: var(--hover-line);
+}
+button.summary-chip.on {
+  border-color: var(--green);
+  background: var(--active);
+  color: var(--ink);
+}
+.summary-progress {
+  gap: 8px !important;
+}
+.progress-track {
+  display: inline-block;
+  width: 110px;
+  height: 6px;
+  border-radius: 999px;
+  background: var(--surface);
+  overflow: hidden;
+}
+.progress-track i {
+  display: block;
+  height: 100%;
+  background: #36b37e;
+  border-radius: inherit;
+  transition: width 0.3s;
+}
+.tenencia-print {
+  display: none;
+}
+@media print {
+  :host > *:not(.tenencia-print) {
+    display: none !important;
+  }
+  .tenencia-print {
+    display: block;
+    color: #000;
+    font-size: 11px;
+  }
+  .tenencia-print h1 {
+    font-size: 18px;
+    margin: 0 0 4px;
+  }
+  .tenencia-print p {
+    margin: 0 0 10px;
+  }
+  .tenencia-print table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+  .tenencia-print th,
+  .tenencia-print td {
+    border: 1px solid #999;
+    padding: 4px 6px;
+    text-align: left;
+    vertical-align: top;
+    position: static;
+    background: none;
+    color: #000;
+  }
 }
