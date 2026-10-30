@@ -1,0 +1,43 @@
+name: NixFarma local MCP
+on:
+  push:
+    paths:
+      - 'tools/nixfarma-mcp/**'
+      - 'scripts/package-nixfarma-mcp.py'
+      - 'downloads/Viteka-NixFarma-MCP-*'
+      - '.github/workflows/nixfarma-mcp.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows-mcp:
+    runs-on: windows-2022
+    timeout-minutes: 6
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          architecture: 'x64'
+      - name: Install connector dependencies
+        run: python -m pip install -r tools/nixfarma-mcp/requirements.txt
+      - name: Read-only, parameter binding and cleanup checks
+        run: python tools/nixfarma-mcp/test_server.py
+      - name: Real MCP STDIO handshake and tool validation
+        run: python tools/nixfarma-mcp/test_protocol.py
+      - name: Windows credential vault round trip
+        shell: python
+        run: |
+          import uuid
+          from keyring.backends.Windows import WinVaultKeyring
+          vault=WinVaultKeyring()
+          service='Viteka.MCP.CI.'+uuid.uuid4().hex
+          try:
+              vault.set_password(service,'fixture','Temporary CI fixture, not Oracle credentials')
+              assert vault.get_password(service,'fixture')=='Temporary CI fixture, not Oracle credentials'
+          finally:
+              if vault.get_password(service,'fixture') is not None:
+                  vault.delete_password(service,'fixture')
+          print('PASS: native Windows credential vault write/read/delete')
+      - name: Check reproducible download package
+        run: python scripts/package-nixfarma-mcp.py --check

@@ -81,3 +81,7 @@ Tenencia usa todo el espacio disponible, con cabecera compacta de acciones, filt
 La aplicación arranca siempre maximizada dentro del área útil del monitor, respetando la barra de tareas y los controles para restaurar/minimizar/cerrar. Cerrar sesión se sitúa al pie del menú, con icono de apagado y separación sobre el logotipo; también funciona con el menú plegado.
 
 El diagnóstico de tablas y la prueba de conexión limpian resultados anteriores y no se ejecutan simultáneamente. Un fallo de lectura muestra códigos sanitizados SQLSTATE/ORA cuando el controlador los proporciona. Una prueba de conexión correcta no acredita que la consulta de tablas haya funcionado.
+
+## Conector MCP local opcional
+
+Puente STDIO Windows x64 para consultar el DSN NIXFARMA desde un cliente compatible ejecutado en el mismo servidor y usuario Windows. [Descargar ZIP](downloads/Viteka-NixFarma-MCP-0.1.0.zip) y [pasos de instalación](tools/nixfarma-mcp/LEEME.md). Credenciales en Windows Credential Manager; consultas fijas, parametrizadas y en transacción de solo lectura. No instala un servicio HTTP ni cambia Viteka Utilidades. La relación CN–ATC se devuelve como candidata para verificar clase/tipo/nivel; no calcula cumplimiento. La configuración del cliente MCP no conecta por sí sola una sesión cloud.
