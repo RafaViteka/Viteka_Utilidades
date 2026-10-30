@@ -63,6 +63,11 @@ export class IconComponent {
     edit: ['M4 20h4L19 9l-4-4L4 16z', 'm13 7 4 4'],
     printer: ['M7 9V3h10v6', 'M7 17H4v-7h16v7h-3', 'M7 14h10v7H7z'],
     sheet: ['M5 3h10l4 4v14H5z', 'M14 3v5h5', 'M8 12h8', 'M8 16h8', 'M12 12v8'],
+    file: ['M6 3h9l4 4v14H6z', 'M14 3v5h5', 'M9 13h6', 'M9 17h4'],
+    plus: ['M12 5v14', 'M5 12h14'],
+    trash: ['M4 7h16', 'M9 7V4h6v3', 'M6 7l1 14h10l1-14', 'M10 11v6', 'M14 11v6'],
+    upload: ['M12 16V4', 'm7 9 5-5 5 5', 'M4 17v4h16v-4'],
+    undo: ['M9 14 4 9l5-5', 'M4 9h11a5 5 0 0 1 0 10h-3'],
     command: ['M9 6a3 3 0 1 0-3 3h12a3 3 0 1 0-3-3v12a3 3 0 1 0 3-3H6a3 3 0 1 0 3 3z'],
   };
 }

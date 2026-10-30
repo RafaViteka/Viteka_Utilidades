@@ -45,6 +45,7 @@ internal static class AccessHost
         authority.InitializeDefaults();
         var oracle = new OracleService(privateRoot);
         var pharmacy = new PharmacyDirectory(privateRoot, Protect, Unprotect);
+        var catalogs = new TenenciaCatalogStore(privateRoot, Path.Combine(AppContext.BaseDirectory, "Catalogs", "tenencia"));
         var sessions = new ConcurrentDictionary<string, Session>();
         // Las sesiones sobreviven a un reinicio del servicio (p. ej. al actualizar): solo se guarda el hash del token.
         var sessionStore = new AccessSessionStore(privateRoot, Protect, Unprotect);
@@ -158,13 +159,40 @@ internal static class AccessHost
             if (action is not ("state" or "query")) throw new AccessDeniedException();
             var profile = pharmacy.Load(); if (profile is null) return Results.Ok(new TenenciaResponse("pharmacy_pending", "El titular o Viteka deben guardar la provincia en Datos de la farmacia.", ""));
             TenenciaList? list;
-            try { list = TenenciaRules.Load(Path.Combine(AppContext.BaseDirectory, "Catalogs", "tenencia"), profile.Province); }
+            try { list = catalogs.Load(profile.Province); }
             catch (Exception error) when (error is InvalidDataException or JsonException) { return Results.Ok(new TenenciaResponse("catalog_invalid", "La lista provincial no es válida; Viteka debe revisarla antes de consultar.", profile.Province)); }
             if (list is null) return Results.Ok(new TenenciaResponse("catalog_pending", "Lista de tenencia pendiente para " + SpanishProvinces.Items[profile.Province] + ". No se ha evaluado el cumplimiento.", profile.Province) { ProvinceName = SpanishProvinces.Items[profile.Province] });
-            if (action == "state") return Results.Ok(new TenenciaResponse("ready", "Lista disponible. Pulsa Consultar para leer las existencias actuales.", profile.Province, list.Version, list.Source, Rows: TenenciaRules.Preview(list)) { ProvinceName = SpanishProvinces.Items[profile.Province] });
+            var customized = catalogs.IsCustomized(profile.Province);
+            if (action == "state")
+            {
+                // La última consulta se conserva en el servidor y la ven todos los puestos hasta la siguiente.
+                var last = catalogs.LoadLast(profile.Province, list.Version);
+                if (last is not null) return Results.Ok(last with { Message = "Última consulta guardada. Pulsa Consultar existencias para actualizarla.", Cached = true, Customized = customized, ProvinceName = SpanishProvinces.Items[profile.Province] });
+                return Results.Ok(new TenenciaResponse("ready", "Lista disponible. Pulsa Consultar para leer las existencias actuales.", profile.Province, list.Version, list.Source, Rows: TenenciaRules.Preview(list)) { ProvinceName = SpanishProvinces.Items[profile.Province], Customized = customized });
+            }
             var response = await oracle.TenenciaAsync(profile.Province, list, false, context.RequestAborted);
             if (!AccessPolicy.CanUse(Agent(context).RequireUser(), UtilityCatalog.TenenciaId, UtilityCatalog.Items)) throw new AccessDeniedException();
-            return Results.Ok(response with { ProvinceName = SpanishProvinces.Items[profile.Province], ListVersion = list.Version, Source = list.Source, Rows = response.Code == "ok" ? response.Rows : TenenciaRules.Preview(list) });
+            var final = response with { ProvinceName = SpanishProvinces.Items[profile.Province], ListVersion = list.Version, Source = list.Source, Rows = response.Code == "ok" ? response.Rows : TenenciaRules.Preview(list), Customized = customized };
+            catalogs.SaveLast(profile.Province, final);
+            return Results.Ok(final);
+        });
+        // Edición del listado y búsqueda de artículos: exclusivamente Viteka (superadministrador).
+        app.MapPost("/access/tenencia-catalog/{action}", async (string action, HttpContext context, JsonElement request) =>
+        {
+            var actor = Agent(context).RequireUser();
+            if (!AccessPolicy.CanConfigure(actor)) throw new AccessDeniedException();
+            var profile = pharmacy.Load() ?? throw new ArgumentException("Guarda primero la provincia en Datos de la farmacia.");
+            if (action == "search")
+            {
+                string Value(string name) => request.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
+                var text = Value("text"); if (text.Length > 12000) throw new ArgumentException("Búsqueda demasiado larga.");
+                return Results.Ok(await oracle.SearchArticlesAsync(Value("mode"), text, Value("field") is { Length: > 0 } f ? f : null, context.RequestAborted));
+            }
+            TenenciaList? list;
+            if (action == "state") list = catalogs.Load(profile.Province);
+            else if (action is "group.save" or "group.delete" or "codes.add" or "codes.remove" or "reset") list = catalogs.Apply(profile.Province, action, request);
+            else throw new AccessDeniedException();
+            return Results.Ok(new { list, customized = catalogs.IsCustomized(profile.Province), provinceName = SpanishProvinces.Items[profile.Province] });
         });
         await app.RunAsync();
     }

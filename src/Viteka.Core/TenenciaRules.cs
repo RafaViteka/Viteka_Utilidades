@@ -19,8 +19,7 @@ public static class TenenciaRules
         foreach (var g in list.Groups)
         {
             if (g is null || string.IsNullOrWhiteSpace(g.Id) || g.Id.Length > 80 || string.IsNullOrWhiteSpace(g.Name) || g.Name.Length > 200 || g.Minimum is < 1 or > 10000 || g.Codes is null || g.Codes.Length > 1000 || g.Codes.Any(c => !ValidCode(c)) || g.Codes.Distinct().Count() != g.Codes.Length) throw new InvalidDataException("Revisa los grupos, códigos y unidades de la lista.");
-            if (g.Codes.Length == 0 && g.AtcPrefix is null && g.ClassificationCode is null) throw new InvalidDataException("Falta un selector de artículos en el grupo.");
-            if (g.AtcPrefix is not null && !ValidAtc(g.AtcPrefix) || g.ClassificationCode is not null && !Regex.IsMatch(g.ClassificationCode, "^[A-Z0-9]{3,12}$") || g.SelectionNote?.Length > 600 || g.SourceRow is < 1 or > 10000) throw new InvalidDataException("Selector o nota de grupo no válido.");
+            if (g.AtcPrefix is not null && !ValidAtc(g.AtcPrefix) || g.ClassificationCode is not null && !Regex.IsMatch(g.ClassificationCode, "^[A-Z0-9]{2,12}$") || g.SelectionNote?.Length > 600 || g.SourceRow is < 1 or > 10000) throw new InvalidDataException("Selector o nota de grupo no válido.");
             if (g.Descriptions is not null && g.Descriptions.Any(p => !g.Codes.Contains(p.Key) || string.IsNullOrWhiteSpace(p.Value) || p.Value.Length > 200)) throw new InvalidDataException("Nombre de medicamento sin código asociado.");
         }
         if (list.Groups.Select(g => g.Id).Distinct().Count() != list.Groups.Length || list.Groups.SelectMany(g => g.Codes).Distinct().Count() > 10000) throw new InvalidDataException("Demasiados códigos o grupos duplicados.");

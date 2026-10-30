@@ -21,13 +21,14 @@ type Page =
   | 'Favoritos'
   | 'Auditoría'
   | 'Usuarios'
+  | 'Utilidades'
   | 'Mi cuenta'
   | 'Configuración';
 type NavItem = { name: string; icon: string; page: Page; utility?: string };
 type Command = { label: string; hint: string; icon: string; run: () => void };
 export type TenenciaSummary = { total: number; covered: number; shortfall: number; checkedAt: string };
 const TENENCIA = 'tenencia-obligatoria';
-const SETTINGS_PAGES: Page[] = ['Configuración', 'Mi cuenta', 'Usuarios', 'Actualizaciones', 'Auditoría'];
+const SETTINGS_PAGES: Page[] = ['Configuración', 'Mi cuenta', 'Usuarios', 'Utilidades', 'Actualizaciones', 'Auditoría'];
 @Component({
   selector: 'viteka-app',
   standalone: true,
@@ -45,12 +46,18 @@ export class AppComponent {
   readonly nav = computed<NavItem[]>(() => [
     { name: 'Inicio', icon: 'home', page: 'Inicio' },
     { name: 'Aplicaciones', icon: 'grid', page: 'Aplicaciones' },
-    ...(this.hasTenencia()
-      ? [{ name: 'Tenencia', icon: 'shield', page: 'Aplicaciones' as Page, utility: TENENCIA }]
-      : []),
     ...(this.user()?.role !== 'User' ? [{ name: 'Favoritos', icon: 'star', page: 'Favoritos' as Page }] : []),
     { name: 'Configuración', icon: 'settings', page: 'Configuración' },
   ]);
+  /** Accesos directos de la barra lateral: las utilidades que el usuario marca con la estrella. */
+  readonly shortcuts = computed<NavItem[]>(() =>
+    this.favoriteUtilities().map((u) => ({
+      name: u.name,
+      icon: this.utilityIcon(u.id),
+      page: 'Aplicaciones' as Page,
+      utility: u.id,
+    })),
+  );
   readonly hasTenencia = computed(() => this.utilities().some((u) => u.id === TENENCIA));
   readonly favorites = signal<string[]>([]);
   readonly favoriteUtilities = computed(() => this.utilities().filter((u) => this.favorites().includes(u.id)));
@@ -67,6 +74,7 @@ export class AppComponent {
     ...(this.user()?.canManageUsers
       ? [
           { label: 'Usuarios', page: 'Usuarios' as Page },
+          { label: 'Utilidades', page: 'Utilidades' as Page },
           { label: 'Auditoría', page: 'Auditoría' as Page },
         ]
       : []),
@@ -112,6 +120,12 @@ export class AppComponent {
     if (u.canManageUsers)
       list.push(
         { label: 'Usuarios', hint: 'Cuentas y permisos', icon: 'users', run: () => this.go('Usuarios') },
+        {
+          label: 'Utilidades por usuario',
+          hint: 'Habilitar utilidades',
+          icon: 'grid',
+          run: () => this.go('Utilidades'),
+        },
         {
           label: 'Datos de la farmacia',
           hint: 'Provincia y contacto',
@@ -164,6 +178,7 @@ export class AppComponent {
       });
     return found;
   });
+  readonly paletteActive = computed(() => Math.min(this.paletteIndex(), Math.max(this.paletteResults().length - 1, 0)));
   readonly settingDialog = signal<'password' | 'appearance' | 'startup' | 'connection' | 'pharmacy' | null>(null);
   readonly draftTheme = signal('auto');
   readonly draftStart = signal(false);
@@ -203,6 +218,7 @@ export class AppComponent {
           Favoritos: 'Tus accesos habituales.',
           Auditoría: 'Registro de operaciones de la farmacia.',
           Usuarios: 'Cuentas, roles y acceso a las aplicaciones.',
+          Utilidades: 'Habilita las utilidades que puede usar cada cuenta.',
           'Mi cuenta': 'Tu contraseña y preferencias personales.',
           Configuración: 'Tu cuenta, preferencias y opciones disponibles según tu perfil.',
         }[this.page()],
@@ -394,9 +410,15 @@ export class AppComponent {
     this.laterUpdate();
     this.go('Actualizaciones');
   }
+  utilityIcon(id: string) {
+    return id === TENENCIA ? 'shield' : 'grid';
+  }
   navigate(item: NavItem) {
-    if (item.utility) this.openTenencia();
-    else this.go(item.page);
+    if (item.utility === TENENCIA) this.openTenencia();
+    else if (item.utility) {
+      this.go('Aplicaciones');
+      this.openUtility(item.utility);
+    } else this.go(item.page);
   }
   isActive(item: NavItem) {
     if (item.utility) return this.inTenencia();
@@ -418,7 +440,11 @@ export class AppComponent {
     const next = this.isFavorite(id) ? this.favorites().filter((x) => x !== id) : [...this.favorites(), id];
     this.favorites.set(next);
     this.store('favorites.' + this.user()?.id, next);
-    this.notify(this.isFavorite(id) ? 'Añadida a favoritos.' : 'Quitada de favoritos.');
+    this.notify(
+      this.isFavorite(id)
+        ? 'Acceso directo añadido a la barra lateral.'
+        : 'Acceso directo quitado de la barra lateral.',
+    );
   }
   onTenenciaSummary(summary: TenenciaSummary) {
     this.tenenciaSummary.set(summary);
@@ -456,10 +482,10 @@ export class AppComponent {
     const count = this.paletteResults().length;
     if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
       e.preventDefault();
-      this.paletteIndex.set((this.paletteIndex() + (e.key === 'ArrowDown' ? 1 : -1) + count) % Math.max(count, 1));
+      this.paletteIndex.set((this.paletteActive() + (e.key === 'ArrowDown' ? 1 : -1) + count) % Math.max(count, 1));
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      this.runCommand(this.paletteResults()[this.paletteIndex()]);
+      this.runCommand(this.paletteResults()[this.paletteActive()]);
     }
   }
   async initialize() {
@@ -571,7 +597,7 @@ export class AppComponent {
       this.nav().some((item) => item.page === page) ||
       page === 'Mi cuenta' ||
       page === 'Actualizaciones' ||
-      ((page === 'Usuarios' || page === 'Auditoría') && !!this.user()?.canManageUsers)
+      ((page === 'Usuarios' || page === 'Utilidades' || page === 'Auditoría') && !!this.user()?.canManageUsers)
     );
   }
   go(page: Page) {
@@ -579,7 +605,7 @@ export class AppComponent {
     this.error.set('');
     this.selectedUtility.set(null);
     this.page.set(page);
-    if (page === 'Usuarios') void this.loadUsers();
+    if (page === 'Usuarios' || page === 'Utilidades') void this.loadUsers();
     if (page === 'Actualizaciones') void this.loadUpdateState();
     if (page === 'Configuración' && this.user()?.canConfigure) void this.loadNixFarma();
     if (page === 'Inicio') this.tenenciaSummary.set(this.read<TenenciaSummary>('tenencia.summary'));
@@ -654,6 +680,34 @@ export class AppComponent {
     } finally {
       this.editPassword = '';
       this.editRepeat = '';
+      this.busy.set(false);
+    }
+  }
+  hasGrant(target: UserView, id: string) {
+    return target.role !== 'User' || target.utilityIds.includes(id);
+  }
+  /** Habilita o retira una utilidad a una cuenta desde Configuración → Utilidades. */
+  async grant(target: UserView, id: string, enabled: boolean) {
+    if (!this.canEdit(target) || target.role !== 'User' || this.busy()) return;
+    const utilityIds = enabled ? [...new Set([...target.utilityIds, id])] : target.utilityIds.filter((x) => x !== id);
+    this.busy.set(true);
+    this.error.set('');
+    try {
+      const r = await this.bridge.call<{ user: UserView | null }>('users.modify', {
+        id: target.id,
+        name: target.name,
+        role: target.role,
+        active: target.active,
+        utilityIds,
+      });
+      this.user.set(r.user);
+      await this.loadUsers();
+      this.notify(
+        enabled ? 'Utilidad habilitada para ' + target.name + '.' : 'Utilidad retirada a ' + target.name + '.',
+      );
+    } catch (e) {
+      this.error.set(this.message(e));
+    } finally {
       this.busy.set(false);
     }
   }

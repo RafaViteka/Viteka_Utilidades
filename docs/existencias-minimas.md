@@ -73,3 +73,13 @@ El lector distingue not_found (CN ausente de artículos), stock_not_found (sin f
 - Los CN que no están dados de alta en NixFarma no aparecen en la lista de medicamentos del grupo.
 - Los medicamentos se ordenan por defecto de más a menos existencias (a igualdad, por nombre).
 - Solo hay dos estados: **Correcto** (check verde) y **Falta** (advertencia amarilla). En la tabla de grupos se muestra solo el icono; el nombre del estado aparece al pasar el ratón. Los grupos con condiciones de dosis o tamaño se evalúan por la suma y conservan su nota informativa.
+
+## Caducidad, exportación y listado editable · 0.17.0
+
+- Columnas de caducidad, última compra, última venta y agrupación homogénea se detectan automáticamente en NixFarma (Configuración → Conexión → Comprobar tablas las muestra). Si no se detecta la caducidad, la columna no aparece.
+- La caducidad solo se muestra en artículos con existencias > 0: verde (> 6 meses), amarillo (≤ 6 meses), rojo (caducado), gris (sin fecha). Si solo hay mes y año se toma el último día del mes.
+- Grupos con más de 10 artículos: se muestran todos los que tienen existencias y, hasta 10, los de compra o venta más reciente. Antes de consultar se muestran los 10 primeros. «Ver todos (N)» despliega la lista completa.
+- La última consulta correcta se guarda en el servidor (tenencia-ultima-<provincia>.json) y es la misma para todos los puestos. Se descarta si cambia el listado.
+- El superadministrador edita el listado; los cambios se guardan como tenencia-<provincia>.json junto a los datos del servidor y «Restaurar original» vuelve al listado empaquetado.
+- Búsqueda de artículos: por CN (hasta 1.000), por descripción (hasta 5 palabras, consulta parametrizada) o por agrupación homogénea (solo columnas detectadas). Máximo 200 resultados.
+- Importación masiva: «Código grupo;Grupo;Mínimo;CN;Descripción» o «grupo;CN».

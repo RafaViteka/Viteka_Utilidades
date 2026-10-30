@@ -1622,72 +1622,75 @@ kbd {
   color: var(--muted);
 }
 
-/* ——— Inicio: tarjeta de Tenencia ——— */
-.tenencia-card {
+/* ——— Inicio: acceso rápido a consultas ——— */
+.quick-grid {
   display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 16px;
-  width: 100%;
-  margin: 18px 0 16px;
-  padding: 16px 20px;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 12px;
+  margin-bottom: 8px;
+}
+.quick-access {
+  border-left: 4px solid var(--green);
+}
+.quick-access > span:not(.resource-icon) {
+  min-width: 0;
+}
+
+/* ——— Barra lateral: accesos directos marcados por el usuario ——— */
+.nav-section {
+  margin: 10px 4px 2px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: var(--fs-xs);
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+.collapsed .nav-section span {
+  display: none;
+}
+.collapsed .nav-section {
+  margin: 6px 8px 0;
+  padding-top: 6px;
+}
+
+/* ——— Configuración: utilidades por usuario ——— */
+.grant-table {
+  overflow: auto;
   border: 1px solid var(--line);
-  border-left: 4px solid #36b37e;
-  border-radius: 14px;
-  background: var(--card);
-  color: var(--ink);
-  text-align: left;
-  box-shadow: var(--shadow);
-}
-.tenencia-card.has-shortfall {
-  border-left-color: #f2b01e;
-}
-.tenencia-card:hover {
-  border-color: var(--hover-line);
-}
-.tenencia-card-icon {
-  width: 44px;
-  height: 44px;
   border-radius: 12px;
-  display: grid;
-  place-items: center;
+  margin-top: 14px;
+}
+.grant-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fs-sm);
+}
+.grant-table th,
+.grant-table td {
+  padding: 10px 14px;
+  border-bottom: 1px solid var(--line);
+  text-align: left;
+}
+.grant-table thead th {
   background: var(--surface);
-  color: #36b37e;
-}
-.has-shortfall .tenencia-card-icon {
-  color: #d99a00;
-}
-.tenencia-card-icon v-icon {
-  width: 24px;
-  height: 24px;
-}
-.tenencia-card-text small {
-  display: block;
-  font-size: var(--fs-xs);
-  letter-spacing: 1px;
-  color: var(--muted);
-}
-.tenencia-card-text strong {
-  display: block;
-  font-size: var(--fs-lg);
-  margin: 2px 0;
-}
-.tenencia-card-text span {
   font-size: var(--fs-xs);
   color: var(--muted);
 }
-.tenencia-card-bar {
-  grid-column: 2 / 3;
-  grid-row: 2;
-  height: 5px;
-  border-radius: 999px;
-  background: var(--surface);
-  overflow: hidden;
-}
-.tenencia-card-bar i {
+.grant-table tbody th strong {
   display: block;
-  height: 100%;
-  background: #36b37e;
+}
+.grant-table tbody th small {
+  color: var(--muted);
+  font-weight: 400;
+}
+.grant-table .center {
+  text-align: center;
+}
+.grant-table input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--green);
 }
 
 /* ——— Aplicaciones y favoritos ——— */
@@ -1838,5 +1841,14 @@ html[data-theme='dark'] .primary:hover:not(:disabled) {
   }
   .layout {
     display: block !important;
+  }
+  html,
+  body,
+  .layout,
+  main {
+    background: #fff !important;
+    color: #1f2a30 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 }

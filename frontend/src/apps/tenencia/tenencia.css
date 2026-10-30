@@ -598,8 +598,162 @@ button.summary-chip.on {
   border-radius: inherit;
   transition: width 0.3s;
 }
+/* Columnas numéricas y de estado centradas (cabecera y celdas). */
+th.center,
+td.center {
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+th.center button {
+  text-align: center;
+}
+td.center .row-state {
+  justify-content: center;
+}
+.checked-at {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.checked-at v-icon {
+  width: 14px;
+  height: 14px;
+}
+.checked-at.cached {
+  color: var(--ink);
+}
+/* Caducidad de la ficha (solo artículos con existencias). */
+.expiry {
+  display: inline-block;
+  min-width: 74px;
+  padding: 2px 8px;
+  border-radius: 6px;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  border: 1px solid transparent;
+}
+.expiry[data-expiry='ok'] {
+  background: #e3f4ea;
+  color: #17643f;
+  border-color: #b9e0c9;
+}
+.expiry[data-expiry='soon'] {
+  background: #fff1c2;
+  color: #6b4d00;
+  border-color: #f1d77d;
+}
+.expiry[data-expiry='expired'] {
+  background: #fbd9d6;
+  color: #9b1c12;
+  border-color: #f0aaa4;
+}
+.expiry[data-expiry='none'] {
+  background: #eef1f2;
+  color: #5c676d;
+  border-color: #d8dee1;
+  font-weight: 500;
+}
+:host-context(html[data-theme='dark']) .expiry[data-expiry='ok'] {
+  background: #173a29;
+  color: #8fe0b0;
+  border-color: #245a3f;
+}
+:host-context(html[data-theme='dark']) .expiry[data-expiry='soon'] {
+  background: #3d3210;
+  color: #f5d77a;
+  border-color: #5e4c17;
+}
+:host-context(html[data-theme='dark']) .expiry[data-expiry='expired'] {
+  background: #4a1d1a;
+  color: #ffaba3;
+  border-color: #6d2a25;
+}
+:host-context(html[data-theme='dark']) .expiry[data-expiry='none'] {
+  background: #2a3135;
+  color: #aab4b9;
+  border-color: #3a4347;
+}
+.show-all {
+  margin: 8px 10px;
+}
+/* Menú de exportación. */
+.export-menu {
+  position: relative;
+  margin: 0;
+}
+.export-menu summary {
+  list-style: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+.export-menu summary::-webkit-details-marker {
+  display: none;
+}
+.export-menu summary v-icon,
+.utility-heading .text-button v-icon {
+  width: 16px;
+  height: 16px;
+}
+.utility-heading .text-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+.export-options {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  z-index: 20;
+  width: 290px;
+  padding: 6px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--card);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.16);
+  display: grid;
+  gap: 2px;
+}
+.export-options button {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: var(--ink);
+  text-align: left;
+}
+.export-options button:hover:not(:disabled) {
+  background: var(--surface);
+}
+.export-options v-icon {
+  width: 18px;
+  height: 18px;
+  color: var(--petrol);
+  flex: none;
+}
+.export-options strong {
+  display: block;
+  font-size: var(--fs-sm);
+}
+.export-options small {
+  display: block;
+  color: var(--muted);
+  font-size: var(--fs-xs);
+}
 .tenencia-print {
   display: none;
+}
+@page {
+  size: A4;
+  margin: 12mm;
 }
 @media print {
   :host > *:not(.tenencia-print) {
@@ -607,15 +761,59 @@ button.summary-chip.on {
   }
   .tenencia-print {
     display: block;
-    color: #000;
-    font-size: 11px;
+    color: #1f2a30;
+    font-size: 10.5px;
+    font-family: Inter, 'Segoe UI', Arial, sans-serif;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+  .print-head {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    padding-bottom: 10px;
+    border-bottom: 3px solid #0f4c5c;
+    margin-bottom: 12px;
+  }
+  .print-head img {
+    height: 34px;
+    width: auto;
   }
   .tenencia-print h1 {
-    font-size: 18px;
-    margin: 0 0 4px;
+    font-size: 17px;
+    margin: 0 0 3px;
+    color: #0f4c5c;
   }
   .tenencia-print p {
-    margin: 0 0 10px;
+    margin: 0;
+    color: #5f6b72;
+  }
+  .print-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .print-kpis div {
+    border: 1px solid #d3dadd;
+    border-radius: 6px;
+    padding: 6px 10px;
+  }
+  .print-kpis small {
+    display: block;
+    color: #5f6b72;
+    font-size: 9px;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+  .print-kpis strong {
+    font-size: 18px;
+  }
+  .print-kpis .ok strong {
+    color: #1e7b4f;
+  }
+  .print-kpis .bad strong {
+    color: #b42318;
   }
   .tenencia-print table {
     width: 100%;
@@ -623,12 +821,73 @@ button.summary-chip.on {
   }
   .tenencia-print th,
   .tenencia-print td {
-    border: 1px solid #999;
-    padding: 4px 6px;
+    border: 0;
+    border-bottom: 1px solid #e3e8ea;
+    padding: 3px 6px;
     text-align: left;
-    vertical-align: top;
+    vertical-align: middle;
     position: static;
+    color: #1f2a30;
     background: none;
-    color: #000;
+  }
+  .tenencia-print thead th {
+    background: #0f4c5c;
+    color: #fff;
+    font-size: 9.5px;
+  }
+  .tenencia-print .c {
+    text-align: center;
+  }
+  .print-group {
+    break-inside: avoid;
+  }
+  .group-line td {
+    background: #eef2f3;
+    font-weight: 700;
+    padding-top: 5px;
+    padding-bottom: 5px;
+  }
+  .group-line .missing {
+    color: #b42318;
+    font-size: 12px;
+  }
+  .article-line td {
+    color: #3b474d;
+    font-size: 9.5px;
+  }
+  .article-line td:first-child {
+    padding-left: 14px;
+    font-variant-numeric: tabular-nums;
+  }
+  .article-line .more {
+    color: #7a858a;
+  }
+  .tenencia-print .expiry {
+    min-width: 0;
+    padding: 0 6px;
+    font-size: 9px;
+    border: 1px solid currentColor;
+    background: #fff;
+  }
+  .tenencia-print .expiry[data-expiry='ok'] {
+    color: #1e7b4f;
+    background: #e6f4ec;
+  }
+  .tenencia-print .expiry[data-expiry='soon'] {
+    color: #8a5a00;
+    background: #fff4d6;
+  }
+  .tenencia-print .expiry[data-expiry='expired'] {
+    color: #b42318;
+    background: #fde8e6;
+  }
+  .tenencia-print .expiry[data-expiry='none'] {
+    color: #5f6b72;
+    background: #eef1f2;
+  }
+  .tenencia-print footer {
+    margin-top: 10px;
+    color: #7a858a;
+    font-size: 8.5px;
   }
 }
