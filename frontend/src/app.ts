@@ -23,6 +23,11 @@ type Page =
   | 'Usuarios'
   | 'Mi cuenta'
   | 'Configuración';
+type NavItem = { name: string; icon: string; page: Page; utility?: string };
+type Command = { label: string; hint: string; icon: string; run: () => void };
+export type TenenciaSummary = { total: number; covered: number; shortfall: number; checkedAt: string };
+const TENENCIA = 'tenencia-obligatoria';
+const SETTINGS_PAGES: Page[] = ['Configuración', 'Mi cuenta', 'Usuarios', 'Actualizaciones', 'Auditoría'];
 @Component({
   selector: 'viteka-app',
   standalone: true,
@@ -37,21 +42,136 @@ export class AppComponent {
   readonly loading = signal(true);
   readonly error = signal('');
   readonly busy = signal(false);
-  readonly nav = computed(() => [
-    { name: 'Inicio' as Page, icon: 'home' },
-    { name: 'Aplicaciones' as Page, icon: 'grid' },
-    ...(this.user()?.role !== 'User' ? [{ name: 'Favoritos' as Page, icon: 'star' }] : []),
-    { name: 'Configuración' as Page, icon: 'settings' },
+  readonly nav = computed<NavItem[]>(() => [
+    { name: 'Inicio', icon: 'home', page: 'Inicio' },
+    { name: 'Aplicaciones', icon: 'grid', page: 'Aplicaciones' },
+    ...(this.hasTenencia()
+      ? [{ name: 'Tenencia', icon: 'shield', page: 'Aplicaciones' as Page, utility: TENENCIA }]
+      : []),
+    ...(this.user()?.role !== 'User' ? [{ name: 'Favoritos', icon: 'star', page: 'Favoritos' as Page }] : []),
+    { name: 'Configuración', icon: 'settings', page: 'Configuración' },
   ]);
+  readonly hasTenencia = computed(() => this.utilities().some((u) => u.id === TENENCIA));
+  readonly favorites = signal<string[]>([]);
+  readonly favoriteUtilities = computed(() => this.utilities().filter((u) => this.favorites().includes(u.id)));
+  readonly tenenciaSummary = signal<TenenciaSummary | null>(null);
+  readonly ready = signal(false);
+  readonly updatePrompt = signal(false);
+  readonly paletteOpen = signal(false);
+  readonly paletteQuery = signal('');
+  readonly paletteIndex = signal(0);
+  readonly tenenciaSearch = signal('');
+  readonly toastKind = signal<'ok' | 'warn'>('ok');
+  readonly settingsTabs = computed(() => [
+    { label: 'Mi cuenta', page: 'Mi cuenta' as Page },
+    ...(this.user()?.canManageUsers
+      ? [
+          { label: 'Usuarios', page: 'Usuarios' as Page },
+          { label: 'Auditoría', page: 'Auditoría' as Page },
+        ]
+      : []),
+    { label: 'Actualizaciones', page: 'Actualizaciones' as Page },
+  ]);
+  readonly commands = computed<Command[]>(() => {
+    const u = this.user();
+    if (!u) return [];
+    const list: Command[] = [
+      { label: 'Inicio', hint: 'Asistencia y recursos', icon: 'home', run: () => this.go('Inicio') },
+      { label: 'Aplicaciones', hint: 'Tus aplicaciones', icon: 'grid', run: () => this.go('Aplicaciones') },
+    ];
+    if (this.hasTenencia())
+      list.push({
+        label: 'Tenencia obligatoria',
+        hint: 'Existencias mínimas',
+        icon: 'shield',
+        run: () => this.openTenencia(),
+      });
+    if (u.role !== 'User')
+      list.push({ label: 'Favoritos', hint: 'Accesos habituales', icon: 'star', run: () => this.go('Favoritos') });
+    list.push(
+      { label: 'Mi cuenta', hint: 'Configuración', icon: 'user', run: () => this.go('Mi cuenta') },
+      {
+        label: 'Cambiar mi contraseña',
+        hint: 'Mi cuenta',
+        icon: 'key',
+        run: () => {
+          this.go('Mi cuenta');
+          this.openSetting('password');
+        },
+      },
+      {
+        label: 'Apariencia',
+        hint: 'Claro, oscuro o automático',
+        icon: 'palette',
+        run: () => {
+          this.go('Mi cuenta');
+          this.openSetting('appearance');
+        },
+      },
+    );
+    if (u.canManageUsers)
+      list.push(
+        { label: 'Usuarios', hint: 'Cuentas y permisos', icon: 'users', run: () => this.go('Usuarios') },
+        {
+          label: 'Datos de la farmacia',
+          hint: 'Provincia y contacto',
+          icon: 'home',
+          run: () => {
+            this.go('Configuración');
+            this.openSetting('pharmacy');
+          },
+        },
+        { label: 'Auditoría', hint: 'Registro de operaciones', icon: 'clock', run: () => this.go('Auditoría') },
+      );
+    list.push({
+      label: 'Actualizaciones',
+      hint: this.update()?.available ? 'Versión ' + this.update()?.version + ' disponible' : 'Buscar versiones',
+      icon: 'download',
+      run: () => this.go('Actualizaciones'),
+    });
+    if (u.canConfigure)
+      list.push({
+        label: 'Conexión a NixFarma',
+        hint: 'Solo Viteka',
+        icon: 'leaf',
+        run: () => {
+          this.go('Configuración');
+          this.openSetting('connection');
+        },
+      });
+    list.push(
+      {
+        label: 'Portal de soporte',
+        hint: 'Crear o consultar solicitud',
+        icon: 'user',
+        run: () => this.open('support'),
+      },
+      { label: 'Abrir AnyDesk', hint: 'Ayuda remota', icon: 'monitor', run: () => this.open('anydesk') },
+    );
+    return list;
+  });
+  readonly paletteResults = computed<Command[]>(() => {
+    const q = this.normalize(this.paletteQuery().trim());
+    const found = q
+      ? this.commands().filter((c) => this.normalize(c.label + ' ' + c.hint).includes(q))
+      : this.commands();
+    if (q && this.hasTenencia())
+      found.push({
+        label: 'Buscar «' + this.paletteQuery().trim() + '» en Tenencia',
+        hint: 'Grupo, artículo o código nacional',
+        icon: 'search',
+        run: () => this.openTenencia(this.paletteQuery().trim()),
+      });
+    return found;
+  });
   readonly settingDialog = signal<'password' | 'appearance' | 'startup' | 'connection' | 'pharmacy' | null>(null);
   readonly draftTheme = signal('auto');
   readonly draftStart = signal(false);
   readonly selectedUtility = signal<string | null>(null);
   readonly schemaMessage = signal('');
   readonly schemaBusy = signal(false);
-  readonly inSettings = computed(() =>
-    ['Configuración', 'Mi cuenta', 'Usuarios', 'Actualizaciones', 'Auditoría'].includes(this.page()),
-  );
+  readonly inSettings = computed(() => SETTINGS_PAGES.includes(this.page()));
+  readonly inTenencia = computed(() => this.page() === 'Aplicaciones' && this.selectedUtility() === TENENCIA);
   readonly collapsed = signal(false);
   readonly theme = signal('auto');
   readonly systemDark = signal(matchMedia('(prefers-color-scheme: dark)').matches);
@@ -144,10 +264,22 @@ export class AppComponent {
     });
     effect(() => {
       const modal =
-        this.settingDialog() || this.dialog() || this.historyOpen() || this.editorOpen() || this.resetOpen();
+        this.settingDialog() ||
+        this.dialog() ||
+        this.historyOpen() ||
+        this.editorOpen() ||
+        this.resetOpen() ||
+        this.updatePrompt() ||
+        this.paletteOpen();
       if (modal) {
         this.previousFocus = document.activeElement as HTMLElement;
-        setTimeout(() => document.querySelector<HTMLElement>('[role=dialog] button')?.focus(), 0);
+        setTimeout(
+          () =>
+            document
+              .querySelector<HTMLElement>(this.paletteOpen() ? '.palette input' : '[role=dialog] button')
+              ?.focus(),
+          0,
+        );
       } else if (this.previousFocus?.isConnected) this.previousFocus.focus();
     });
     effect(() => {
@@ -172,6 +304,10 @@ export class AppComponent {
         this.historyOpen.set(false);
         this.editorOpen.set(false);
         this.resetOpen.set(false);
+        this.updatePrompt.set(false);
+        this.paletteOpen.set(false);
+        this.ready.set(false);
+        this.favorites.set([]);
       } else {
         if (!this.user()?.canConfigure) {
           this.nixState.set(null);
@@ -199,7 +335,132 @@ export class AppComponent {
                 : ''),
         );
     });
+    // Ventana emergente: avisa una vez por versión y sesión de Windows a quien puede instalar en este equipo.
+    effect(() => {
+      const state = this.update(),
+        u = this.user();
+      if (!this.ready() || !u || u.mustChangePassword || !state?.available || !state.version) return;
+      if (!u.canInstallUpdates || !state.canInstallHere || this.updating() || this.bridge.installing()) return;
+      if (sessionStorage.getItem(this.promptKey(state.version)) === '1') return;
+      this.updatePrompt.set(true);
+    });
+    effect(() => {
+      // Recuerda la última pantalla por usuario para volver a ella al abrir.
+      const u = this.user(),
+        page = this.page(),
+        utility = this.selectedUtility();
+      if (u && this.ready()) this.store('last.' + u.id, { page, utility });
+    });
+    this.tenenciaSummary.set(this.read<TenenciaSummary>('tenencia.summary'));
     void this.initialize();
+  }
+  private promptKey(version: string) {
+    return 'viteka.update-prompt.' + this.user()?.id + '.' + version;
+  }
+  private read<T>(key: string): T | null {
+    try {
+      const raw = localStorage.getItem('viteka.' + key);
+      return raw ? (JSON.parse(raw) as T) : null;
+    } catch {
+      return null;
+    }
+  }
+  private store(key: string, value: unknown) {
+    try {
+      localStorage.setItem('viteka.' + key, JSON.stringify(value));
+    } catch {
+      /* almacenamiento no disponible */
+    }
+  }
+  private normalize(text: string) {
+    return text
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .toLocaleLowerCase('es');
+  }
+  laterUpdate() {
+    const v = this.update()?.version;
+    if (v) sessionStorage.setItem(this.promptKey(v), '1');
+    this.updatePrompt.set(false);
+  }
+  async installFromPrompt() {
+    const v = this.update()?.version;
+    if (v) sessionStorage.setItem(this.promptKey(v), '1');
+    this.updatePrompt.set(false);
+    this.go('Actualizaciones');
+    await this.install();
+  }
+  viewUpdate() {
+    this.laterUpdate();
+    this.go('Actualizaciones');
+  }
+  navigate(item: NavItem) {
+    if (item.utility) this.openTenencia();
+    else this.go(item.page);
+  }
+  isActive(item: NavItem) {
+    if (item.utility) return this.inTenencia();
+    if (item.page === 'Configuración') return this.inSettings();
+    if (item.page === 'Aplicaciones') return this.page() === 'Aplicaciones' && !this.inTenencia();
+    return this.page() === item.page;
+  }
+  openTenencia(search = '') {
+    if (!this.hasTenencia()) return;
+    this.go('Aplicaciones');
+    this.tenenciaSearch.set(search);
+    this.openUtility(TENENCIA);
+  }
+  isFavorite(id: string) {
+    return this.favorites().includes(id);
+  }
+  toggleFavorite(id: string, e?: Event) {
+    e?.stopPropagation();
+    const next = this.isFavorite(id) ? this.favorites().filter((x) => x !== id) : [...this.favorites(), id];
+    this.favorites.set(next);
+    this.store('favorites.' + this.user()?.id, next);
+    this.notify(this.isFavorite(id) ? 'Añadida a favoritos.' : 'Quitada de favoritos.');
+  }
+  onTenenciaSummary(summary: TenenciaSummary) {
+    this.tenenciaSummary.set(summary);
+    this.store('tenencia.summary', summary);
+  }
+  summaryTime(at?: string) {
+    if (!at) return '';
+    const d = new Date(at),
+      today = new Date();
+    const time = d.toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' });
+    return d.toDateString() === today.toDateString()
+      ? 'hoy ' + time
+      : d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' }) + ' ' + time;
+  }
+  initials(name: string) {
+    const parts = name
+      .replace(/[^\p{L}\p{N} ]/gu, ' ')
+      .trim()
+      .split(/\s+/);
+    return (
+      (parts[0]?.[0] ?? '') + (parts.length > 1 ? (parts[parts.length - 1][0] ?? '') : (parts[0]?.[1] ?? ''))
+    ).toUpperCase();
+  }
+  openPalette() {
+    this.paletteQuery.set('');
+    this.paletteIndex.set(0);
+    this.paletteOpen.set(true);
+  }
+  runCommand(command?: Command) {
+    if (!command) return;
+    this.paletteOpen.set(false);
+    command.run();
+  }
+  paletteKey(e: KeyboardEvent) {
+    const count = this.paletteResults().length;
+    if (e.key === 'ArrowDown' || e.key === 'ArrowUp') {
+      e.preventDefault();
+      this.paletteIndex.set((this.paletteIndex() + (e.key === 'ArrowDown' ? 1 : -1) + count) % Math.max(count, 1));
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      this.runCommand(this.paletteResults()[this.paletteIndex()]);
+    }
   }
   async initialize() {
     await this.loadPreferences();
@@ -235,7 +496,15 @@ export class AppComponent {
     await this.loadPreferences();
     await Promise.all([this.loadUtilities(), this.loadUpdateState()]);
     if (this.user()?.canConfigure) await this.loadNixFarma();
+    const id = this.user()?.id;
+    this.favorites.set(this.read<string[]>('favorites.' + id) ?? []);
+    const last = this.read<{ page: Page; utility: string | null }>('last.' + id);
     if (this.openFavorites() && this.user()?.role !== 'User') this.page.set('Favoritos');
+    else if (last && this.canGo(last.page)) {
+      this.go(last.page);
+      if (last.utility) this.openUtility(last.utility);
+    }
+    this.ready.set(true);
   }
   async login() {
     this.busy.set(true);
@@ -299,7 +568,7 @@ export class AppComponent {
   }
   canGo(page: Page) {
     return (
-      this.nav().some((item) => item.name === page) ||
+      this.nav().some((item) => item.page === page) ||
       page === 'Mi cuenta' ||
       page === 'Actualizaciones' ||
       ((page === 'Usuarios' || page === 'Auditoría') && !!this.user()?.canManageUsers)
@@ -313,6 +582,7 @@ export class AppComponent {
     if (page === 'Usuarios') void this.loadUsers();
     if (page === 'Actualizaciones') void this.loadUpdateState();
     if (page === 'Configuración' && this.user()?.canConfigure) void this.loadNixFarma();
+    if (page === 'Inicio') this.tenenciaSummary.set(this.read<TenenciaSummary>('tenencia.summary'));
   }
   roleName(role: Role) {
     return role === 'SuperAdministrator'
@@ -518,18 +788,18 @@ export class AppComponent {
       const r = await this.bridge.call<{ percent: number }>('window.zoom', { percent: value });
       this.bridge.zoom.set(r.percent);
     } catch {
-      this.notify('No se pudo guardar el zoom.');
+      this.notify('No se pudo guardar el zoom.', 'warn');
     }
   }
   async open(id: string) {
     try {
       const r = await this.bridge.call<{ opened: boolean }>('resource.open', { id });
       if (id === 'anydesk' && !r.opened) {
-        this.notify('No encontramos AnyDesk en sus ubicaciones habituales.');
+        this.notify('No encontramos AnyDesk en sus ubicaciones habituales.', 'warn');
         this.dialog.set('remote');
       }
     } catch (e) {
-      this.notify(this.message(e));
+      this.notify(this.message(e), 'warn');
     }
   }
   async copy(id: string) {
@@ -537,7 +807,7 @@ export class AppComponent {
       await this.bridge.call('clipboard.copy', { id });
       this.notify('Correo copiado.');
     } catch (e) {
-      this.notify(this.message(e));
+      this.notify(this.message(e), 'warn');
     }
   }
   async loadUpdateState() {
@@ -658,7 +928,8 @@ export class AppComponent {
     this.nixMessage.set('');
     this.nixResult.set(null);
   }
-  notify(message: string) {
+  notify(message: string, kind: 'ok' | 'warn' = 'ok') {
+    this.toastKind.set(kind);
     this.toast.set(message);
     clearTimeout(this.toastTimer);
     this.toastTimer = setTimeout(() => this.toast.set(''), 4000);
@@ -677,6 +948,8 @@ export class AppComponent {
     this.historyOpen.set(false);
     this.editorOpen.set(false);
     this.resetOpen.set(false);
+    this.paletteOpen.set(false);
+    if (this.updatePrompt()) this.laterUpdate();
     this.editPassword = '';
     this.editRepeat = '';
     this.resetPassword = '';
@@ -686,6 +959,12 @@ export class AppComponent {
     if (e.ctrlKey && ['+', '=', '-', '0'].includes(e.key)) {
       e.preventDefault();
       void this.setZoom(e.key === '0' ? 100 : this.bridge.zoom() + (e.key === '-' ? -10 : 10));
+      return;
+    }
+    if (e.ctrlKey && e.key.toLowerCase() === 'k' && this.user() && !this.user()?.mustChangePassword) {
+      e.preventDefault();
+      if (this.paletteOpen()) this.paletteOpen.set(false);
+      else this.openPalette();
       return;
     }
     if (e.key === 'Escape') {

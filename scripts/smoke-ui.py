@@ -115,6 +115,14 @@ with sync_playwright() as p:
    assert page.get_by_role('navigation').count()==0
    page.get_by_label('Contraseña actual',exact=True).fill(password);page.get_by_label('Nueva contraseña',exact=True).fill(new_password);page.get_by_label('Repetir nueva contraseña',exact=True).fill(new_password);page.get_by_role('button',name='Guardar contraseña',exact=True).click()
   page.get_by_role('heading',name='Portal de soporte',exact=True).wait_for()
+  page.locator('.layout[data-ready=true]').wait_for();page.wait_for_timeout(150)
+  prompt=page.get_by_role('dialog',name='Actualización disponible',exact=True)
+  shown=prompt.count()>0
+  if shown:
+   prompt.get_by_text('¿Quieres actualizar ahora?',exact=False).wait_for();expect(prompt.get_by_role('button',name='Actualizar ahora',exact=True)).to_be_visible()
+   if not (artifacts/'angular-update-prompt.png').exists() or name=='Viteka':page.screenshot(path=str(artifacts/'angular-update-prompt.png'),full_page=True)
+   prompt.get_by_role('button',name='Más tarde',exact=True).click();prompt.wait_for(state='hidden')
+  return shown
  def go(name):
   if name in ('Mi cuenta','Usuarios','Actualizaciones','Auditoría'):
    go('Configuración');page.locator('.setting-row').filter(has=page.get_by_text(name,exact=True)).click()
@@ -122,7 +130,7 @@ with sync_playwright() as p:
   page.get_by_role('heading',name=name,exact=True).wait_for()
  def appearance(theme):
   page.locator('.setting-row').filter(has=page.get_by_text('Apariencia',exact=True)).click();dialog=page.get_by_role('dialog',name='Apariencia',exact=True);dialog.get_by_label('Apariencia',exact=True).select_option(theme);dialog.get_by_role('button',name='Guardar cambios',exact=True).click();dialog.wait_for(state='hidden')
- login('Viteka','jupiter','FixtureSuperPass1')
+ assert login('Viteka','jupiter','FixtureSuperPass1'),'falta la ventana de actualización'
  assert page.get_by_label('Apariencia',exact=True).count()==0
  logout=page.get_by_role('button',name='Cerrar sesión',exact=True);brand=page.get_by_role('button',name='Web Viteka',exact=True);assert logout.bounding_box()['y']>page.get_by_role('navigation').bounding_box()['y']+page.get_by_role('navigation').bounding_box()['height'];assert logout.bounding_box()['y']+logout.bounding_box()['height']+12<=brand.bounding_box()['y'];assert page.locator('.logout-button v-icon svg').count()==1
  assert page.get_by_role('navigation').get_by_role('button',name='Actualizaciones',exact=True).count()==0
@@ -130,7 +138,7 @@ with sync_playwright() as p:
  page.keyboard.down('Control');page.mouse.wheel(0,-120);page.keyboard.up('Control');page.wait_for_function("() => document.documentElement.style.zoom==='1.1'")
  page.keyboard.press('Control+0');page.wait_for_function("() => document.documentElement.style.zoom==='1'")
  page.get_by_role('button',name='Cerrar menú lateral',exact=True).click();page.wait_for_function("() => Math.round(document.querySelector('aside').getBoundingClientRect().width)===76")
- page.reload();page.get_by_role('button',name='Abrir menú lateral',exact=True).wait_for();page.get_by_role('button',name='Abrir menú lateral',exact=True).click()
+ page.reload();page.get_by_role('button',name='Abrir menú lateral',exact=True).wait_for();page.locator('.layout[data-ready=true]').wait_for();page.wait_for_timeout(150);assert page.get_by_role('dialog',name='Actualización disponible',exact=True).count()==0;page.get_by_role('button',name='Abrir menú lateral',exact=True).click()
  go('Mi cuenta');appearance('dark');page.wait_for_function("() => document.documentElement.dataset.theme==='dark'")
  page.reload();page.wait_for_function("() => document.documentElement.dataset.theme==='dark'")
  page.get_by_role('navigation').get_by_role('button',name='Inicio',exact=True).click();page.get_by_role('button',name='Cerrar menú lateral',exact=True).click();page.wait_for_function("() => Math.round(document.querySelector('aside').getBoundingClientRect().width)===76")
@@ -166,12 +174,22 @@ with sync_playwright() as p:
  page.get_by_label('Estado',exact=True).select_option('shortfall');expect(page.locator('.group-button')).to_have_count(1);expect(page.locator('.tenencia-medications tbody tr')).to_have_count(2);page.get_by_label('Buscar grupo, artículo o CN',exact=True).fill('650099');page.get_by_text('No hay grupos que coincidan con estos filtros.',exact=True).wait_for();page.get_by_label('Buscar grupo, artículo o CN',exact=True).fill('');page.get_by_label('Estado',exact=True).select_option('all')
  fixture.stock_error=True;page.get_by_role('button',name='Consultar existencias',exact=True).click();page.get_by_text('No se alcanza el servicio Oracle.',exact=True).wait_for();expect(page.locator('.group-button')).to_have_count(3);expect(page.locator('.drug-stock').first).to_have_text('Sin consultar');fixture.stock_error=False
  page.get_by_label('Estado',exact=True).select_option('covered');fixture.transport_error=True;page.get_by_role('button',name='Consultar existencias',exact=True).click();page.get_by_text('Servicio no disponible.',exact=True).wait_for();expect(page.locator('.group-button')).to_have_count(3);expect(page.locator('.drug-stock').first).to_have_text('Sin consultar');fixture.transport_error=False
- fixture.sort_cases=True;go('Aplicaciones');page.get_by_role('button',name='Tenencia obligatoria',exact=False).click();page.get_by_role('button',name='Consultar existencias',exact=True).click();expect(page.locator('.drug-stock')).to_have_count(4);expect(page.locator('.drug-stock')).to_have_text(['10','2','0','0']);assert all(t.strip()=='' for t in page.locator('.groups-table .row-state').all_inner_texts());assert page.locator('.groups-table .row-state').first.get_attribute('aria-label') in ('Correcto','Falta');assert page.get_by_label('Estado',exact=True).locator('option').all_inner_texts()==['Todos','Sin consultar','Falta','Correcto']
+ fixture.sort_cases=True;go('Aplicaciones');page.get_by_role('button',name='Tenencia obligatoria',exact=False).click();page.get_by_role('button',name='Consultar existencias',exact=True).click();expect(page.get_by_role('button',name='Seleccionar grupo Grupo ficticio B',exact=True)).to_have_attribute('aria-pressed','true');page.get_by_role('button',name='Seleccionar grupo Grupo ficticio A',exact=True).click();expect(page.locator('.drug-stock')).to_have_count(4);expect(page.locator('.drug-stock')).to_have_text(['10','2','0','0']);assert all(t.strip()=='' for t in page.locator('.groups-table .row-state').all_inner_texts());assert page.locator('.groups-table .row-state').first.get_attribute('aria-label') in ('Correcto','Falta');assert page.get_by_label('Estado',exact=True).locator('option').all_inner_texts()==['Todos','Sin consultar','Falta','Correcto']
  meds=page.get_by_role('region',name='Medicamentos del grupo',exact=True)
  sortstock=meds.get_by_role('columnheader',name=re.compile('Existencias')).get_by_role('button');sortstock.click();expect(page.locator('.drug-stock')).to_have_text(['0','0','2','10']);sortstock.click();expect(page.locator('.drug-stock')).to_have_text(['10','2','0','0']);assert page.locator('.drug-stock',has_text='Pendiente').count()==0
  meds.get_by_role('columnheader',name=re.compile('Medicamento')).get_by_role('button').click();expect(page.locator('.article-select')).to_have_text(['A','B','C','Z'])
  page.get_by_text('Sin ficha de existencias en NixFarma: cuenta como 0.',exact=True).wait_for();assert page.get_by_text('Pendiente no significa cero',exact=False).count()==0
  groups=page.get_by_role('region',name='Grupos de tenencia',exact=True);groups.get_by_role('columnheader',name=re.compile('Mín.')).get_by_role('button').click();expect(page.locator('.groups-table tbody tr td:nth-child(3)')).to_have_text(['1','1','3']);assert page.get_by_role('button',name='Seleccionar grupo Grupo ficticio A',exact=True).get_attribute('aria-pressed')=='true';fixture.sort_cases=False
+ page.get_by_role('button',name='Consultar existencias',exact=True).click();page.get_by_role('button',name='Ver detalle de Grupo ficticio A',exact=True).wait_for();expect(page.locator('.tenencia-summary')).to_contain_text('2 de 3 correctos')
+ chip=page.locator('.tenencia-summary button.summary-chip').nth(1);chip.click();expect(page.get_by_label('Estado',exact=True)).to_have_value('shortfall');chip.click();expect(page.get_by_label('Estado',exact=True)).to_have_value('all')
+ page.get_by_role('button',name='Seleccionar grupo Grupo ficticio C',exact=True).click();page.locator('.tenencia-information').click();page.keyboard.press('f');expect(page.locator('.group-button[aria-pressed=true]')).to_have_count(1);expect(page.locator('.groups-table tr.chosen .row-state')).to_have_attribute('aria-label','Falta')
+ with page.expect_download() as dl:page.get_by_role('button',name='Exportar faltas',exact=True).click()
+ csv=open(dl.value.path(),encoding='utf-8').read();assert csv.startswith('\ufeffCódigo;Grupo;Mínimo'),csv[:80];assert dl.value.suggested_filename.startswith('tenencia-faltas-')
+ page.keyboard.press('Control+k');palette=page.get_by_role('dialog',name='Buscar en Viteka',exact=True);palette.wait_for();page.keyboard.type('650001');palette.get_by_role('option',name=re.compile('en Tenencia')).wait_for();page.screenshot(path=str(artifacts/'angular-palette.png'),full_page=True);page.keyboard.press('Enter');palette.wait_for(state='hidden');expect(page.get_by_label('Buscar grupo, artículo o CN',exact=True)).to_have_value('650001')
+ page.keyboard.press('Control+k');palette.wait_for();page.keyboard.type('usuarios');page.keyboard.press('Enter');page.get_by_role('heading',name='Usuarios',exact=True).wait_for()
+ page.get_by_role('navigation').get_by_role('button',name='Inicio',exact=True).click();page.get_by_role('button',name='Abrir tenencia',exact=True).get_by_text(re.compile('2 de 3 correctos')).wait_for();page.screenshot(path=str(artifacts/'angular-home-tenencia.png'),full_page=True)
+ page.get_by_role('button',name='Abrir tenencia',exact=True).click();page.get_by_role('heading',name='Tenencia obligatoria',exact=True).wait_for();assert page.get_by_role('navigation').get_by_role('button',name='Tenencia',exact=True).get_attribute('aria-current')=='page'
+ go('Aplicaciones');page.get_by_role('button',name='Favorito',exact=True).first.click();go('Favoritos');page.get_by_role('button',name='Tenencia obligatoria',exact=False).wait_for();page.get_by_role('button',name='Favorito',exact=True).first.click();page.get_by_role('heading',name='Aún no tienes favoritos',exact=True).wait_for()
  fixture.use_excel=True;go('Aplicaciones');page.get_by_role('button',name='Tenencia obligatoria',exact=False).click();expect(page.locator('.group-button')).to_have_count(83)
  expect(page.locator('.page-head')).to_have_count(0);expect(page.locator('footer')).to_have_count(0)
  for size in [{'width':1366,'height':768},{'width':1920,'height':1080}]:

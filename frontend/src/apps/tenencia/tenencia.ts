@@ -1,4 +1,4 @@
-import { Component, computed, inject, signal, output, OnInit, HostListener } from '@angular/core';
+import { Component, computed, inject, signal, output, input, effect, OnInit, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DesktopBridge } from '../../bridge';
 import { IconComponent } from '../../icon';
@@ -43,6 +43,11 @@ interface Result {
 export class TenenciaComponent implements OnInit {
   private bridge = inject(DesktopBridge);
   readonly back = output<void>();
+  readonly summary = output<{ total: number; covered: number; shortfall: number; checkedAt: string }>();
+  /** Identificador del usuario para recordar el último grupo consultado. */
+  readonly userKey = input('');
+  /** Búsqueda inicial (desde la paleta Ctrl+K). */
+  readonly initialSearch = input('');
   readonly busy = signal(false);
   readonly result = signal<Result | null>(null);
   readonly error = signal('');
@@ -94,6 +99,125 @@ export class TenenciaComponent implements OnInit {
       null,
   );
   readonly canQuery = computed(() => !!this.result()?.listVersion && !this.busy());
+  readonly coveredPercent = computed(() => (this.rows().length ? (this.covered() * 100) / this.rows().length : 0));
+  readonly checkedTime = computed(() => {
+    const at = this.result()?.checkedAt;
+    return at ? new Date(at).toLocaleTimeString('es-ES', { hour: '2-digit', minute: '2-digit' }) : '';
+  });
+  constructor() {
+    effect(() => {
+      const q = this.initialSearch();
+      if (q) {
+        this.search.set(q);
+        this.filter();
+      }
+    });
+  }
+  private groupKey() {
+    return 'viteka.tenencia.group.' + this.userKey();
+  }
+  private restoreGroup() {
+    if (this.activeId() || !this.userKey()) return;
+    try {
+      const id = localStorage.getItem(this.groupKey());
+      if (id && this.rows().some((r) => r.id === id)) this.activeId.set(id);
+    } catch {
+      /* sin almacenamiento */
+    }
+  }
+  toggleStatus(value: string) {
+    this.status.set(this.status() === value ? 'all' : value);
+    this.filter();
+  }
+  shortfallRows() {
+    return this.rows().filter((r) => r.status === 'shortfall');
+  }
+  exportShortfalls() {
+    const cell = (v: unknown) => {
+      const text = v === null || v === undefined ? '' : String(v);
+      return /[;"\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+    };
+    const lines = [['Código', 'Grupo', 'Mínimo', 'Existencias', 'Faltan', 'CN', 'Medicamento', 'Existencias CN']];
+    for (const r of this.shortfallRows()) {
+      if (!r.articles.length)
+        lines.push([r.classification ?? '', r.name, r.minimum, r.stock, r.missing, '', '', ''] as never);
+      for (const a of this.sortedArticles(r))
+        lines.push([
+          r.classification ?? '',
+          r.name,
+          r.minimum,
+          r.stock,
+          r.missing,
+          a.code,
+          a.description,
+          a.stock ?? 0,
+        ] as never);
+    }
+    const csv = '\ufeff' + lines.map((l) => l.map(cell).join(';')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a');
+    const day = (this.result()?.checkedAt ?? new Date().toISOString()).slice(0, 10);
+    link.href = url;
+    link.download = `tenencia-faltas-${day}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
+  }
+  print() {
+    window.print();
+  }
+  nextShortfall() {
+    const list = this.filtered();
+    if (!list.length) return;
+    const start = list.findIndex((r) => r.id === this.activeRow()?.id);
+    for (let i = 1; i <= list.length; i++) {
+      const row = list[(start + i) % list.length];
+      if (row.status === 'shortfall') {
+        this.choose(row);
+        this.focusGroup(row);
+        return;
+      }
+    }
+  }
+  private stepGroup(step: number) {
+    const list = this.filtered();
+    const index = list.findIndex((r) => r.id === this.activeRow()?.id);
+    const row = list[Math.max(0, Math.min(list.length - 1, index + step))];
+    if (row) {
+      this.choose(row);
+      this.focusGroup(row);
+    }
+  }
+  private focusGroup(row: Row) {
+    setTimeout(() => {
+      const button = document.querySelector<HTMLButtonElement>(
+        `.group-button[aria-label="${CSS.escape('Seleccionar grupo ' + row.name)}"]`,
+      );
+      button?.focus();
+      button?.scrollIntoView({ block: 'nearest' });
+    }, 0);
+  }
+  @HostListener('document:keydown', ['$event']) shortcuts(e: KeyboardEvent) {
+    if (e.ctrlKey || e.altKey || e.metaKey || this.selected() || document.querySelector('[role=dialog]')) return;
+    const target = e.target as HTMLElement;
+    const typing = ['INPUT', 'SELECT', 'TEXTAREA'].includes(target.tagName);
+    if (typing || !this.rows().length) return;
+    if (e.key === '/') {
+      e.preventDefault();
+      document.querySelector<HTMLInputElement>('.tenencia-filters input')?.focus();
+    } else if (e.key.toLowerCase() === 'f' && this.hasStock()) {
+      e.preventDefault();
+      this.nextShortfall();
+    } else if (
+      (e.key === 'ArrowDown' || e.key === 'ArrowUp') &&
+      !target.closest('.group-list') &&
+      !target.closest('.tenencia-table')
+    ) {
+      e.preventDefault();
+      this.stepGroup(e.key === 'ArrowDown' ? 1 : -1);
+    }
+  }
   sortGroups(key: GroupSort) {
     const current = this.activeRow()?.id;
     if (current) this.activeId.set(current);
@@ -135,10 +259,11 @@ export class TenenciaComponent implements OnInit {
       const r = await this.bridge.call<Result>('tenencia.state');
       if (r.province !== this.result()?.province) {
         this.activeId.set(null);
-        this.search.set('');
+        this.search.set(this.initialSearch());
       }
       this.status.set('all');
       this.result.set(r);
+      this.restoreGroup();
     } catch (e) {
       this.error.set(this.message(e));
     } finally {
@@ -168,6 +293,13 @@ export class TenenciaComponent implements OnInit {
     try {
       const r = await this.bridge.call<Result>('tenencia.query');
       this.result.set(r);
+      if (r.code === 'ok' && r.checkedAt)
+        this.summary.emit({
+          total: this.rows().length,
+          covered: this.covered(),
+          shortfall: this.shortfalls(),
+          checkedAt: r.checkedAt,
+        });
       if (r.code !== 'ok') this.status.set('all');
     } catch (e) {
       this.status.set('all');
@@ -182,6 +314,11 @@ export class TenenciaComponent implements OnInit {
   }
   choose(row: Row) {
     this.activeId.set(row.id);
+    try {
+      if (this.userKey()) localStorage.setItem(this.groupKey(), row.id);
+    } catch {
+      /* sin almacenamiento */
+    }
     this.activeArticleCode.set(null);
   }
   chooseArticle(article: Article) {
