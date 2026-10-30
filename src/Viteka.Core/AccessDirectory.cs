@@ -64,7 +64,7 @@ public sealed class AccessDirectory(string directory, IReadOnlyList<UtilityDefin
             if (validInput) _ = Rfc2898DeriveBytes.Pbkdf2(password!, new byte[16], Iterations, HashAlgorithmName.SHA256, 32);
             throw new AccessDeniedException("Usuario o contraseña incorrectos, o cuenta temporalmente bloqueada.");
         }
-        if (user.LockedUntil is {} until && until > time.GetUtcNow()) throw new AccessDeniedException("Usuario o contraseña incorrectos, o cuenta temporalmente bloqueada.");
+        if (user.LockedUntil is { } until && until > time.GetUtcNow()) throw new AccessDeniedException("Usuario o contraseña incorrectos, o cuenta temporalmente bloqueada.");
         if (!validInput || !Verify(user, password!))
         {
             user.Failures++;
@@ -149,8 +149,10 @@ public sealed class AccessDirectory(string directory, IReadOnlyList<UtilityDefin
     {
         Directory.CreateDirectory(directory);
         for (var attempt = 0; ; attempt++)
-        { try { return new FileStream(Path.Combine(directory, "access.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
-          catch (IOException) when (attempt < 50) { Thread.Sleep(40); } }
+        {
+            try { return new FileStream(Path.Combine(directory, "access.lock"), FileMode.OpenOrCreate, FileAccess.ReadWrite, FileShare.None); }
+            catch (IOException) when (attempt < 50) { Thread.Sleep(40); }
+        }
     }
     private Document Read()
     {

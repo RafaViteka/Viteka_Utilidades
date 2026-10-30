@@ -17,15 +17,19 @@ public sealed class UpdateJournal(string directory, TimeProvider? clock = null)
     public bool TryBeginCheck(bool manual)
     {
         using var guard = Lock(); var state = Read(); var now = time.GetUtcNow();
-        if (state.Pending is {} pending && pending <= now && now - pending < TimeSpan.FromMinutes(1)) return false;
-        if (!manual && state.LastAttempt is {} last && last <= now.AddMinutes(5) && now - last < TimeSpan.FromHours(24)) return false;
+        if (state.Pending is { } pending && pending <= now && now - pending < TimeSpan.FromMinutes(1)) return false;
+        if (!manual && state.LastAttempt is { } last && last <= now.AddMinutes(5) && now - last < TimeSpan.FromHours(24)) return false;
         Write(state with { LastAttempt = now, Pending = now }); return true;
     }
     public void CompleteCheck(Version? available, bool success)
     {
         using var guard = Lock(); var state = Read(); var now = time.GetUtcNow();
-        var next = state with { Pending = null, LastSuccess = success ? now : state.LastSuccess,
-            AvailableVersion = success ? available?.ToString(3) : state.AvailableVersion };
+        var next = state with
+        {
+            Pending = null,
+            LastSuccess = success ? now : state.LastSuccess,
+            AvailableVersion = success ? available?.ToString(3) : state.AvailableVersion
+        };
         Write(Add(next, success ? "check_succeeded" : "check_failed", available?.ToString(3) ?? ""));
     }
     public void RecordRunningVersion(Version version)

@@ -17,7 +17,7 @@ internal sealed class WindowsShellIntegration : IDisposable
     private readonly double minimumWidth, minimumHeight;
     internal WindowsShellIntegration(Window window)
     {
-        this.window = window;minimumWidth = window.MinWidth;minimumHeight = window.MinHeight;
+        this.window = window; minimumWidth = window.MinWidth; minimumHeight = window.MinHeight;
         window.SourceInitialized += (_, _) =>
         {
             source = HwndSource.FromHwnd(new WindowInteropHelper(window).Handle);
@@ -41,12 +41,12 @@ internal sealed class WindowsShellIntegration : IDisposable
     {
         if (message == 0x24)
         {
-            var monitor = Monitor();var limits = Marshal.PtrToStructure<MinMaxInfo>(lParam);
+            var monitor = Monitor(); var limits = Marshal.PtrToStructure<MinMaxInfo>(lParam);
             limits.MaxPosition = new PointI { X = monitor.Work.Left - monitor.Bounds.Left, Y = monitor.Work.Top - monitor.Bounds.Top };
             limits.MaxSize = new PointI { X = monitor.Work.Right - monitor.Work.Left, Y = monitor.Work.Bottom - monitor.Work.Top };
             var scale = GetDpiForWindow(hwnd) / 96d;
             limits.MinTrackSize = new PointI { X = Math.Min((int)Math.Ceiling(minimumWidth * scale), limits.MaxSize.X), Y = Math.Min((int)Math.Ceiling(minimumHeight * scale), limits.MaxSize.Y) };
-            Marshal.StructureToPtr(limits, lParam, false);handled = true;
+            Marshal.StructureToPtr(limits, lParam, false); handled = true;
         }
         if (message is 0x2E0 or 0x7E or 0x1A)
             window.Dispatcher.BeginInvoke(DispatcherPriority.Loaded, new Action(() => { ApplyIcons(); ClampNormalWindow(); }));
@@ -55,7 +55,7 @@ internal sealed class WindowsShellIntegration : IDisposable
     private void ClampNormalWindow()
     {
         if (window.WindowState != WindowState.Normal) return;
-        var work = Monitor().Work;var dpi = VisualTreeHelper.GetDpi(window);
+        var work = Monitor().Work; var dpi = VisualTreeHelper.GetDpi(window);
         window.MinWidth = Math.Min(minimumWidth, (work.Right - work.Left) / dpi.DpiScaleX);
         window.MinHeight = Math.Min(minimumHeight, (work.Bottom - work.Top) / dpi.DpiScaleY);
         if (!GetWindowRect(Handle, out var rect)) return;
@@ -76,8 +76,8 @@ internal sealed class WindowsShellIntegration : IDisposable
         if (big == IntPtr.Zero || small == IntPtr.Zero) { if (big != IntPtr.Zero) DestroyIcon(big); if (small != IntPtr.Zero) DestroyIcon(small); return; }
         SendMessage(Handle, 0x80, new IntPtr(1), big);
         SendMessage(Handle, 0x80, IntPtr.Zero, small);
-        if (largeIcon != IntPtr.Zero) DestroyIcon(largeIcon);if (smallIcon != IntPtr.Zero) DestroyIcon(smallIcon);
-        largeIcon = big;smallIcon = small;
+        if (largeIcon != IntPtr.Zero) DestroyIcon(largeIcon); if (smallIcon != IntPtr.Zero) DestroyIcon(smallIcon);
+        largeIcon = big; smallIcon = small;
     }
     internal bool HasNativeIcons => largeIcon != IntPtr.Zero && smallIcon != IntPtr.Zero && SendMessage(Handle, 0x7F, IntPtr.Zero, IntPtr.Zero) == smallIcon && SendMessage(Handle, 0x7F, new IntPtr(1), IntPtr.Zero) == largeIcon;
     internal bool WithinWorkArea()
@@ -106,7 +106,7 @@ internal sealed class WindowsShellIntegration : IDisposable
     public void Dispose()
     {
         if (source is { IsDisposed: false }) source.RemoveHook(Hook);
-        if (largeIcon != IntPtr.Zero) DestroyIcon(largeIcon);if (smallIcon != IntPtr.Zero) DestroyIcon(smallIcon);
+        if (largeIcon != IntPtr.Zero) DestroyIcon(largeIcon); if (smallIcon != IntPtr.Zero) DestroyIcon(smallIcon);
     }
     [StructLayout(LayoutKind.Sequential)] private struct PointI { public int X, Y; }
     [StructLayout(LayoutKind.Sequential)] private struct RectI { public int Left, Top, Right, Bottom; }

@@ -72,7 +72,8 @@ public sealed class LocalStateStore(string directory, IReadOnlyList<UtilityDefin
             state.Activity.Any(x => x is null || !Enum.IsDefined(x.Action) ||
                 (x.Action == LocalAction.DemoStarted ? x.UtilityId is not null : x.UtilityId is null || !(KnownIds.Contains(x.UtilityId) || RetiredDemoIds.Contains(x.UtilityId)))))
             throw new InvalidDataException("La configuración local no es válida.");
-        return state with {
+        return state with
+        {
             ZoomPercent = state.ZoomPercent is >= 50 and <= 200 ? state.ZoomPercent : 100,
             Theme = state.Theme is "auto" or "light" or "dark" ? state.Theme : "auto",
             FavoriteIds = state.FavoriteIds.Where(KnownIds.Contains).ToArray(),

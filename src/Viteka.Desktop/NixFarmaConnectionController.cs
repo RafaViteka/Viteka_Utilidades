@@ -47,8 +47,13 @@ internal sealed class NixFarmaConnectionController(Window owner, string director
                 var dialog = new NixFarmaConfigurationWindow(saved ? prior : null, saved) { Owner = owner, MaxHeight = Math.Max(240, Math.Min(660, owner.ActualHeight - 24)) };
                 if (dialog.ShowDialog() != true || dialog.Settings is null) return new { cancelled = true, state };
                 var settings = dialog.Settings;
-                return await access.OracleAsync("configure", new { dsn = settings.Dsn, user = settings.User, password = settings.Password,
-                    keepPassword = saved && settings.Password.Length == 0 && settings.Dsn == prior.Dsn && settings.User == prior.User });
+                return await access.OracleAsync("configure", new
+                {
+                    dsn = settings.Dsn,
+                    user = settings.User,
+                    password = settings.Password,
+                    keepPassword = saved && settings.Password.Length == 0 && settings.Dsn == prior.Dsn && settings.User == prior.User
+                });
             }
             throw new InvalidOperationException();
         }

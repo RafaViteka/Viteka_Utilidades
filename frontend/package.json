@@ -5,7 +5,9 @@
   "scripts": {
     "start": "ng serve --host 127.0.0.1",
     "build": "ng build",
-    "check": "ng build --configuration development"
+    "check": "ng build --configuration development",
+    "format": "prettier --write \"src/**/*.{ts,html,css}\"",
+    "format:check": "prettier --check \"src/**/*.{ts,html,css}\""
   },
   "dependencies": {
     "@angular/common": "22.2.3",
@@ -13,6 +15,7 @@
     "@angular/core": "22.2.3",
     "@angular/forms": "22.2.3",
     "@angular/platform-browser": "22.2.3",
+    "@fontsource-variable/inter": "5.3.0",
     "rxjs": "7.8.2",
     "tslib": "2.8.1"
   },
@@ -20,6 +23,7 @@
     "@angular/build": "22.2.3",
     "@angular/cli": "22.2.3",
     "@angular/compiler-cli": "22.2.3",
+    "prettier": "3.9.10",
     "typescript": "6.0.3"
   },
   "engines": {

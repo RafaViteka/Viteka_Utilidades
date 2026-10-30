@@ -63,11 +63,30 @@ begin
   end;
 end;
 
+// Actualización desde la propia aplicación: /VERYSILENT ... /RELAUNCH=1.
+// Al terminar (o si falla), se vuelve a abrir Viteka para que el usuario recupere su sesión.
+function RelaunchRequested(): Boolean;
+begin
+  Result := ExpandConstant('{param:RELAUNCH|0}') = '1';
+end;
+
+procedure RelaunchApplication();
+var Code: Integer;
+    Client: String;
+begin
+  Client := ExpandConstant('{app}\Cliente\Viteka.Desktop.exe');
+  if FileExists(Client) then
+    // explorer.exe abre el programa en la sesión del escritorio sin heredar la elevación del instalador.
+    Exec(ExpandConstant('{win}\explorer.exe'), AddQuotes(Client), '', SW_SHOWNORMAL, ewNoWait, Code);
+end;
+
 procedure DeinitializeSetup();
 var Code: Integer;
 begin
   if RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\VitekaUtilidadesAccess') and FileExists(ExpandConstant('{app}\Servidor\Viteka.Server.exe')) then
     Exec(ExpandConstant('{app}\Servidor\Viteka.Server.exe'), '--access-manage start', '', SW_HIDE, ewWaitUntilTerminated, Code);
+  if RelaunchRequested() then
+    RelaunchApplication();
 end;
 
 function WebViewInstalled(): Boolean;
