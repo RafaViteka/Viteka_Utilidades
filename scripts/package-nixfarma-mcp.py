@@ -4,12 +4,13 @@ import hashlib,io,sys,zipfile
 root=Path(__file__).resolve().parents[1]
 folder=root/'tools/nixfarma-mcp'
 stream=io.BytesIO()
-with zipfile.ZipFile(stream,'w',compression=zipfile.ZIP_DEFLATED) as archive:
+with zipfile.ZipFile(stream,'w',compression=zipfile.ZIP_STORED) as archive:
     for name in ('LEEME.md','instalar.ps1','requirements.txt','server.py'):
         info=zipfile.ZipInfo(name,date_time=(2026,10,30,0,0,0))
-        info.compress_type=zipfile.ZIP_DEFLATED
+        info.compress_type=zipfile.ZIP_STORED
+        info.create_system=3
         info.external_attr=0o100644 << 16
-        archive.writestr(info,(folder/name).read_bytes())
+        archive.writestr(info,(folder/name).read_text(encoding='utf-8').encode('utf-8'))
 result=stream.getvalue();path=root/'downloads/Viteka-NixFarma-MCP-0.1.0.zip'
 digest=hashlib.sha256(result).hexdigest();hashpath=path.with_suffix('.zip.sha256');hashtext=digest+'  '+path.name+'\n'
 if '--check' in sys.argv:
