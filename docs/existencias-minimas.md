@@ -1,4 +1,4 @@
-# Tenencia obligatoria · 0.14.0
+# Tenencia obligatoria · 0.14.1
 
 ## Fuentes incorporadas
 
@@ -44,6 +44,14 @@ Filas duplicadas de stock, artículo ausente o stock nulo permanecen pendientes:
 
 ## Validación
 
-72 checks del núcleo: catálogo, 83 grupos, 2.089 asociaciones, mínimos combinados, productos sanitarios explícitos, ausencia de ampliación por ATC, condiciones pendientes, solo lectura, rollback y stock desconocido, además de accesos/actualizaciones. Navegador: 83 grupos reales, digoxinas separadas, 18 bisturíes, 3 bolsas pediátricas, filtros, detalle y errores sin stocks antiguos. Windows: servicio TLS, WebView2, perfil compartido, catálogo sin conexión, diagnóstico ODBC e instalación/actualización conservando cuentas y datos. Los stocks ficticios solo se usan en pruebas; pasar estas pruebas no confirma existencias reales de una farmacia.
+73 checks del núcleo: catálogo, 83 grupos, 2.089 asociaciones, mínimos combinados, productos sanitarios explícitos, ausencia de ampliación por ATC, condiciones pendientes, solo lectura, rollback y stock desconocido, además de accesos/actualizaciones. Navegador: 83 grupos reales, digoxinas separadas, 18 bisturíes, 3 bolsas pediátricas, filtros, detalle y errores sin stocks antiguos. Windows: servicio TLS, WebView2, perfil compartido, catálogo sin conexión, diagnóstico ODBC e instalación/actualización conservando cuentas y datos. Los stocks ficticios solo se usan en pruebas; pasar estas pruebas no confirma existencias reales de una farmacia.
 
 Los errores Oracle en lectura/diagnóstico identifican la operación y muestran códigos SQLSTATE/ORA válidos, si existen; nunca texto bruto del controlador ni credenciales. Probar conexión y Comprobar tablas son operaciones distintas y sustituyen los mensajes anteriores.
+
+## Lectura directa por CN · 0.14.1
+
+Se conservan los 2.089 enlaces del catálogo y se consultan sus 2.087 CN distintos sin resolver ATC. La producción usa APPUL.AB_ARTICULOS.CODIGO/DESCRIPCION y la vista APPUL.AB_ARTICULOS_FICHA_E.ART_CODIGO/EXI_ACTUALES, campos confirmados en los metadatos exportados por el usuario. Se corrigen los nombres genéricos ARTICULOS/EXISTENCIAS que no correspondían a esta instalación. La vista aporta la información de existencias; no se supone el nombre de una columna en AC_EXISTENCIAS que no figure en los datos aportados.
+
+Cada CN viaja como parámetro ODBC, conservando ceros iniciales. Las consultas de descripción y stock son independientes y no multiplican existencias por joins. Cero es un stock válido, distinto de nulo/artículo ausente. Si hay varias filas por empresa/almacén, queda pendiente y no se suman sin criterio confirmado. Sigue SET TRANSACTION READ ONLY, rollback y límites. Los adaptadores genéricos se conservan para las comprobaciones previas, pero el servicio selecciona explícitamente el esquema nativo.
+
+Los textos adjuntos contienen una columna EXI_ACTUALES y tres copias idénticas ART_CODIGO, 20.466 valores cada columna. No se emparejan por posición ni se importan como stocks reales: solo una consulta por clave asegura la correspondencia. Falta validar la lectura en el servidor real.

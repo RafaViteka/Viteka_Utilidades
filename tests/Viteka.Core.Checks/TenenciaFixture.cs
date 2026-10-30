@@ -5,7 +5,7 @@ using System.Diagnostics.CodeAnalysis;
 
 sealed class TenenciaFixture : DbConnection
 {
- public List<string> Steps{get;}=[];public List<string> ParametersSeen{get;}=[];public bool FailReadOnly{get;init;}public bool DuplicateStock{get;init;}public bool AmbiguousColumns{get;init;}public bool ReadOnlySet{get;set;}public string StockColumn{get;init;}="STOCK_ACTUAL";public string? AtcColumn{get;init;}public bool TwoAtcCandidates{get;init;}
+ public List<string> Steps{get;}=[];public List<string> ParametersSeen{get;}=[];public bool NativeSchema{get;init;}public bool FailReadOnly{get;init;}public bool DuplicateStock{get;init;}public bool AmbiguousColumns{get;init;}public bool ReadOnlySet{get;set;}public string StockColumn{get;init;}="STOCK_ACTUAL";public string? AtcColumn{get;init;}public bool TwoAtcCandidates{get;init;}
  [AllowNull]public override string ConnectionString{get;set;}="";public override string Database=>"Fixture";public override string DataSource=>"Fixture";public override string ServerVersion=>"1";public override ConnectionState State=>ConnectionState.Open;
  public override void Open()=>Steps.Add("open");public override void Close(){}public override void ChangeDatabase(string databaseName)=>throw new NotSupportedException();protected override DbTransaction BeginDbTransaction(IsolationLevel isolationLevel)=>new Transaction(this);protected override DbCommand CreateDbCommand()=>new Command(this);
  sealed class Transaction(TenenciaFixture owner):DbTransaction{public override IsolationLevel IsolationLevel=>IsolationLevel.ReadCommitted;protected override DbConnection DbConnection=>owner;public override void Commit()=>throw new Exception("Must not commit");public override void Rollback()=>owner.Steps.Add("rollback");}
@@ -23,7 +23,7 @@ sealed class TenenciaFixture : DbConnection
     foreach(var item in new[]{("650001","A01AB01"),("650002","A01AB02"),("650003","A02BC01")})if(prefixes.Any(p=>item.Item2.StartsWith(p,StringComparison.Ordinal)))found.Rows.Add(item.Item1,"Medicamento ficticio "+item.Item1,item.Item2);
     return found.CreateDataReader();
    }
-var article=CommandText.Contains("FROM ARTICULOS",StringComparison.Ordinal);var table=new DataTable();table.Columns.Add("ARTICULO",typeof(string));table.Columns.Add(article?"DESCRIPCION":owner.StockColumn,article?typeof(string):typeof(decimal));if(!article&&owner.AmbiguousColumns)table.Columns.Add("ACTUAL",typeof(decimal));
+var article=CommandText.Contains("FROM ARTICULOS",StringComparison.Ordinal)||CommandText.Contains("FROM APPUL.AB_ARTICULOS ",StringComparison.Ordinal);var table=new DataTable();table.Columns.Add(owner.NativeSchema?(article?"CODIGO":"ART_CODIGO"):"ARTICULO",typeof(string));table.Columns.Add(article?"DESCRIPCION":owner.StockColumn,article?typeof(string):typeof(decimal));if(!article&&owner.AmbiguousColumns)table.Columns.Add("ACTUAL",typeof(decimal));
    if(CommandText.EndsWith("WHERE 1 = 0",StringComparison.Ordinal)){if(article&&owner.AtcColumn is not null)table.Columns.Add(owner.AtcColumn,typeof(string));if(article&&owner.TwoAtcCandidates)table.Columns.Add("GRUPO_ANTERIOR",typeof(string));return table.CreateDataReader();}
    var values=Parameters.Cast<DbParameter>().Select(p=>(string)p.Value!).ToArray();owner.ParametersSeen.AddRange(values);if(values.Any(CommandText.Contains))throw new Exception("Literal CN in query");
    foreach(var code in values){if(article)table.Rows.Add(code,"Artículo ficticio "+code);else{table.Rows.Add(code,code=="650001"?2m:1m);if(owner.DuplicateStock)table.Rows.Add(code,5m);}}return table.CreateDataReader();

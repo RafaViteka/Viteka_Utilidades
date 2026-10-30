@@ -1,12 +1,9 @@
-Pantalla de trabajo compacta, arranque maximizado y cierre de sesión al pie del menú.
+Consulta directa de descripciones y existencias por los códigos nacionales ya incluidos.
 
-- Tenencia ocupa todo el espacio disponible: cabecera de acciones, filtros y resumen en línea, grupos y medicamentos en tablas con desplazamiento independiente.
-- Información de la selección en el panel inferior y mínimo/existencias/faltas a su derecha. Selección de artículos con ratón o flechas; cabeceras visibles al desplazarse.
-- Se mantienen los 83 grupos y las 2.089 asociaciones por CN de los dos vídeos, visibles antes de consultar NixFarma. Los vídeos reenviados coinciden con los ya incorporados.
-- La aplicación se abre siempre maximizada, respetando la barra de tareas y permitiendo restaurar, minimizar y cerrar.
-- Cerrar sesión aparece justo encima del logotipo, con icono de apagado y espacio de separación, también con el menú plegado.
-- La prueba de conexión y la comprobación de tablas sustituyen los avisos anteriores para evitar mensajes contradictorios. Los fallos de lectura muestran diagnóstico SQLSTATE/ORA cuando está disponible, sin exponer datos de conexión.
+- Se conservan los 83 grupos y sus 2.089 asociaciones; esta lista no necesita buscar grupos ATC en NixFarma.
+- Descripción desde APPUL.AB_ARTICULOS, por CODIGO y DESCRIPCION.
+- Stock actual desde APPUL.AB_ARTICULOS_FICHA_E, por ART_CODIGO y EXI_ACTUALES, campos presentes en los metadatos aportados.
+- Corrige el uso anterior de nombres genéricos ARTICULOS/EXISTENCIAS que no correspondían a estas tablas reales.
+- Consultas parametrizadas de solo lectura. Stock cero se conserva; datos ausentes o ambiguos quedan pendientes. No se emparejan las columnas pegadas por su posición ni se suman almacenes sin confirmar.
 
-Actualizar desde Configuración → Actualizaciones en el servidor, con los clientes cerrados. Instalar encima, sin desinstalar; se conservan cuentas, permisos, conexión y datos de farmacia.
-
-Las existencias reales deben verificarse en el servidor de NixFarma. Fentanilo y Foley conservan revisión por dosis/tamaño; microenemas señala la referencia Valium inyectable del vídeo. No se importan stocks de los vídeos ni se afirma revisión normativa oficial.
+Actualizar desde Configuración → Actualizaciones en el servidor, con los clientes cerrados, sin desinstalar. Después abrir Tenencia obligatoria y pulsar Consultar existencias. La cuenta Oracle debe poder leer ambas fuentes. La consulta real debe comprobarse en el servidor de la farmacia.

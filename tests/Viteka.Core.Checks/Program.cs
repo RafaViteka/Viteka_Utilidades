@@ -373,6 +373,12 @@ try
         using var connection=new TenenciaFixture();var stocks=TenenciaStockQuery.ReadOnly(connection,tx=>{var schema=TenenciaStockQuery.Inspect(connection,tx);Require(schema.Stock=="\"STOCK_ACTUAL\"");return TenenciaStockQuery.Read(connection,tx,schema,["650001","650002"]);});
         Require(stocks["650001"].Stock==2&&connection.Steps[1]=="SET TRANSACTION READ ONLY"&&connection.Steps.Last()=="rollback"&&connection.ParametersSeen.Count==4);
     });
+    Check("Confirmed NixFarma tables read descriptions and current stock by explicit CN without ATC",()=>{
+        using var c=new TenenciaFixture{NativeSchema=true,StockColumn="EXI_ACTUALES"};
+        var stocks=TenenciaStockQuery.ReadOnly(c,tx=>{var schema=TenenciaStockQuery.Inspect(c,tx,nativeNixFarma:true);Require(schema.ArticleTable=="APPUL.AB_ARTICULOS"&&schema.StockTable=="APPUL.AB_ARTICULOS_FICHA_E"&&schema.Stock=="\"EXI_ACTUALES\"");return TenenciaStockQuery.Read(c,tx,schema,["650001","650002"]);});
+        Require(stocks["650001"].Description=="Artículo ficticio 650001"&&stocks["650001"].Stock==2&&stocks["650002"].Stock==1&&c.Steps.Last()=="rollback");
+        Require(c.Steps.Any(s=>s.Contains("FROM APPUL.AB_ARTICULOS WHERE"))&&c.Steps.Any(s=>s.Contains("FROM APPUL.AB_ARTICULOS_FICHA_E WHERE"))&&!c.Steps.Any(s=>s.Contains("LIKE ?")));
+    });
     Check("NixFarma stock reading stops before SELECT when read-only fails",()=>{
         using var connection=new TenenciaFixture{FailReadOnly=true};try{TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Inspect(connection,tx));throw new Exception("Expected failure");}catch(ProbeFixtureException){}Require(!connection.Steps.Any(s=>s.StartsWith("SELECT"))&&connection.Steps.Last()=="rollback");
     });

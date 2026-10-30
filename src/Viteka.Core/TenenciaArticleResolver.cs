@@ -11,6 +11,7 @@ public static class TenenciaArticleResolver
     public static Resolution Resolve(DbConnection connection,DbTransaction tx,TenenciaStockQuery.Schema schema,TenenciaList list,CancellationToken ct)
     {
         TenenciaRules.Validate(list);
+        if(schema.ArticleTable is not ("ARTICULOS" or "APPUL.AB_ARTICULOS"))throw new InvalidDataException("Tabla de artículos no válida.");
         var identifiers=new[]{schema.ArticleCode,schema.Description}.Concat(schema.Atc is null?[]:new[]{schema.Atc}).Concat(schema.AtcCandidates);
         if(identifiers.Any(x=>!Regex.IsMatch(x,"^\"[A-Za-z][A-Za-z0-9_ ]{0,127}\"$")))throw new InvalidDataException("Nombre de columna no válido.");
         var groups=list.Groups.ToDictionary(g=>g.Id,g=>g.Codes);var notes=new Dictionary<string,string>();
@@ -20,7 +21,7 @@ public static class TenenciaArticleResolver
             if(schema.AtcCandidates.Length<=20){
                 var matches=new List<string>();
                 foreach(var candidate in schema.AtcCandidates){
-                    ct.ThrowIfCancellationRequested();using var cmd=Command(connection,tx,$"SELECT DISTINCT {candidate} FROM ARTICULOS WHERE {candidate} IS NOT NULL AND ROWNUM <= 201");using var reader=cmd.ExecuteReader();var values=new HashSet<string>();var scanned=0;
+                    ct.ThrowIfCancellationRequested();using var cmd=Command(connection,tx,$"SELECT DISTINCT {candidate} FROM {schema.ArticleTable} WHERE {candidate} IS NOT NULL AND ROWNUM <= 201");using var reader=cmd.ExecuteReader();var values=new HashSet<string>();var scanned=0;
                     while(reader.Read()){
                         ct.ThrowIfCancellationRequested();if(++scanned>201)throw new InvalidDataException("La muestra de clasificación excede el límite.");
                         var value=Convert.ToString(reader.GetValue(0),CultureInfo.InvariantCulture)?.Trim().ToUpperInvariant()??"";
@@ -37,7 +38,7 @@ public static class TenenciaArticleResolver
         var prefixes=requested.Select(g=>g.AtcPrefix!).Distinct().ToArray();
         // Every identifier is from trusted metadata; ATC values come from the packaged, validated list.
         var predicates=string.Join(" OR ",prefixes.Select(_=>$"UPPER(TRIM({column})) LIKE ?"));
-        using(var cmd=Command(connection,tx,$"SELECT {schema.ArticleCode}, {schema.Description}, {column} FROM ARTICULOS WHERE ({predicates}) AND ROWNUM <= 10001")){
+        using(var cmd=Command(connection,tx,$"SELECT {schema.ArticleCode}, {schema.Description}, {column} FROM {schema.ArticleTable} WHERE ({predicates}) AND ROWNUM <= 10001")){
             foreach(var prefix in prefixes){var parameter=cmd.CreateParameter();parameter.DbType=DbType.String;parameter.Value=prefix+"%";cmd.Parameters.Add(parameter);}
             using var reader=cmd.ExecuteReader();var entries=new Dictionary<string,HashSet<string>>();var count=0;
             while(reader.Read()){

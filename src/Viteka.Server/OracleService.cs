@@ -61,8 +61,8 @@ internal sealed class OracleService(string directory)
                 var builder=new System.Data.Odbc.OdbcConnectionStringBuilder{Dsn=profile.Dsn};builder["UID"]=profile.User;builder["PWD"]=profile.Password;
                 using var connection=new System.Data.Odbc.OdbcConnection(builder.ConnectionString);
                 return Viteka.Core.TenenciaStockQuery.ReadOnly(connection,tx=>{
-                    deadline.Token.ThrowIfCancellationRequested();var schema=Viteka.Core.TenenciaStockQuery.Inspect(connection,tx);
-                    if(inspectOnly)return new Viteka.Contracts.TenenciaResponse("schema_verified","Estructura verificada: ARTICULOS y EXISTENCIAS; stock "+schema.Stock+"; ATC "+(schema.Atc??"pendiente de identificar por coincidencias")+". Columnas de ARTICULOS: "+string.Join(", ",schema.ArticleColumns.Take(250))+". No se han leído existencias.",province);
+                    deadline.Token.ThrowIfCancellationRequested();var schema=Viteka.Core.TenenciaStockQuery.Inspect(connection,tx,nativeNixFarma:true);
+                    if(inspectOnly)return new Viteka.Contracts.TenenciaResponse("schema_verified","Estructura verificada: APPUL.AB_ARTICULOS y APPUL.AB_ARTICULOS_FICHA_E; stock "+schema.Stock+"; lectura por CN explícitos. Columnas de AB_ARTICULOS: "+string.Join(", ",schema.ArticleColumns.Take(250))+". No se han leído existencias.",province);
                     if(list is null)throw new InvalidOperationException();
                     var resolution=Viteka.Core.TenenciaArticleResolver.Resolve(connection,tx,schema,list,deadline.Token);
                     var codes=resolution.Groups.Values.SelectMany(c=>c).Distinct().ToArray();
