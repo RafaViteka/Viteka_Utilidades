@@ -116,31 +116,36 @@ internal static class AccessHost
             if (!AccessPolicy.CanConfigure(actor)) throw new AccessDeniedException();
             return Results.Ok(await oracle.HandleAsync(action, request, context.RequestAborted));
         });
-        app.MapPost("/access/pharmacy/{action}", (string action,HttpContext context,JsonElement request)=>{
-            var actor=Agent(context).RequireUser();if(!AccessPolicy.CanManageUsers(actor))throw new AccessDeniedException();
-            if(action=="save"){
-                var profile=request.Deserialize<PharmacyProfile>(new JsonSerializerOptions(JsonSerializerDefaults.Web))??throw new ArgumentException("Datos no válidos.");pharmacy.Save(profile);
-            }else if(action!="state")throw new AccessDeniedException();
-            return Results.Ok(new{profile=pharmacy.Load(),provinces=SpanishProvinces.Items.Select(p=>new{code=p.Key,name=p.Value}).OrderBy(p=>p.name)});
-        });
-        app.MapPost("/access/tenencia/{action}", async (string action,HttpContext context,JsonElement request)=>{
-            var actor=Agent(context).RequireUser();
-            if(request.ValueKind!=JsonValueKind.Object||request.EnumerateObject().Any())throw new ArgumentException("La consulta utiliza exclusivamente la provincia y lista del servidor.");
-            if(action=="schema"){
-                if(!AccessPolicy.CanConfigure(actor))throw new AccessDeniedException();
-                return Results.Ok(await oracle.TenenciaAsync("",null,true,context.RequestAborted));
+        app.MapPost("/access/pharmacy/{action}", (string action, HttpContext context, JsonElement request) =>
+        {
+            var actor = Agent(context).RequireUser(); if (!AccessPolicy.CanManageUsers(actor)) throw new AccessDeniedException();
+            if (action == "save")
+            {
+                var profile = request.Deserialize<PharmacyProfile>(new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? throw new ArgumentException("Datos no válidos."); pharmacy.Save(profile);
             }
-            if(!AccessPolicy.CanUse(actor,UtilityCatalog.TenenciaId,UtilityCatalog.Items))throw new AccessDeniedException();
-            if(action is not ("state" or "query"))throw new AccessDeniedException();
-            var profile=pharmacy.Load();if(profile is null)return Results.Ok(new TenenciaResponse("pharmacy_pending","El titular o Viteka deben guardar la provincia en Datos de la farmacia.",""));
+            else if (action != "state") throw new AccessDeniedException();
+            return Results.Ok(new { profile = pharmacy.Load(), provinces = SpanishProvinces.Items.Select(p => new { code = p.Key, name = p.Value }).OrderBy(p => p.name) });
+        });
+        app.MapPost("/access/tenencia/{action}", async (string action, HttpContext context, JsonElement request) =>
+        {
+            var actor = Agent(context).RequireUser();
+            if (request.ValueKind != JsonValueKind.Object || request.EnumerateObject().Any()) throw new ArgumentException("La consulta utiliza exclusivamente la provincia y lista del servidor.");
+            if (action == "schema")
+            {
+                if (!AccessPolicy.CanConfigure(actor)) throw new AccessDeniedException();
+                return Results.Ok(await oracle.TenenciaAsync("", null, true, context.RequestAborted));
+            }
+            if (!AccessPolicy.CanUse(actor, UtilityCatalog.TenenciaId, UtilityCatalog.Items)) throw new AccessDeniedException();
+            if (action is not ("state" or "query")) throw new AccessDeniedException();
+            var profile = pharmacy.Load(); if (profile is null) return Results.Ok(new TenenciaResponse("pharmacy_pending", "El titular o Viteka deben guardar la provincia en Datos de la farmacia.", ""));
             TenenciaList? list;
-            try{list=TenenciaRules.Load(Path.Combine(AppContext.BaseDirectory,"Catalogs","tenencia"),profile.Province);}
-            catch(Exception error) when(error is InvalidDataException or JsonException){return Results.Ok(new TenenciaResponse("catalog_invalid","La lista provincial no es válida; Viteka debe revisarla antes de consultar.",profile.Province));}
-            if(list is null)return Results.Ok(new TenenciaResponse("catalog_pending","Lista de tenencia pendiente para "+SpanishProvinces.Items[profile.Province]+". No se ha evaluado el cumplimiento.",profile.Province){ProvinceName=SpanishProvinces.Items[profile.Province]});
-            if(action=="state")return Results.Ok(new TenenciaResponse("ready","Lista disponible. Pulsa Consultar para leer las existencias actuales.",profile.Province,list.Version,list.Source,Rows:TenenciaRules.Preview(list)){ProvinceName=SpanishProvinces.Items[profile.Province]});
-            var response=await oracle.TenenciaAsync(profile.Province,list,false,context.RequestAborted);
-            if(!AccessPolicy.CanUse(Agent(context).RequireUser(),UtilityCatalog.TenenciaId,UtilityCatalog.Items))throw new AccessDeniedException();
-            return Results.Ok(response with{ProvinceName=SpanishProvinces.Items[profile.Province],ListVersion=list.Version,Source=list.Source,Rows=response.Code=="ok"?response.Rows:TenenciaRules.Preview(list)});
+            try { list = TenenciaRules.Load(Path.Combine(AppContext.BaseDirectory, "Catalogs", "tenencia"), profile.Province); }
+            catch (Exception error) when (error is InvalidDataException or JsonException) { return Results.Ok(new TenenciaResponse("catalog_invalid", "La lista provincial no es válida; Viteka debe revisarla antes de consultar.", profile.Province)); }
+            if (list is null) return Results.Ok(new TenenciaResponse("catalog_pending", "Lista de tenencia pendiente para " + SpanishProvinces.Items[profile.Province] + ". No se ha evaluado el cumplimiento.", profile.Province) { ProvinceName = SpanishProvinces.Items[profile.Province] });
+            if (action == "state") return Results.Ok(new TenenciaResponse("ready", "Lista disponible. Pulsa Consultar para leer las existencias actuales.", profile.Province, list.Version, list.Source, Rows: TenenciaRules.Preview(list)) { ProvinceName = SpanishProvinces.Items[profile.Province] });
+            var response = await oracle.TenenciaAsync(profile.Province, list, false, context.RequestAborted);
+            if (!AccessPolicy.CanUse(Agent(context).RequireUser(), UtilityCatalog.TenenciaId, UtilityCatalog.Items)) throw new AccessDeniedException();
+            return Results.Ok(response with { ProvinceName = SpanishProvinces.Items[profile.Province], ListVersion = list.Version, Source = list.Source, Rows = response.Code == "ok" ? response.Rows : TenenciaRules.Preview(list) });
         });
         await app.RunAsync();
     }

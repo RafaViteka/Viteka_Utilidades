@@ -56,7 +56,8 @@ public partial class MainWindow : Window
             core.Settings.AreDevToolsEnabled = false;
             core.Settings.IsStatusBarEnabled = false;
             core.Settings.IsZoomControlEnabled = false; // Angular handles Ctrl+wheel consistently; native toolbar remains outside page zoom.
-            Browser.ZoomFactorChanged += (_, _) => {
+            Browser.ZoomFactorChanged += (_, _) =>
+            {
                 var percent = (int)Math.Round(Browser.ZoomFactor * 100);
                 ZoomLabel.Content = percent + " %";
                 if (!closing) core.PostWebMessageAsJson(JsonSerializer.Serialize(new { type = "zoom-changed", percent }));
@@ -69,8 +70,10 @@ public partial class MainWindow : Window
             core.PermissionRequested += (_, e) => e.State = CoreWebView2PermissionState.Deny;
             core.DownloadStarting += (_, e) => e.Cancel = true;
             core.WebMessageReceived += ReceiveMessage;
-            core.NavigationCompleted += async (_, e) => {
-                if (e.IsSuccess) {
+            core.NavigationCompleted += async (_, e) =>
+            {
+                if (e.IsSuccess)
+                {
                     LoadingPanel.Visibility = Visibility.Collapsed;
                     if (!App.SmokeTest && maintenance is null)
                     {
@@ -79,7 +82,8 @@ public partial class MainWindow : Window
                         _ = ScheduledUpdateCheck();
                     }
                     if (App.SmokeTest && !smokeStarted) { smokeStarted = true; await RunNativeSmoke(); }
-                } else { LoadingMessage.Text = "No se pudo cargar la interfaz. Cierra y vuelve a abrir Viteka."; if (App.SmokeTest) FinishSmoke(false, "navigation"); }
+                }
+                else { LoadingMessage.Text = "No se pudo cargar la interfaz. Cierra y vuelve a abrir Viteka."; if (App.SmokeTest) FinishSmoke(false, "navigation"); }
             };
             core.ProcessFailed += (_, _) => { LoadingPanel.Visibility = Visibility.Visible; LoadingMessage.Text = "La interfaz se ha detenido. Cierra y vuelve a abrir Viteka."; };
             core.Navigate(Origin + "/index.html?v=" + typeof(MainWindow).Assembly.GetName().Version?.ToString(3));
@@ -145,36 +149,36 @@ public partial class MainWindow : Window
             if (WindowState != WindowState.Normal || !shell.WithinWorkArea()) throw new InvalidOperationException(shell.Diagnostics());
             stage = "zoom";
             shell.SmokeCtrlWheel();
-            for (var attempt=0;attempt<50&&Math.Round(Browser.ZoomFactor*100)!=110;attempt++) await Task.Delay(100);
-            if (Math.Round(Browser.ZoomFactor*100)!=110 || !Equals(ZoomLabel.Content,"110 %") || Preferences.Load().ZoomPercent!=110) throw new InvalidOperationException();
-            ResetZoom(this,new RoutedEventArgs());
+            for (var attempt = 0; attempt < 50 && Math.Round(Browser.ZoomFactor * 100) != 110; attempt++) await Task.Delay(100);
+            if (Math.Round(Browser.ZoomFactor * 100) != 110 || !Equals(ZoomLabel.Content, "110 %") || Preferences.Load().ZoomPercent != 110) throw new InvalidOperationException();
+            ResetZoom(this, new RoutedEventArgs());
             stage = "oracle-migration";
-            var secret="fixture-"+Guid.NewGuid().ToString("N");var dsn="Viteka_"+Guid.NewGuid().ToString("N")[..16];
-            var setup=new NixFarmaConfigurationWindow(null){Owner=this};
-            setup.ContentRendered+=(_,_)=>setup.CompleteSmoke(dsn,"fixture-user",secret);
-            if(setup.ShowDialog()!=true||setup.Settings is null)throw new InvalidOperationException("Native configuration dialog failed.");
-            var legacy=new NixFarmaConnectionStore(store.DirectoryPath);legacy.Save(setup.Settings);
-            if(legacy.Load()?.Password!=secret||System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(legacy.FilePath)).Contains(secret))throw new InvalidOperationException("Legacy DPAPI roundtrip failed.");
-            var state=await(nixfarma??throw new InvalidOperationException()).HandleAsync("nixfarma.status",lifetime.Token);
-            if(JsonSerializer.Serialize(state).Contains(secret)||legacy.Exists)throw new InvalidOperationException("Protected migration failed.");
-            var result=await Access.OracleAsync("test");
-            if(result.GetProperty("success").GetBoolean()||result.GetProperty("code").GetString()!="dsn_missing")throw new InvalidOperationException("Service ODBC missing-DSN diagnostic failed.");
-            var schemaProbe=await Access.UtilityAsync("tenencia.schema");
-            if(schemaProbe.GetProperty("code").GetString()!="dsn_missing")throw new InvalidOperationException("Tenencia schema probe must diagnose the missing DSN.");
+            var secret = "fixture-" + Guid.NewGuid().ToString("N"); var dsn = "Viteka_" + Guid.NewGuid().ToString("N")[..16];
+            var setup = new NixFarmaConfigurationWindow(null) { Owner = this };
+            setup.ContentRendered += (_, _) => setup.CompleteSmoke(dsn, "fixture-user", secret);
+            if (setup.ShowDialog() != true || setup.Settings is null) throw new InvalidOperationException("Native configuration dialog failed.");
+            var legacy = new NixFarmaConnectionStore(store.DirectoryPath); legacy.Save(setup.Settings);
+            if (legacy.Load()?.Password != secret || System.Text.Encoding.UTF8.GetString(File.ReadAllBytes(legacy.FilePath)).Contains(secret)) throw new InvalidOperationException("Legacy DPAPI roundtrip failed.");
+            var state = await (nixfarma ?? throw new InvalidOperationException()).HandleAsync("nixfarma.status", lifetime.Token);
+            if (JsonSerializer.Serialize(state).Contains(secret) || legacy.Exists) throw new InvalidOperationException("Protected migration failed.");
+            var result = await Access.OracleAsync("test");
+            if (result.GetProperty("success").GetBoolean() || result.GetProperty("code").GetString() != "dsn_missing") throw new InvalidOperationException("Service ODBC missing-DSN diagnostic failed.");
+            var schemaProbe = await Access.UtilityAsync("tenencia.schema");
+            if (schemaProbe.GetProperty("code").GetString() != "dsn_missing") throw new InvalidOperationException("Tenencia schema probe must diagnose the missing DSN.");
             await Access.OracleAsync("forget");
-            stage="pharmacy-profile";
-            var savedPharmacy=await Access.UtilityAsync("pharmacy.save",JsonSerializer.SerializeToElement(new{name="Farmacia de prueba",province="29",town="Málaga",email="fixture@example.test",phone="",address="",postcode="29001"}));
-            if(savedPharmacy.GetProperty("profile").GetProperty("province").GetString()!="29")throw new InvalidOperationException("Central pharmacy profile failed.");
-            var pendingTenencia=await Access.UtilityAsync("tenencia.query");
-            if(pendingTenencia.GetProperty("code").GetString()!="not_configured"||pendingTenencia.GetProperty("rows").GetArrayLength()!=83)throw new InvalidOperationException("Excel groups must remain visible without an Oracle connection.");
-            stage="sidebar";
+            stage = "pharmacy-profile";
+            var savedPharmacy = await Access.UtilityAsync("pharmacy.save", JsonSerializer.SerializeToElement(new { name = "Farmacia de prueba", province = "29", town = "Málaga", email = "fixture@example.test", phone = "", address = "", postcode = "29001" }));
+            if (savedPharmacy.GetProperty("profile").GetProperty("province").GetString() != "29") throw new InvalidOperationException("Central pharmacy profile failed.");
+            var pendingTenencia = await Access.UtilityAsync("tenencia.query");
+            if (pendingTenencia.GetProperty("code").GetString() != "not_configured" || pendingTenencia.GetProperty("rows").GetArrayLength() != 83) throw new InvalidOperationException("Excel groups must remain visible without an Oracle connection.");
+            stage = "sidebar";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
             await WaitForScript("document.querySelector('.layout')?.classList.contains('collapsed') === true");
-            for(var attempt=0;attempt<50&&!Preferences.Load().SidebarCollapsed;attempt++)await Task.Delay(100);
-            if(!Preferences.Load().SidebarCollapsed)throw new InvalidOperationException();
+            for (var attempt = 0; attempt < 50 && !Preferences.Load().SidebarCollapsed; attempt++) await Task.Delay(100);
+            if (!Preferences.Load().SidebarCollapsed) throw new InvalidOperationException();
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
-            stage="navigation";
-            foreach(var section in new[]{"Aplicaciones","Favoritos","Configuración"})
+            stage = "navigation";
+            foreach (var section in new[] { "Aplicaciones", "Favoritos", "Configuración" })
             {
                 await Browser.CoreWebView2.ExecuteScriptAsync($"[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==={JsonSerializer.Serialize(section)}).click()");
                 await WaitForScript($"document.querySelector('h1')?.textContent === {JsonSerializer.Serialize(section)}");
@@ -189,49 +193,50 @@ public partial class MainWindow : Window
             await WaitForScript("document.querySelector('h1')?.textContent === 'Configuración'");
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Usuarios').click()");
             await WaitForScript("document.querySelector('h1')?.textContent === 'Usuarios'");
-            stage="tenencia-navigation";
+            stage = "tenencia-navigation";
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Aplicaciones').click()");
             await WaitForScript("document.querySelector('h1')?.textContent === 'Aplicaciones'");
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.resource')].find(b=>b.querySelector('strong')?.textContent==='Tenencia obligatoria').click()");
             await WaitForScript("document.querySelector('h1')?.textContent === 'Tenencia obligatoria' && document.querySelectorAll('viteka-tenencia .group-button').length === 83");
-            stage="preference";
+            stage = "preference";
             await OpenAccountSmoke();
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Pantalla al iniciar').click()");
             await WaitForScript("document.querySelector('[role=dialog] input[type=checkbox]') !== null");
-            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click();[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Guardar cambios').click()");await WaitForPreference(true);
-            Browser.CoreWebView2.Reload();await WaitForScript("document.querySelector('h1')?.textContent === 'Favoritos'");
+            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click();[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Guardar cambios').click()"); await WaitForPreference(true);
+            Browser.CoreWebView2.Reload(); await WaitForScript("document.querySelector('h1')?.textContent === 'Favoritos'");
             await OpenAccountSmoke();
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Pantalla al iniciar').click()");
             await WaitForScript("document.querySelector('input[type=checkbox]')?.checked === true");
-            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click();[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Guardar cambios').click()");await WaitForPreference(false);
+            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click();[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Guardar cambios').click()"); await WaitForPreference(false);
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Inicio').click()");
             await WaitForScript("document.querySelector('.priority-grid') !== null");
-            var screenshot=Environment.GetEnvironmentVariable("VITEKA_UI_SMOKE_SCREENSHOT");
-            if(!string.IsNullOrEmpty(screenshot)){using var file=File.Create(screenshot);await Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png,file);}
-            stage="normal-user-guards";
+            var screenshot = Environment.GetEnvironmentVariable("VITEKA_UI_SMOKE_SCREENSHOT");
+            if (!string.IsNullOrEmpty(screenshot)) { using var file = File.Create(screenshot); await Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, file); }
+            stage = "normal-user-guards";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"Cerrar sesión\"]').click()");
-            await LoginSmoke("usuario","0000","SmokeUserPassword1");
+            await LoginSmoke("usuario", "0000", "SmokeUserPassword1");
             await WaitForScript("![...document.querySelectorAll('nav button')].some(b=>b.textContent.includes('Usuarios')||b.textContent.includes('Mi cuenta'))");
-            await DeniedSmoke("nixfarma.status");await DeniedSmoke("update.install");
-            await DeniedSmoke("tenencia.query");await DeniedSmoke("tenencia.schema");await DeniedSmoke("pharmacy.state");
-            foreach(var action in new[]{"tenencia.query","tenencia.schema","pharmacy.state"}){
-                try{await Access.UtilityAsync(action);throw new InvalidOperationException("Service accepted a forbidden utility action.");}catch(AccessDeniedException){}
+            await DeniedSmoke("nixfarma.status"); await DeniedSmoke("update.install");
+            await DeniedSmoke("tenencia.query"); await DeniedSmoke("tenencia.schema"); await DeniedSmoke("pharmacy.state");
+            foreach (var action in new[] { "tenencia.query", "tenencia.schema", "pharmacy.state" })
+            {
+                try { await Access.UtilityAsync(action); throw new InvalidOperationException("Service accepted a forbidden utility action."); } catch (AccessDeniedException) { }
             }
-            await DeniedSmoke("users.create",new{name="forbidden",role="SuperAdministrator",password="SmokeForbiddenPassword1",utilityIds=Array.Empty<string>()});
-            stage="administrator-guards";
+            await DeniedSmoke("users.create", new { name = "forbidden", role = "SuperAdministrator", password = "SmokeForbiddenPassword1", utilityIds = Array.Empty<string>() });
+            stage = "administrator-guards";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"Cerrar sesión\"]').click()");
-            await LoginSmoke("F. titular","1234","SmokeAdminPassword1");
+            await LoginSmoke("F. titular", "1234", "SmokeAdminPassword1");
             await WaitForScript("[...document.querySelectorAll('nav button')].some(b=>b.textContent.includes('Configuración'))");
-            await DeniedSmoke("nixfarma.status");await DeniedSmoke("users.password",new{id=superId,password="SmokeForbiddenPassword1"});
-            var sharedPharmacy=await Access.UtilityAsync("pharmacy.state");if(sharedPharmacy.GetProperty("profile").GetProperty("province").GetString()!="29")throw new InvalidOperationException("Pharmacy profile must be shared across accounts.");
-            try{await Access.UtilityAsync("tenencia.schema");throw new InvalidOperationException("Titular must not inspect technical metadata.");}catch(AccessDeniedException){}
-            FinishSmoke(true,"complete");
+            await DeniedSmoke("nixfarma.status"); await DeniedSmoke("users.password", new { id = superId, password = "SmokeForbiddenPassword1" });
+            var sharedPharmacy = await Access.UtilityAsync("pharmacy.state"); if (sharedPharmacy.GetProperty("profile").GetProperty("province").GetString() != "29") throw new InvalidOperationException("Pharmacy profile must be shared across accounts.");
+            try { await Access.UtilityAsync("tenencia.schema"); throw new InvalidOperationException("Titular must not inspect technical metadata."); } catch (AccessDeniedException) { }
+            FinishSmoke(true, "complete");
         }
-        catch(Exception error)
+        catch (Exception error)
         {
-            var detail=error.Message;
-            try{detail+="; UI: "+await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[role=alert]')?.textContent||document.querySelector('.error')?.textContent||''");}catch(InvalidOperationException){}
-            FinishSmoke(false,stage,detail);
+            var detail = error.Message;
+            try { detail += "; UI: " + await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[role=alert]')?.textContent||document.querySelector('.error')?.textContent||''"); } catch (InvalidOperationException) { }
+            FinishSmoke(false, stage, detail);
         }
     }
     private async Task OpenAccountSmoke()
@@ -248,7 +253,7 @@ public partial class MainWindow : Window
         if (passed) CloseWindow(this, new RoutedEventArgs()); else Application.Current.Shutdown(1);
     }
     private void Post(object message)
-    { if (!closing && Browser.CoreWebView2 is {} core) core.PostWebMessageAsJson(JsonSerializer.Serialize(message)); }
+    { if (!closing && Browser.CoreWebView2 is { } core) core.PostWebMessageAsJson(JsonSerializer.Serialize(message)); }
     private async Task ScheduledUpdateCheck()
     {
         try { if (updates is not null) await updates.CheckAsync(false, lifetime.Token); }
@@ -292,11 +297,11 @@ public partial class MainWindow : Window
             }
             AccessUserView? actor = null;
             if (command is not ("app.state" or "window.appearance" or "window.zoom")) actor = await Access.RequireUserAsync();
-            if(command is "pharmacy.state" or "pharmacy.save" or "tenencia.state" or "tenencia.query" or "tenencia.schema")
+            if (command is "pharmacy.state" or "pharmacy.save" or "tenencia.state" or "tenencia.query" or "tenencia.schema")
             {
-                if(actor is null)throw new AccessSessionException();
-                if(command.StartsWith("pharmacy.",StringComparison.Ordinal)&&!AccessPolicy.CanManageUsers(actor)||command=="tenencia.schema"&&!AccessPolicy.CanConfigure(actor)||command is "tenencia.state" or "tenencia.query"&&!AccessPolicy.CanUse(actor,Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items))throw new AccessDeniedException();
-                Reply(id,await Access.UtilityAsync(command,root.TryGetProperty("payload",out var payload)?payload:null));return;
+                if (actor is null) throw new AccessSessionException();
+                if (command.StartsWith("pharmacy.", StringComparison.Ordinal) && !AccessPolicy.CanManageUsers(actor) || command == "tenencia.schema" && !AccessPolicy.CanConfigure(actor) || command is "tenencia.state" or "tenencia.query" && !AccessPolicy.CanUse(actor, Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items)) throw new AccessDeniedException();
+                Reply(id, await Access.UtilityAsync(command, root.TryGetProperty("payload", out var payload) ? payload : null)); return;
             }
             switch (command)
             {

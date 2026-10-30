@@ -22,9 +22,19 @@ public sealed class AccessSessionAgent(AccessDirectory authority)
         try { return new { user = Public(RequireUser(true)) }; }
         catch (AccessSessionException) { ticket = null; return new { user = (object?)null }; }
     }
-    private static object Public(AccessUserView user) => new { id = user.Id, name = user.Name, role = user.Role.ToString(), active = user.Active,
-        mustChangePassword = user.MustChangePassword, bootstrapPassword = user.BootstrapPassword, utilityIds = user.UtilityIds, canConfigure = AccessPolicy.CanConfigure(user),
-        canManageUsers = AccessPolicy.CanManageUsers(user), canInstallUpdates = AccessPolicy.CanInstallUpdates(user) };
+    private static object Public(AccessUserView user) => new
+    {
+        id = user.Id,
+        name = user.Name,
+        role = user.Role.ToString(),
+        active = user.Active,
+        mustChangePassword = user.MustChangePassword,
+        bootstrapPassword = user.BootstrapPassword,
+        utilityIds = user.UtilityIds,
+        canConfigure = AccessPolicy.CanConfigure(user),
+        canManageUsers = AccessPolicy.CanManageUsers(user),
+        canInstallUpdates = AccessPolicy.CanInstallUpdates(user)
+    };
     public async Task<object> HandleAsync(string command, JsonElement root)
     {
         if (command == "auth.state") return State();

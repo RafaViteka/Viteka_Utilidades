@@ -44,7 +44,8 @@ internal sealed class NixFarmaConnectionTester
         // driver message: it can contain connection details or credentials.
         var errors = error.Errors.Cast<OdbcError>().ToArray();
         var state = errors.Select(e => e.SQLState).FirstOrDefault(s => Regex.IsMatch(s ?? "", "^[A-Z0-9]{5}$"));
-        var oracle = errors.Select(e => {
+        var oracle = errors.Select(e =>
+        {
             var match = Regex.Match(e.Message, @"ORA-(\d{5})", RegexOptions.CultureInvariant);
             return match.Success ? int.Parse(match.Groups[1].Value, System.Globalization.CultureInfo.InvariantCulture) : (int?)null;
         }).FirstOrDefault(n => n is not null);

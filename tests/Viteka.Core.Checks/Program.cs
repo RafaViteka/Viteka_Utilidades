@@ -143,7 +143,9 @@ try
     }
     string ReleaseJson(string tag, bool preview = false, string? url = null, bool installer = true) => JsonSerializer.Serialize(new
     {
-        tag_name = tag, draft = false, prerelease = preview,
+        tag_name = tag,
+        draft = false,
+        prerelease = preview,
         assets = installer ? new[] { new { name = "VitekaUtilidades-Setup-0.5.0-win-x64.exe", browser_download_url = url ??
             "https://github.com/RafaViteka/Viteka_Utilidades/releases/download/v0.5.0/VitekaUtilidades-Setup-0.5.0-win-x64.exe" } } : []
     });
@@ -225,7 +227,8 @@ try
     });
     Check("Download never follows a redirect to an unrelated host", () =>
     {
-        using var redirectedHttp = new HttpClient(new DownloadStub(_ => {
+        using var redirectedHttp = new HttpClient(new DownloadStub(_ =>
+        {
             var response = new HttpResponseMessage(System.Net.HttpStatusCode.Found);
             response.Headers.Location = new Uri("https://other.example/install.exe");
             return response;
@@ -236,7 +239,7 @@ try
     Check("Sidebar and appearance persist without changing start preference", () =>
     {
         var local = Store(Path.Combine(root, "appearance"));
-        local.SetOpenFavorites(true);local.SetSidebar(true);local.SetTheme("dark");
+        local.SetOpenFavorites(true); local.SetSidebar(true); local.SetTheme("dark");
         var loaded = Store(local.DirectoryPath).Load();
         Require(loaded.OpenFavoritesOnStart && loaded.SidebarCollapsed && loaded.Theme == "dark");
         try { local.SetTheme("arbitrary"); throw new Exception("Expected rejection"); } catch (ArgumentException) { }
@@ -247,28 +250,28 @@ try
         var legacy = Store(Path.Combine(root, "old-appearance"));
         Directory.CreateDirectory(legacy.DirectoryPath);
         File.WriteAllText(legacy.StatePath, "{\"SchemaVersion\":1,\"FavoriteIds\":[],\"Activity\":[],\"OpenFavoritesOnStart\":true}");
-        var loaded=legacy.Load();Require(loaded.OpenFavoritesOnStart && !loaded.SidebarCollapsed && loaded.Theme=="auto");
+        var loaded = legacy.Load(); Require(loaded.OpenFavoritesOnStart && !loaded.SidebarCollapsed && loaded.Theme == "auto");
     });
     Check("Portal only resolves approved resource identifiers", () =>
     {
-        Require(PortalResources.Target("support")=="https://soporte.viteka.es/");
-        Require(PortalResources.Target("manuals")=="https://wiki.nixfarma.es/");
+        Require(PortalResources.Target("support") == "https://soporte.viteka.es/");
+        Require(PortalResources.Target("manuals") == "https://wiki.nixfarma.es/");
         Require(PortalResources.Target("https://arbitrary.example") is null);
         Require(PortalResources.Target("anydesk") is null); // Native launcher has a separate fixed-path branch, without session arguments.
-        Require(PortalResources.Email("support-email")=="soporte@viteka.es" && PortalResources.Email("arbitrary") is null);
+        Require(PortalResources.Email("support-email") == "soporte@viteka.es" && PortalResources.Email("arbitrary") is null);
     });
     Check("Zoom persists and rejects out-of-range values", () =>
     {
-        var local=Store(Path.Combine(root,"zoom"));local.SetZoom(125);
-        Require(Store(local.DirectoryPath).Load().ZoomPercent==125);
-        foreach(var invalid in new[]{49,201}) {try{local.SetZoom(invalid);throw new Exception("Expected rejection");}catch(ArgumentOutOfRangeException){}}
-        Require(Store(local.DirectoryPath).Load().ZoomPercent==125);
+        var local = Store(Path.Combine(root, "zoom")); local.SetZoom(125);
+        Require(Store(local.DirectoryPath).Load().ZoomPercent == 125);
+        foreach (var invalid in new[] { 49, 201 }) { try { local.SetZoom(invalid); throw new Exception("Expected rejection"); } catch (ArgumentOutOfRangeException) { } }
+        Require(Store(local.DirectoryPath).Load().ZoomPercent == 125);
     });
     Check("Old preferences retain a 100 percent zoom default", () =>
     {
-        var local=Store(Path.Combine(root,"old-zoom"));Directory.CreateDirectory(local.DirectoryPath);
-        File.WriteAllText(local.StatePath,"{\"SchemaVersion\":1,\"FavoriteIds\":[],\"Activity\":[],\"OpenFavoritesOnStart\":false}");
-        Require(local.Load().ZoomPercent==100);
+        var local = Store(Path.Combine(root, "old-zoom")); Directory.CreateDirectory(local.DirectoryPath);
+        File.WriteAllText(local.StatePath, "{\"SchemaVersion\":1,\"FavoriteIds\":[],\"Activity\":[],\"OpenFavoritesOnStart\":false}");
+        Require(local.Load().ZoomPercent == 100);
     });
     Check("CI authentication is limited to the GitHub releases API", () =>
     {
@@ -301,100 +304,122 @@ try
         try { NixFarmaReadProbe.Execute(connection); throw new Exception("Expected failure"); } catch (ProbeFixtureException) { }
         Require(connection.Steps.Last() == "rollback");
     });
-    var tenenciaList=new Viteka.Contracts.TenenciaList(1,"29","fixture-v1","Datos ficticios de prueba",DateOnly.FromDateTime(DateTime.UtcNow),[new("a","Grupo ficticio",3,["650001","650002"])]);
-    Check("Pharmacy data persists centrally and rejects invalid province and postcode",()=>{
-        var directory=new PharmacyDirectory(Path.Combine(root,"pharmacy"),b=>b,b=>b);Require(directory.Load() is null);
-        var profile=new Viteka.Contracts.PharmacyProfile("Farmacia ficticia","29","Málaga","prueba@example.test","","","29001");directory.Save(profile);Require(directory.Load()==profile);
-        try{directory.Save(profile with{Province="../../other"});throw new Exception("Expected rejection");}catch(ArgumentException){}
-        try{directory.Save(profile with{Postcode="28001"});throw new Exception("Expected rejection");}catch(ArgumentException){}
-        Require(directory.Load()==profile);
+    var tenenciaList = new Viteka.Contracts.TenenciaList(1, "29", "fixture-v1", "Datos ficticios de prueba", DateOnly.FromDateTime(DateTime.UtcNow), [new("a", "Grupo ficticio", 3, ["650001", "650002"])]);
+    Check("Pharmacy data persists centrally and rejects invalid province and postcode", () =>
+    {
+        var directory = new PharmacyDirectory(Path.Combine(root, "pharmacy"), b => b, b => b); Require(directory.Load() is null);
+        var profile = new Viteka.Contracts.PharmacyProfile("Farmacia ficticia", "29", "Málaga", "prueba@example.test", "", "", "29001"); directory.Save(profile); Require(directory.Load() == profile);
+        try { directory.Save(profile with { Province = "../../other" }); throw new Exception("Expected rejection"); } catch (ArgumentException) { }
+        try { directory.Save(profile with { Postcode = "28001" }); throw new Exception("Expected rejection"); } catch (ArgumentException) { }
+        Require(directory.Load() == profile);
     });
-    Check("All catalog groups and their medications are available before querying stock",()=>{
-        var named=tenenciaList with{Groups=[new("a","Grupo A",3,["650001","650002"]){Descriptions=new(){{"650001","Medicamento A1"},{"650002","Medicamento A2"}}},new("b","Grupo B",1,["650003"])]};
-        var preview=TenenciaRules.Preview(named);Require(preview.Length==2&&preview[0].Articles.Length==2&&preview[1].Articles.Single().Code=="650003");Require(preview[0].Articles[0].Description=="Medicamento A1"&&preview.All(r=>r.Status=="not_checked"&&r.Stock is null&&r.Missing is null));
-        Require(preview.SelectMany(r=>r.Articles).All(a=>a.Stock is null&&a.Issue=="not_checked"));
+    Check("All catalog groups and their medications are available before querying stock", () =>
+    {
+        var named = tenenciaList with { Groups = [new("a", "Grupo A", 3, ["650001", "650002"]) { Descriptions = new() { { "650001", "Medicamento A1" }, { "650002", "Medicamento A2" } } }, new("b", "Grupo B", 1, ["650003"])] };
+        var preview = TenenciaRules.Preview(named); Require(preview.Length == 2 && preview[0].Articles.Length == 2 && preview[1].Articles.Single().Code == "650003"); Require(preview[0].Articles[0].Description == "Medicamento A1" && preview.All(r => r.Status == "not_checked" && r.Stock is null && r.Missing is null));
+        Require(preview.SelectMany(r => r.Articles).All(a => a.Stock is null && a.Issue == "not_checked"));
     });
-    Check("Reference medicine names survive unavailable NixFarma articles without inventing stock",()=>{
-        var named=tenenciaList with{Groups=[new("a","Grupo A",3,["650001"]){Descriptions=new(){{"650001","Medicamento de referencia"}}}]};
-        var row=TenenciaRules.Evaluate(named,new Dictionary<string,Viteka.Contracts.StockArticle>()).Single();Require(row.Articles.Single().Description=="Medicamento de referencia"&&row.Status=="unresolved"&&row.Stock is null);
-        try{TenenciaRules.Validate(named with{Groups=[new("a","A",1,["650001"]){Descriptions=new(){{"650099","No pertenece al grupo"}}}]});throw new Exception("Expected invalid association");}catch(InvalidDataException){}
+    Check("Reference medicine names survive unavailable NixFarma articles without inventing stock", () =>
+    {
+        var named = tenenciaList with { Groups = [new("a", "Grupo A", 3, ["650001"]) { Descriptions = new() { { "650001", "Medicamento de referencia" } } }] };
+        var row = TenenciaRules.Evaluate(named, new Dictionary<string, Viteka.Contracts.StockArticle>()).Single(); Require(row.Articles.Single().Description == "Medicamento de referencia" && row.Status == "unresolved" && row.Stock is null);
+        try { TenenciaRules.Validate(named with { Groups = [new("a", "A", 1, ["650001"]) { Descriptions = new() { { "650099", "No pertenece al grupo" } } }] }); throw new Exception("Expected invalid association"); } catch (InvalidDataException) { }
     });
-    Check("The supplied Malaga Excel preserves all83 groups minima duplicate ATCs and source rows",()=>{
-        var path=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../../src/Viteka.Server/Catalogs/tenencia"));var list=TenenciaRules.Load(path,"29")??throw new Exception("Missing Excel catalogue");
-        Require(list.Groups.Length==83&&list.Groups.Sum(g=>g.Minimum)==178&&list.Groups.Select(g=>g.Id).Distinct().Count()==83);
-        Require(list.Groups.Count(g=>g.AtcPrefix is not null)==75&&list.Groups.Count(g=>g.ClassificationCode is not null)==7&&list.Groups.SelectMany(g=>g.Codes).Count()==2089&&list.Groups.SelectMany(g=>g.Codes).Distinct().Count()==2087);
-        Require(list.Groups.Count(g=>g.AtcPrefix=="C01AA05")==2&&list.Groups.Single(g=>g.SourceRow==53).RequiresReview&&list.Groups.Single(g=>g.SourceRow==84).Minimum==2&&!list.Groups.Single(g=>g.SourceRow==84).RequiresReview);
-        Require(TenenciaRules.Preview(list).Length==83&&TenenciaRules.Preview(list).All(r=>r.Stock is null));
+    Check("The supplied Malaga Excel preserves all83 groups minima duplicate ATCs and source rows", () =>
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src/Viteka.Server/Catalogs/tenencia")); var list = TenenciaRules.Load(path, "29") ?? throw new Exception("Missing Excel catalogue");
+        Require(list.Groups.Length == 83 && list.Groups.Sum(g => g.Minimum) == 178 && list.Groups.Select(g => g.Id).Distinct().Count() == 83);
+        Require(list.Groups.Count(g => g.AtcPrefix is not null) == 75 && list.Groups.Count(g => g.ClassificationCode is not null) == 7 && list.Groups.SelectMany(g => g.Codes).Count() == 2089 && list.Groups.SelectMany(g => g.Codes).Distinct().Count() == 2087);
+        Require(list.Groups.Count(g => g.AtcPrefix == "C01AA05") == 2 && list.Groups.Single(g => g.SourceRow == 53).RequiresReview && list.Groups.Single(g => g.SourceRow == 84).Minimum == 2 && !list.Groups.Single(g => g.SourceRow == 84).RequiresReview);
+        Require(TenenciaRules.Preview(list).Length == 83 && TenenciaRules.Preview(list).All(r => r.Stock is null));
     });
-    Check("Video associations preserve explicit routes sanitary products and all first highlighted rows",()=>{
-        var path=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../../src/Viteka.Server/Catalogs/tenencia"));var list=TenenciaRules.Load(path,"29")!;
-        Require(list.Groups.All(g=>g.Codes.Length>0&&g.Descriptions?.Count==g.Codes.Length));
-        var bag=list.Groups.Single(g=>g.SourceRow==84);Require(bag.Codes.Order().SequenceEqual(new[]{"165727","205500","337261"}));
-        var knife=list.Groups.Single(g=>g.SourceRow==80);Require(knife.Codes.Length==18&&knife.Codes.Contains("175550")&&!knife.Codes.Contains("123299"));
-        Require(list.Groups.Single(g=>g.SourceRow==33).Codes.Single()=="971523"&&list.Groups.Single(g=>g.SourceRow==59).Codes.Single()=="653109");
-        Require(list.Groups.Single(g=>g.SourceRow==53).Codes.Length==30&&!list.Groups.Single(g=>g.SourceRow==53).Codes.Contains("680610")&&list.Groups.Single(g=>g.SourceRow==53).Codes.Contains("679740"));
+    Check("Video associations preserve explicit routes sanitary products and all first highlighted rows", () =>
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src/Viteka.Server/Catalogs/tenencia")); var list = TenenciaRules.Load(path, "29")!;
+        Require(list.Groups.All(g => g.Codes.Length > 0 && g.Descriptions?.Count == g.Codes.Length));
+        var bag = list.Groups.Single(g => g.SourceRow == 84); Require(bag.Codes.Order().SequenceEqual(new[] { "165727", "205500", "337261" }));
+        var knife = list.Groups.Single(g => g.SourceRow == 80); Require(knife.Codes.Length == 18 && knife.Codes.Contains("175550") && !knife.Codes.Contains("123299"));
+        Require(list.Groups.Single(g => g.SourceRow == 33).Codes.Single() == "971523" && list.Groups.Single(g => g.SourceRow == 59).Codes.Single() == "653109");
+        Require(list.Groups.Single(g => g.SourceRow == 53).Codes.Length == 30 && !list.Groups.Single(g => g.SourceRow == 53).Codes.Contains("680610") && list.Groups.Single(g => g.SourceRow == 53).Codes.Contains("679740"));
     });
-    Check("All video groups use their fixed references without broadening through ATC",()=>{
-        var path=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../../src/Viteka.Server/Catalogs/tenencia"));var list=TenenciaRules.Load(path,"29")!;
-        using var c=new TenenciaFixture{AtcColumn="ATC"};TenenciaStockQuery.ReadOnly(c,tx=>{var resolution=TenenciaArticleResolver.Resolve(c,tx,TenenciaStockQuery.Inspect(c,tx),list,CancellationToken.None);Require(resolution.Groups.Count==83&&resolution.Groups.Values.Sum(v=>v.Length)==2089&&!c.Steps.Any(s=>s.Contains("LIKE ?")));return true;});
+    Check("All video groups use their fixed references without broadening through ATC", () =>
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src/Viteka.Server/Catalogs/tenencia")); var list = TenenciaRules.Load(path, "29")!;
+        using var c = new TenenciaFixture { AtcColumn = "ATC" }; TenenciaStockQuery.ReadOnly(c, tx => { var resolution = TenenciaArticleResolver.Resolve(c, tx, TenenciaStockQuery.Inspect(c, tx), list, CancellationToken.None); Require(resolution.Groups.Count == 83 && resolution.Groups.Values.Sum(v => v.Length) == 2089 && !c.Steps.Any(s => s.Contains("LIKE ?"))); return true; });
     });
-    Check("Per-dose per-size and inconsistent rectal associations remain reviewable",()=>{
-        var path=Path.GetFullPath(Path.Combine(AppContext.BaseDirectory,"../../../../../src/Viteka.Server/Catalogs/tenencia"));var list=TenenciaRules.Load(path,"29")!;
-        Require(list.Groups.Where(g=>g.RequiresReview).Select(g=>g.SourceRow!.Value).Order().SequenceEqual(new[]{53,61,83}));
-        var rectal=list.Groups.Single(g=>g.SourceRow==61);Require(rectal.Codes.Contains("718796")&&rectal.SelectionNote!.Contains("ampollas"));
-        var stocks=list.Groups.SelectMany(g=>g.Codes).Distinct().ToDictionary(c=>c,c=>new Viteka.Contracts.StockArticle(c,"Fixture",99));var result=TenenciaRules.Evaluate(list,stocks);Require(result.Single(r=>r.SourceRow==61).Status=="unresolved"&&result.Single(r=>r.SourceRow==84).Status=="covered");
+    Check("Per-dose per-size and inconsistent rectal associations remain reviewable", () =>
+    {
+        var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src/Viteka.Server/Catalogs/tenencia")); var list = TenenciaRules.Load(path, "29")!;
+        Require(list.Groups.Where(g => g.RequiresReview).Select(g => g.SourceRow!.Value).Order().SequenceEqual(new[] { 53, 61, 83 }));
+        var rectal = list.Groups.Single(g => g.SourceRow == 61); Require(rectal.Codes.Contains("718796") && rectal.SelectionNote!.Contains("ampollas"));
+        var stocks = list.Groups.SelectMany(g => g.Codes).Distinct().ToDictionary(c => c, c => new Viteka.Contracts.StockArticle(c, "Fixture", 99)); var result = TenenciaRules.Evaluate(list, stocks); Require(result.Single(r => r.SourceRow == 61).Status == "unresolved" && result.Single(r => r.SourceRow == 84).Status == "covered");
     });
-    var atcList=tenenciaList with{Groups=[new("a","ATC A",3,[]){AtcPrefix="A01AB"},new("b","ATC B",2,[]){AtcPrefix="A02B"},new("c","Producto sanitario",4,[]){ClassificationCode="M02BC",RequiresReview=true}]};
-    Check("ATC prefixes resolve exact code associations using parameters without mixing sanitary codes",()=>{
-        using var c=new TenenciaFixture{AtcColumn="ATC"};TenenciaStockQuery.ReadOnly(c,tx=>{var schema=TenenciaStockQuery.Inspect(c,tx);var r=TenenciaArticleResolver.Resolve(c,tx,schema,atcList,CancellationToken.None);Require(r.Groups["a"].SequenceEqual(new[]{"650001","650002"})&&r.Groups["b"].Single()=="650003"&&r.Groups["c"].Length==0);Require(c.ParametersSeen.Contains("A01AB%")&&!c.ParametersSeen.Contains("M02BC%"));return true;});Require(c.Steps.Last()=="rollback");
+    var atcList = tenenciaList with { Groups = [new("a", "ATC A", 3, []) { AtcPrefix = "A01AB" }, new("b", "ATC B", 2, []) { AtcPrefix = "A02B" }, new("c", "Producto sanitario", 4, []) { ClassificationCode = "M02BC", RequiresReview = true }] };
+    Check("ATC prefixes resolve exact code associations using parameters without mixing sanitary codes", () =>
+    {
+        using var c = new TenenciaFixture { AtcColumn = "ATC" }; TenenciaStockQuery.ReadOnly(c, tx => { var schema = TenenciaStockQuery.Inspect(c, tx); var r = TenenciaArticleResolver.Resolve(c, tx, schema, atcList, CancellationToken.None); Require(r.Groups["a"].SequenceEqual(new[] { "650001", "650002" }) && r.Groups["b"].Single() == "650003" && r.Groups["c"].Length == 0); Require(c.ParametersSeen.Contains("A01AB%") && !c.ParametersSeen.Contains("M02BC%")); return true; }); Require(c.Steps.Last() == "rollback");
     });
-    Check("Unknown therapeutic fields are identified by unique value coincidences and ambiguity stays unresolved",()=>{
-        using(var c=new TenenciaFixture{AtcColumn="GRUPO_TERAPEUTICO"}){TenenciaStockQuery.ReadOnly(c,tx=>{var r=TenenciaArticleResolver.Resolve(c,tx,TenenciaStockQuery.Inspect(c,tx),atcList,CancellationToken.None);Require(r.AtcColumn=="\"GRUPO_TERAPEUTICO\""&&r.Groups["a"].Length==2);return true;});}
-        using(var c=new TenenciaFixture{AtcColumn="GRUPO_TERAPEUTICO",TwoAtcCandidates=true}){TenenciaStockQuery.ReadOnly(c,tx=>{var r=TenenciaArticleResolver.Resolve(c,tx,TenenciaStockQuery.Inspect(c,tx),atcList,CancellationToken.None);Require(r.AtcColumn is null&&r.Groups["a"].Length==0&&r.Notes.ContainsKey("a"));return true;});}
+    Check("Unknown therapeutic fields are identified by unique value coincidences and ambiguity stays unresolved", () =>
+    {
+        using (var c = new TenenciaFixture { AtcColumn = "GRUPO_TERAPEUTICO" }) { TenenciaStockQuery.ReadOnly(c, tx => { var r = TenenciaArticleResolver.Resolve(c, tx, TenenciaStockQuery.Inspect(c, tx), atcList, CancellationToken.None); Require(r.AtcColumn == "\"GRUPO_TERAPEUTICO\"" && r.Groups["a"].Length == 2); return true; }); }
+        using (var c = new TenenciaFixture { AtcColumn = "GRUPO_TERAPEUTICO", TwoAtcCandidates = true }) { TenenciaStockQuery.ReadOnly(c, tx => { var r = TenenciaArticleResolver.Resolve(c, tx, TenenciaStockQuery.Inspect(c, tx), atcList, CancellationToken.None); Require(r.AtcColumn is null && r.Groups["a"].Length == 0 && r.Notes.ContainsKey("a")); return true; }); }
     });
-    Check("Route and dose constraints never pass from an ATC aggregate alone",()=>{
-        var constrained=atcList with{Groups=[atcList.Groups[0] with{RequiresReview=true,SelectionNote="Solo inyectable"}]};var mapping=new Dictionary<string,string[]>{{"a",["650001"]}};var stocks=new Dictionary<string,Viteka.Contracts.StockArticle>{{"650001",new("650001","Oral",99)}};var row=TenenciaRules.Evaluate(constrained,stocks,mapping,null).Single();Require(row.Status=="unresolved"&&row.Stock is null&&row.Articles.Single().Stock==99&&row.SelectionNote=="Solo inyectable");
+    Check("Route and dose constraints never pass from an ATC aggregate alone", () =>
+    {
+        var constrained = atcList with { Groups = [atcList.Groups[0] with { RequiresReview = true, SelectionNote = "Solo inyectable" }] }; var mapping = new Dictionary<string, string[]> { { "a", ["650001"] } }; var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "Oral", 99) } }; var row = TenenciaRules.Evaluate(constrained, stocks, mapping, null).Single(); Require(row.Status == "unresolved" && row.Stock is null && row.Articles.Single().Stock == 99 && row.SelectionNote == "Solo inyectable");
     });
-    Check("Tenencia groups aggregate only known codes and compute shortfalls",()=>{
-        var stocks=new Dictionary<string,Viteka.Contracts.StockArticle>{{"650001",new("650001","A",1)},{"650002",new("650002","B",1)}};
-        var row=TenenciaRules.Evaluate(tenenciaList,stocks).Single();Require(row.Stock==2&&row.Missing==1&&row.Status=="shortfall");stocks["650001"]=new("650001","A",3);Require(TenenciaRules.Evaluate(tenenciaList,stocks).Single().Status=="covered");
+    Check("Tenencia groups aggregate only known codes and compute shortfalls", () =>
+    {
+        var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "A", 1) }, { "650002", new("650002", "B", 1) } };
+        var row = TenenciaRules.Evaluate(tenenciaList, stocks).Single(); Require(row.Stock == 2 && row.Missing == 1 && row.Status == "shortfall"); stocks["650001"] = new("650001", "A", 3); Require(TenenciaRules.Evaluate(tenenciaList, stocks).Single().Status == "covered");
     });
-    Check("Missing or ambiguous stock never becomes zero or a compliance result",()=>{
-        var stocks=new Dictionary<string,Viteka.Contracts.StockArticle>{{"650001",new("650001","A",10)}};
-        var row=TenenciaRules.Evaluate(tenenciaList,stocks).Single();Require(row.Stock is null&&row.Missing is null&&row.Status=="unresolved");stocks["650002"]=new("650002","B",5,"ambiguous_stock");Require(TenenciaRules.Evaluate(tenenciaList,stocks).Single().Status=="unresolved");
+    Check("Missing or ambiguous stock never becomes zero or a compliance result", () =>
+    {
+        var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "A", 10) } };
+        var row = TenenciaRules.Evaluate(tenenciaList, stocks).Single(); Require(row.Stock is null && row.Missing is null && row.Status == "unresolved"); stocks["650002"] = new("650002", "B", 5, "ambiguous_stock"); Require(TenenciaRules.Evaluate(tenenciaList, stocks).Single().Status == "unresolved");
     });
-    Check("Provincial catalogs fail closed when absent mismatched duplicated or malformed",()=>{
-        var directory=Path.Combine(root,"catalogs");Directory.CreateDirectory(directory);Require(TenenciaRules.Load(directory,"29") is null);
-        File.WriteAllBytes(Path.Combine(directory,"29.json"),JsonSerializer.SerializeToUtf8Bytes(tenenciaList with{Province="28"}));try{TenenciaRules.Load(directory,"29");throw new Exception("Expected mismatch");}catch(InvalidDataException){}
-        try{TenenciaRules.Validate(tenenciaList with{Groups=[new("a","A",0,["650001"])]});throw new Exception("Expected invalid minimum");}catch(InvalidDataException){}
-        try{TenenciaRules.Validate(tenenciaList with{Groups=[new("a","A",1,["650001","650001"])]});throw new Exception("Expected duplicate");}catch(InvalidDataException){}
+    Check("Provincial catalogs fail closed when absent mismatched duplicated or malformed", () =>
+    {
+        var directory = Path.Combine(root, "catalogs"); Directory.CreateDirectory(directory); Require(TenenciaRules.Load(directory, "29") is null);
+        File.WriteAllBytes(Path.Combine(directory, "29.json"), JsonSerializer.SerializeToUtf8Bytes(tenenciaList with { Province = "28" })); try { TenenciaRules.Load(directory, "29"); throw new Exception("Expected mismatch"); } catch (InvalidDataException) { }
+        try { TenenciaRules.Validate(tenenciaList with { Groups = [new("a", "A", 0, ["650001"])] }); throw new Exception("Expected invalid minimum"); } catch (InvalidDataException) { }
+        try { TenenciaRules.Validate(tenenciaList with { Groups = [new("a", "A", 1, ["650001", "650001"])] }); throw new Exception("Expected duplicate"); } catch (InvalidDataException) { }
     });
-    Check("NixFarma stock queries detect columns bind codes and always roll back",()=>{
-        using var connection=new TenenciaFixture();var stocks=TenenciaStockQuery.ReadOnly(connection,tx=>{var schema=TenenciaStockQuery.Inspect(connection,tx);Require(schema.Stock=="\"STOCK_ACTUAL\"");return TenenciaStockQuery.Read(connection,tx,schema,["650001","650002"]);});
-        Require(stocks["650001"].Stock==2&&connection.Steps[1]=="SET TRANSACTION READ ONLY"&&connection.Steps.Last()=="rollback"&&connection.ParametersSeen.Count==4);
+    Check("NixFarma stock queries detect columns bind codes and always roll back", () =>
+    {
+        using var connection = new TenenciaFixture(); var stocks = TenenciaStockQuery.ReadOnly(connection, tx => { var schema = TenenciaStockQuery.Inspect(connection, tx); Require(schema.Stock == "\"STOCK_ACTUAL\""); return TenenciaStockQuery.Read(connection, tx, schema, ["650001", "650002"]); });
+        Require(stocks["650001"].Stock == 2 && connection.Steps[1] == "SET TRANSACTION READ ONLY" && connection.Steps.Last() == "rollback" && connection.ParametersSeen.Count == 4);
     });
-    Check("Confirmed NixFarma tables read descriptions and current stock by explicit CN without ATC",()=>{
-        using var c=new TenenciaFixture{NativeSchema=true,StockColumn="EXI_ACTUALES"};
-        var stocks=TenenciaStockQuery.ReadOnly(c,tx=>{var schema=TenenciaStockQuery.Inspect(c,tx,nativeNixFarma:true);Require(schema.ArticleTable=="APPUL.AB_ARTICULOS"&&schema.StockTable=="APPUL.AB_ARTICULOS_FICHA_E"&&schema.Stock=="\"EXI_ACTUALES\"");return TenenciaStockQuery.Read(c,tx,schema,["650001","650002"]);});
-        Require(stocks["650001"].Description=="Artículo ficticio 650001"&&stocks["650001"].Stock==2&&stocks["650002"].Stock==1&&c.Steps.Last()=="rollback");
-        Require(c.Steps.Any(s=>s.Contains("FROM APPUL.AB_ARTICULOS WHERE"))&&c.Steps.Any(s=>s.Contains("FROM APPUL.AB_ARTICULOS_FICHA_E WHERE"))&&!c.Steps.Any(s=>s.Contains("LIKE ?")));
+    Check("Confirmed NixFarma tables read descriptions and current stock by explicit CN without ATC", () =>
+    {
+        using var c = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES" };
+        var stocks = TenenciaStockQuery.ReadOnly(c, tx => { var schema = TenenciaStockQuery.Inspect(c, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APPUL.AB_ARTICULOS" && schema.StockTable == "APPUL.AB_ARTICULOS_FICHA_E" && schema.Stock == "\"EXI_ACTUALES\""); return TenenciaStockQuery.Read(c, tx, schema, ["650001", "650002"]); });
+        Require(stocks["650001"].Description == "Artículo ficticio 650001" && stocks["650001"].Stock == 2 && stocks["650002"].Stock == 1 && c.Steps.Last() == "rollback");
+        Require(c.Steps.Any(s => s.Contains("FROM APPUL.AB_ARTICULOS WHERE")) && c.Steps.Any(s => s.Contains("FROM APPUL.AB_ARTICULOS_FICHA_E WHERE")) && !c.Steps.Any(s => s.Contains("LIKE ?")));
     });
-    Check("NixFarma stock reading stops before SELECT when read-only fails",()=>{
-        using var connection=new TenenciaFixture{FailReadOnly=true};try{TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Inspect(connection,tx));throw new Exception("Expected failure");}catch(ProbeFixtureException){}Require(!connection.Steps.Any(s=>s.StartsWith("SELECT"))&&connection.Steps.Last()=="rollback");
+    Check("NixFarma stock reading stops before SELECT when read-only fails", () =>
+    {
+        using var connection = new TenenciaFixture { FailReadOnly = true }; try { TenenciaStockQuery.ReadOnly(connection, tx => TenenciaStockQuery.Inspect(connection, tx)); throw new Exception("Expected failure"); } catch (ProbeFixtureException) { }
+        Require(!connection.Steps.Any(s => s.StartsWith("SELECT")) && connection.Steps.Last() == "rollback");
     });
-    Check("Alternative ACTUAL is accepted but ambiguous columns and duplicate rows are unresolved",()=>{
-        using(var connection=new TenenciaFixture{StockColumn="ACTUAL"}){TenenciaStockQuery.ReadOnly(connection,tx=>{Require(TenenciaStockQuery.Inspect(connection,tx).Stock=="\"ACTUAL\"");return true;});}
-        using(var connection=new TenenciaFixture{AmbiguousColumns=true}){try{TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Inspect(connection,tx));throw new Exception("Expected ambiguity");}catch(InvalidDataException){}}
-        using(var connection=new TenenciaFixture{DuplicateStock=true}){var stocks=TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Read(connection,tx,TenenciaStockQuery.Inspect(connection,tx),["650001"]));Require(stocks["650001"].Issue=="ambiguous_stock");}
+    Check("Alternative ACTUAL is accepted but ambiguous columns and duplicate rows are unresolved", () =>
+    {
+        using (var connection = new TenenciaFixture { StockColumn = "ACTUAL" }) { TenenciaStockQuery.ReadOnly(connection, tx => { Require(TenenciaStockQuery.Inspect(connection, tx).Stock == "\"ACTUAL\""); return true; }); }
+        using (var connection = new TenenciaFixture { AmbiguousColumns = true }) { try { TenenciaStockQuery.ReadOnly(connection, tx => TenenciaStockQuery.Inspect(connection, tx)); throw new Exception("Expected ambiguity"); } catch (InvalidDataException) { } }
+        using (var connection = new TenenciaFixture { DuplicateStock = true }) { var stocks = TenenciaStockQuery.ReadOnly(connection, tx => TenenciaStockQuery.Read(connection, tx, TenenciaStockQuery.Inspect(connection, tx), ["650001"])); Require(stocks["650001"].Issue == "ambiguous_stock"); }
     });
-    Check("Stock diagnostics distinguish missing article missing row null ambiguous and zero",()=>{
-        foreach(var item in new[]{(new TenenciaFixture{MissingArticle=true},"not_found"),(new TenenciaFixture{MissingStock=true},"stock_not_found"),(new TenenciaFixture{NullStock=true},"stock_null"),(new TenenciaFixture{DuplicateStock=true},"ambiguous_stock")}){
-            using var c=item.Item1;var value=TenenciaStockQuery.ReadOnly(c,tx=>TenenciaStockQuery.Read(c,tx,TenenciaStockQuery.Inspect(c,tx),["650001"]))["650001"];Require(value.Stock is null&&value.Issue==item.Item2);
+    Check("Stock diagnostics distinguish missing article missing row null ambiguous and zero", () =>
+    {
+        foreach (var item in new[] { (new TenenciaFixture { MissingArticle = true }, "not_found"), (new TenenciaFixture { MissingStock = true }, "stock_not_found"), (new TenenciaFixture { NullStock = true }, "stock_null"), (new TenenciaFixture { DuplicateStock = true }, "ambiguous_stock") })
+        {
+            using var c = item.Item1; var value = TenenciaStockQuery.ReadOnly(c, tx => TenenciaStockQuery.Read(c, tx, TenenciaStockQuery.Inspect(c, tx), ["650001"]))["650001"]; Require(value.Stock is null && value.Issue == item.Item2);
         }
-        using var zero=new TenenciaFixture{ZeroStock=true};var known=TenenciaStockQuery.ReadOnly(zero,tx=>TenenciaStockQuery.Read(zero,tx,TenenciaStockQuery.Inspect(zero,tx),["650001"]))["650001"];Require(known.Stock==0&&known.Issue is null);
+        using var zero = new TenenciaFixture { ZeroStock = true }; var known = TenenciaStockQuery.ReadOnly(zero, tx => TenenciaStockQuery.Read(zero, tx, TenenciaStockQuery.Inspect(zero, tx), ["650001"]))["650001"]; Require(known.Stock == 0 && known.Issue is null);
     });
-    Check("Stock queries reject SQL payloads and unknown utilities remain denied",()=>{
-        using var connection=new TenenciaFixture();try{TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Read(connection,tx,new("\"ARTICULO\"","\"DESCRIPCION\"","\"ARTICULO\"","\"ACTUAL\""),["650001 OR 1=1"]));throw new Exception("Expected invalid code");}catch(ArgumentException){}Require(!connection.Steps.Any(s=>s.Contains("OR 1=1")));
+    Check("Stock queries reject SQL payloads and unknown utilities remain denied", () =>
+    {
+        using var connection = new TenenciaFixture(); try { TenenciaStockQuery.ReadOnly(connection, tx => TenenciaStockQuery.Read(connection, tx, new("\"ARTICULO\"", "\"DESCRIPCION\"", "\"ARTICULO\"", "\"ACTUAL\""), ["650001 OR 1=1"])); throw new Exception("Expected invalid code"); } catch (ArgumentException) { }
+        Require(!connection.Steps.Any(s => s.Contains("OR 1=1")));
     });
     var accessClock = new AdjustableClock();
     var accessPath = Path.Combine(root, "access-authority");
@@ -433,7 +458,7 @@ try
         Require(!AccessPolicy.CanConfigure(authority.Current(adminTicket)) && !AccessPolicy.CanConfigure(authority.Current(normalTicket)));
         Require(AccessPolicy.CanInstallUpdates(authority.Current(adminTicket)) && !AccessPolicy.CanInstallUpdates(authority.Current(normalTicket)));
         Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Usuarios"));
-        Require(!AccessPolicy.CanUse(authority.Current(normalTicket),Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items)&&AccessPolicy.CanUse(authority.Current(adminTicket),Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items));
+        Require(!AccessPolicy.CanUse(authority.Current(normalTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items) && AccessPolicy.CanUse(authority.Current(adminTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items));
         Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Auditoría") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Auditoría") && AccessPolicy.CanOpenPage(authority.Current(superTicket), "Auditoría"));
         Require(AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Configuración") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Configuración"));
     });
@@ -489,7 +514,7 @@ try
     });
     Check("Five failed logins lock the account temporarily", () =>
     {
-        for (var i=0;i<5;i++) try { authority.Login("usuario", "incorrect"); throw new Exception("Expected rejection"); } catch (AccessDeniedException) { }
+        for (var i = 0; i < 5; i++) try { authority.Login("usuario", "incorrect"); throw new Exception("Expected rejection"); } catch (AccessDeniedException) { }
         try { authority.Login("usuario", "FixtureUserPass3"); throw new Exception("Expected lock"); } catch (AccessDeniedException) { }
         accessClock.Advance(TimeSpan.FromMinutes(3));
         normalTicket = authority.Login("usuario", "FixtureUserPass3").Ticket;
@@ -509,42 +534,42 @@ try
     });
     Check("Password verifiers use unique salts and public views contain no verifier", () =>
     {
-        var data = JsonSerializer.Deserialize<JsonElement>(File.ReadAllBytes(Path.Combine(accessPath,"access.dat")));
-        var salts = data.GetProperty("Users").EnumerateArray().Select(u=>u.GetProperty("Salt").GetString()).ToArray();
-        Require(salts.Distinct().Count()==salts.Length);
+        var data = JsonSerializer.Deserialize<JsonElement>(File.ReadAllBytes(Path.Combine(accessPath, "access.dat")));
+        var salts = data.GetProperty("Users").EnumerateArray().Select(u => u.GetProperty("Salt").GetString()).ToArray();
+        Require(salts.Distinct().Count() == salts.Length);
         var view = JsonSerializer.Serialize(authority.Current(superTicket));
         Require(!view.Contains("Hash") && !view.Contains("Salt") && !view.Contains("FixtureSuperPass1"));
     });
     Check("Deleting an initialized authority never restores default accounts", () =>
     {
-        File.Delete(Path.Combine(accessPath,"access.dat"));
+        File.Delete(Path.Combine(accessPath, "access.dat"));
         try { authority.InitializeDefaults(); throw new Exception("Expected preservation"); } catch (InvalidDataException) { }
-        Require(!File.Exists(Path.Combine(accessPath,"access.dat")));
+        Require(!File.Exists(Path.Combine(accessPath, "access.dat")));
     });
     var updateClock = new AdjustableClock();
-    var journal = new UpdateJournal(Path.Combine(root,"update-journal"), updateClock);
+    var journal = new UpdateJournal(Path.Combine(root, "update-journal"), updateClock);
     Check("Update scheduling persists the 24-hour interval across restarts", () =>
     {
         Require(journal.TryBeginCheck(false)); Require(!journal.TryBeginCheck(true));
-        journal.CompleteCheck(new Version(0,13,0), true);
+        journal.CompleteCheck(new Version(0, 13, 0), true);
         updateClock.Advance(TimeSpan.FromHours(23));
-        Require(!new UpdateJournal(Path.Combine(root,"update-journal"),updateClock).TryBeginCheck(false));
-        updateClock.Advance(TimeSpan.FromHours(1));Require(journal.TryBeginCheck(false));journal.CompleteCheck(null,false);
-        Require(!journal.TryBeginCheck(false));Require(journal.TryBeginCheck(true));journal.CompleteCheck(new Version(0,13,0),true);
+        Require(!new UpdateJournal(Path.Combine(root, "update-journal"), updateClock).TryBeginCheck(false));
+        updateClock.Advance(TimeSpan.FromHours(1)); Require(journal.TryBeginCheck(false)); journal.CompleteCheck(null, false);
+        Require(!journal.TryBeginCheck(false)); Require(journal.TryBeginCheck(true)); journal.CompleteCheck(new Version(0, 13, 0), true);
     });
     Check("An installer launch is not recorded as an installed or running version", () =>
     {
-        journal.RecordRunningVersion(new Version(0,12,0));journal.RecordRunningVersion(new Version(0,12,0));journal.RecordInstallerStarted(new Version(0,13,0));
-        Require(journal.Load().LastRunVersion=="0.12.0");
-        Require(journal.Load().Entries.Count(e=>e.Kind=="version_started")==1);
-        journal.RecordRunningVersion(new Version(0,13,0));
-        Require(journal.Load().LastRunVersion=="0.13.0"&&journal.Load().AvailableVersion is null);
+        journal.RecordRunningVersion(new Version(0, 12, 0)); journal.RecordRunningVersion(new Version(0, 12, 0)); journal.RecordInstallerStarted(new Version(0, 13, 0));
+        Require(journal.Load().LastRunVersion == "0.12.0");
+        Require(journal.Load().Entries.Count(e => e.Kind == "version_started") == 1);
+        journal.RecordRunningVersion(new Version(0, 13, 0));
+        Require(journal.Load().LastRunVersion == "0.13.0" && journal.Load().AvailableVersion is null);
     });
     Check("Published update history filters drafts and treats notes as plain text", () =>
     {
         using var client = new HttpClient(new ReleaseStub("[{\"draft\":false,\"tag_name\":\"v0.12.0-preview.1\",\"name\":\"Version\",\"body\":\"<script>untrusted</script>\"},{\"draft\":true,\"tag_name\":\"v9.0.0\"},{\"draft\":false,\"tag_name\":\"../../bad\"}]", System.Net.HttpStatusCode.OK));
         var entries = new PreviewUpdater(client).GetHistoryAsync().GetAwaiter().GetResult();
-        Require(entries.Length==1&&entries[0].Notes=="<script>untrusted</script>"&&entries[0].ReleasePage.StartsWith("https://github.com/RafaViteka/",StringComparison.Ordinal));
+        Require(entries.Length == 1 && entries[0].Notes == "<script>untrusted</script>" && entries[0].ReleasePage.StartsWith("https://github.com/RafaViteka/", StringComparison.Ordinal));
     });
     Console.WriteLine($"{passed} checks passed.");
 }

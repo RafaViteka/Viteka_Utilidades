@@ -1,6 +1,7 @@
 using System.Windows;
 using Microsoft.Web.WebView2.Core;
 namespace Viteka.Desktop;
+
 public partial class App : Application
 {
     internal static bool SmokeTest { get; private set; }

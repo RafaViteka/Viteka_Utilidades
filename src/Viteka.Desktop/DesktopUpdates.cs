@@ -29,8 +29,16 @@ internal sealed class DesktopUpdates : IDisposable
     {
         var state = journal.Load();
         var available = Version.TryParse(state.AvailableVersion, out var offered) && offered > new Version(version.Major, version.Minor, version.Build);
-        return new { available, version = available ? state.AvailableVersion : null, lastChecked = state.LastAttempt,
-            lastSuccess = state.LastSuccess, canInstallHere = isLocalServer(), checking = IsBusy, message };
+        return new
+        {
+            available,
+            version = available ? state.AvailableVersion : null,
+            lastChecked = state.LastAttempt,
+            lastSuccess = state.LastSuccess,
+            canInstallHere = isLocalServer(),
+            checking = IsBusy,
+            message
+        };
     }
     internal async Task<object> CheckAsync(bool manual, CancellationToken ct)
     {

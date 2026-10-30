@@ -1,60 +1,848 @@
-@if(loading()) {<div class="auth-shell"><p>Preparando tu espacio de trabajo…</p></div>}
-@else if(!user()) {
-<div class="auth-shell"><section class="auth-card"><img class="auth-brand" src="logotipo.png" alt="Viteka"><div class="eyebrow">UTILIDADES PARA TU FARMACIA</div><h1>Iniciar sesión</h1><p>Accede con tu cuenta de Viteka Utilidades.</p>
-<form (ngSubmit)="login()" class="account-form"><label>Usuario<input name="loginName" [(ngModel)]="loginName" autocomplete="username" maxlength="64" required></label><label>Contraseña<input name="loginPassword" [(ngModel)]="loginPassword" type="password" autocomplete="current-password" maxlength="128" required></label>@if(error()){<p class="error" role="alert">{{error()}}</p>}<button class="primary" type="submit" [disabled]="busy()||!bridge.native">{{busy()?'Entrando…':'Entrar'}}</button></form>@if(!bridge.native){<p class="connection-help">El acceso con contraseña está disponible en la aplicación Windows.</p>}<small class="auth-version">Viteka Utilidades · {{version()}}</small></section></div>
+@if (loading()) {
+  <div class="auth-shell"><p>Preparando tu espacio de trabajo…</p></div>
+} @else if (!user()) {
+  <div class="auth-shell">
+    <section class="auth-card">
+      <img class="auth-brand" src="logotipo.png" alt="Viteka" />
+      <div class="eyebrow">UTILIDADES PARA TU FARMACIA</div>
+      <h1>Iniciar sesión</h1>
+      <p>Accede con tu cuenta de Viteka Utilidades.</p>
+      <form (ngSubmit)="login()" class="account-form">
+        <label
+          >Usuario<input
+            name="loginName"
+            [(ngModel)]="loginName"
+            autocomplete="username"
+            maxlength="64"
+            required /></label
+        ><label
+          >Contraseña<input
+            name="loginPassword"
+            [(ngModel)]="loginPassword"
+            type="password"
+            autocomplete="current-password"
+            maxlength="128"
+            required
+        /></label>
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+        <button class="primary" type="submit" [disabled]="busy() || !bridge.native">
+          {{ busy() ? 'Entrando…' : 'Entrar' }}
+        </button>
+      </form>
+      @if (!bridge.native) {
+        <p class="connection-help">El acceso con contraseña está disponible en la aplicación Windows.</p>
+      }
+      <small class="auth-version">Viteka Utilidades · {{ version() }}</small>
+    </section>
+  </div>
+} @else if (user()?.mustChangePassword) {
+  <div class="auth-shell">
+    <section class="auth-card">
+      <img class="auth-brand" src="logotipo.png" alt="Viteka" />
+      <div class="eyebrow">PRIMER ACCESO · {{ user()?.name }}</div>
+      <h1>Cambia tu contraseña</h1>
+      <p>La contraseña inicial debe sustituirse antes de acceder a la aplicación.</p>
+      <form (ngSubmit)="changePassword()" class="account-form">
+        <label
+          >Contraseña actual<input
+            name="initialCurrent"
+            [(ngModel)]="currentPassword"
+            type="password"
+            autocomplete="current-password"
+            maxlength="128"
+            required /></label
+        ><label
+          >Nueva contraseña<input
+            name="initialNew"
+            [(ngModel)]="newPassword"
+            type="password"
+            autocomplete="new-password"
+            minlength="3"
+            maxlength="128"
+            required /></label
+        ><label
+          >Repetir nueva contraseña<input
+            name="initialRepeat"
+            [(ngModel)]="repeatPassword"
+            type="password"
+            autocomplete="new-password"
+            minlength="3"
+            maxlength="128"
+            required /></label
+        ><small>Usa al menos 3 caracteres.</small>
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+        <button class="primary" type="submit" [disabled]="busy()">Guardar contraseña</button
+        ><button class="text-button" type="button" (click)="logout()" [disabled]="busy()">Cerrar sesión</button>
+      </form>
+    </section>
+  </div>
+} @else {
+  <div class="layout" [class.collapsed]="collapsed()">
+    <aside>
+      <div class="menu-heading">
+        <span>NAVEGACIÓN</span
+        ><button
+          class="menu-toggle"
+          (click)="toggleSidebar()"
+          [attr.aria-label]="collapsed() ? 'Abrir menú lateral' : 'Cerrar menú lateral'"
+          [attr.aria-expanded]="!collapsed()"
+        >
+          <v-icon name="menu" />
+        </button>
+      </div>
+      <nav aria-label="Navegación principal">
+        @for (item of nav(); track item.name) {
+          <button
+            [class.active]="page() === item.name || (item.name === 'Configuración' && inSettings())"
+            [attr.aria-label]="item.name"
+            [attr.title]="collapsed() ? item.name : null"
+            [attr.aria-current]="
+              page() === item.name || (item.name === 'Configuración' && inSettings()) ? 'page' : null
+            "
+            (click)="go(item.name)"
+          >
+            <v-icon [name]="item.icon" /><span>{{ item.name }}</span>
+            @if (item.name === 'Configuración' && update()?.available) {
+              <i class="update-dot" aria-label="Actualización disponible"></i>
+            }
+          </button>
+        }
+      </nav>
+      <div class="sidebar-bottom">
+        <div class="session-strip">
+          <span
+            ><strong>{{ user()?.name }}</strong
+            ><small>{{ roleName(user()!.role) }}</small></span
+          >
+        </div>
+        <button
+          class="logout-button"
+          (click)="logout()"
+          aria-label="Cerrar sesión"
+          [attr.title]="collapsed() ? 'Cerrar sesión · ' + user()?.name : 'Cerrar sesión'"
+        >
+          <v-icon name="power" /><span>Cerrar sesión</span></button
+        ><button class="brand-bottom" aria-label="Web Viteka" (click)="open('website')">
+          <img class="wordmark" src="logotipo.png" alt="Viteka" /><img class="isologo" src="isologo.png" alt="Viteka" />
+        </button>
+      </div>
+    </aside>
+    <div
+      class="main-area"
+      [class.utility-workspace]="page() === 'Aplicaciones' && selectedUtility() === 'tenencia-obligatoria'"
+    >
+      <main>
+        @if (update()?.available && page() !== 'Actualizaciones') {
+          <div class="update-banner" role="status">
+            <span>Viteka {{ update()?.version }} está disponible.</span
+            ><button (click)="go('Actualizaciones')">Ver actualización<v-icon name="arrow" /></button>
+          </div>
+        }
+        @if (error() && !editorOpen() && !resetOpen() && !settingDialog()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+        @if (page() === 'Inicio') {
+          <section class="hero">
+            <div class="eyebrow">VITEKA · ESTAMOS CERCA</div>
+            <h1>Tu farmacia.<br /><em>Siempre acompañada.</em></h1>
+            <p>Asistencia, conocimiento y formación. Todo a mano.</p>
+            <div class="hours">Lunes a viernes <strong>09:00–14:00 &nbsp; 16:00–19:00</strong></div>
+          </section>
+          <div class="section-label">Tu asistencia</div>
+          <section class="priority-grid">
+            <article class="priority">
+              <div class="priority-top">
+                <div class="portal-icon"><v-icon name="user" /></div>
+                <span>ASISTENCIA</span>
+              </div>
+              <h2>Portal de soporte</h2>
+              <p>Crea una solicitud, consulta nuestras respuestas y sigue su evolución.</p>
+              <div class="priority-actions">
+                <button class="open-action" (click)="open('support')">
+                  Crear o consultar una solicitud<v-icon name="arrow" /></button
+                ><button class="guide-link" (click)="dialog.set('ticket')">¿Cómo solicito ayuda?</button>
+              </div>
+            </article>
+            <article class="priority remote">
+              <div class="priority-top">
+                <div class="portal-icon"><v-icon name="monitor" /></div>
+                <span>CON UN TÉCNICO VITEKA</span>
+              </div>
+              <h2>AnyDesk · Viteka</h2>
+              <p>Ábrelo cuando te lo pida el técnico de Viteka.</p>
+              <div class="priority-actions">
+                <button class="open-action" (click)="open('anydesk')">Abrir AnyDesk<v-icon name="arrow" /></button
+                ><button class="guide-link" (click)="dialog.set('remote')">Cómo conectar</button>
+              </div>
+            </article>
+          </section>
+          <div class="section-label">Recursos</div>
+          <section class="resource-grid">
+            @for (resource of resources; track resource.id) {
+              <button class="resource" (click)="open(resource.id)">
+                <div class="resource-icon"><v-icon [name]="resource.icon" /></div>
+                <div>
+                  <strong>{{ resource.title }}</strong
+                  ><small>{{ resource.description }}</small>
+                </div>
+                <v-icon name="arrow" />
+              </button>
+            }
+          </section>
+          <section class="contactbar">
+            <button (click)="open('phone')">
+              <v-icon name="phone" /><span><small>Teléfono</small><strong>951 552 730</strong></span></button
+            ><button (click)="open('support-email')">
+              <v-icon name="mail" /><span
+                ><small>Correo de soporte</small><strong>soporte&#64;viteka.es</strong></span
+              ></button
+            ><button (click)="open('info-email')">
+              <v-icon name="mail" /><span><small>Información</small><strong>info&#64;viteka.es</strong></span>
+            </button>
+          </section>
+          <div class="copy-row">
+            <span>¿Prefieres escribirnos?</span><button (click)="copy('support-email')">Copiar correo de soporte</button
+            ><button (click)="copy('info-email')">Copiar correo de información</button>
+          </div>
+        } @else {
+          @if (
+            page() === 'Mi cuenta' || page() === 'Usuarios' || page() === 'Actualizaciones' || page() === 'Auditoría'
+          ) {
+            <button class="settings-back text-button" (click)="go('Configuración')">← Configuración</button>
+          }
+          @if (page() !== 'Aplicaciones' || selectedUtility() !== 'tenencia-obligatoria') {
+            <div class="page-head">
+              <div class="eyebrow">VITEKA / UTILIDADES</div>
+              <h1>{{ title() }}</h1>
+              <p>{{ subtitle() }}</p>
+            </div>
+          }
+          @if (page() === 'Aplicaciones' && selectedUtility() === 'tenencia-obligatoria') {
+            <viteka-tenencia (back)="selectedUtility.set(null)" />
+          } @else if (page() === 'Aplicaciones' || page() === 'Favoritos' || page() === 'Auditoría') {
+            @if (page() === 'Aplicaciones' && utilities().length) {
+              <section class="resource-grid">
+                @for (app of utilities(); track app.id) {
+                  <button class="resource" (click)="openUtility(app.id)">
+                    <div class="resource-icon"><v-icon name="grid" /></div>
+                    <div>
+                      <strong>{{ app.name }}</strong
+                      ><small>{{ app.description }}</small>
+                    </div>
+                    <v-icon name="arrow" />
+                  </button>
+                }
+              </section>
+            } @else {
+              <section class="empty">
+                <div class="icon">
+                  <v-icon [name]="page() === 'Favoritos' ? 'star' : page() === 'Auditoría' ? 'clock' : 'grid'" />
+                </div>
+                <h2>
+                  {{
+                    page() === 'Favoritos'
+                      ? 'Aún no tienes favoritos'
+                      : page() === 'Auditoría'
+                        ? 'Todavía no hay registros de auditoría'
+                        : 'No hay aplicaciones disponibles para tu cuenta'
+                  }}
+                </h2>
+                <p>
+                  {{
+                    page() === 'Aplicaciones'
+                      ? 'Las aplicaciones publicadas aparecerán aquí cuando tengas acceso autorizado.'
+                      : page() === 'Auditoría'
+                        ? 'La auditoría de operaciones se incorporará con las utilidades.'
+                        : 'Este espacio se completará al incorporar las primeras aplicaciones.'
+                  }}
+                </p>
+              </section>
+            }
+          }
+          @if (page() === 'Actualizaciones') {
+            <section class="settings">
+              <div class="card-head">
+                <div class="tile"><v-icon name="download" /></div>
+                <div>
+                  <h2>Tu aplicación, al día</h2>
+                  <p>Versión actual · {{ version() }}</p>
+                </div>
+              </div>
+              <p class="update-copy">
+                Buscamos nuevas versiones cada 24 horas mientras Viteka está abierta, o al volver a abrirla si la
+                comprobación está pendiente.
+              </p>
+              <p>Última búsqueda: {{ formatDate(update()?.lastChecked) }}</p>
+              <div class="actions">
+                <button
+                  class="primary"
+                  (click)="checkUpdates()"
+                  [disabled]="checking() || update()?.checking || updating() || nixBusy()"
+                >
+                  {{ checking() ? 'Buscando…' : 'Buscar actualizaciones' }}</button
+                ><button class="text-button" (click)="showHistory()">Historial de actualizaciones</button>
+              </div>
+              <p class="update-status" role="status">
+                {{
+                  updating() && bridge.progress() !== null
+                    ? 'Descargando… ' + bridge.progress() + '%'
+                    : updateMessage() || update()?.message
+                }}
+              </p>
+              @if (update()?.available) {
+                <div class="available-update">
+                  <h3>Versión {{ update()?.version }} disponible</h3>
+                  @if (user()?.canInstallUpdates && update()?.canInstallHere) {
+                    <p>Tú eliges cuándo descargar e instalar la nueva versión.</p>
+                    <div class="actions">
+                      <button class="primary" (click)="install()" [disabled]="updating() || nixBusy()">
+                        {{ updating() ? 'Preparando…' : 'Descargar e instalar' }}</button
+                      ><button class="text-button" (click)="publication()" [disabled]="updating()">
+                        Ver publicación
+                      </button>
+                    </div>
+                  } @else {
+                    <p>El titular o Viteka pueden ejecutar esta actualización desde el servidor de la farmacia.</p>
+                  }
+                </div>
+              }
+            </section>
+          }
+          @if (page() === 'Mi cuenta') {
+            <section class="settings settings-rows" aria-label="Mi cuenta y preferencias">
+              <div class="account-summary">
+                <div class="tile"><v-icon name="user" /></div>
+                <div>
+                  <h2>{{ user()?.name }}</h2>
+                  <p>{{ roleName(user()!.role) }}</p>
+                </div>
+              </div>
+              <button class="setting-row" (click)="openSetting('password')">
+                <v-icon name="key" /><span
+                  ><strong>Cambiar mi contraseña</strong><small>Modifica tu contraseña de acceso.</small></span
+                ><v-icon name="arrow" />
+              </button>
+              <button class="setting-row" (click)="openSetting('appearance')">
+                <v-icon name="palette" /><span
+                  ><strong>Apariencia</strong
+                  ><small>{{
+                    theme() === 'auto' ? 'Automático · Sigue Windows' : theme() === 'dark' ? 'Oscuro' : 'Claro'
+                  }}</small></span
+                ><v-icon name="arrow" />
+              </button>
+              @if (user()?.role !== 'User') {
+                <button class="setting-row" (click)="openSetting('startup')">
+                  <v-icon name="star" /><span
+                    ><strong>Pantalla al iniciar</strong
+                    ><small>{{ openFavorites() ? 'Favoritos' : 'Inicio' }}</small></span
+                  ><v-icon name="arrow" />
+                </button>
+              }
+            </section>
+          }
+          @if (page() === 'Usuarios' && user()?.canManageUsers) {
+            <section class="settings">
+              <div class="users-heading">
+                <div>
+                  <h2>Cuentas de la farmacia</h2>
+                  <p>El acceso a las aplicaciones se asigna a cada usuario.</p>
+                </div>
+                <button class="primary" (click)="openUser()">Crear usuario</button>
+              </div>
+              @if (!remoteReady()) {
+                <p class="connection-warning">
+                  El acceso desde los puestos seguirá cerrado mientras haya cuentas activas con la contraseña inicial de
+                  instalación. Cambia o restablece esas contraseñas, o desactiva las cuentas que no se utilicen.
+                </p>
+              }
+              <div class="user-list">
+                @for (account of users(); track account.id) {
+                  <article class="user-row">
+                    <div>
+                      <strong>{{ account.name }}</strong
+                      ><small
+                        >{{ roleName(account.role) }} · {{ account.active ? 'Activa' : 'Desactivada'
+                        }}{{
+                          account.bootstrapPassword
+                            ? ' · Contraseña de instalación pendiente'
+                            : account.mustChangePassword
+                              ? ' · Cambio de contraseña pendiente'
+                              : ''
+                        }}</small
+                      >
+                    </div>
+                    <div class="actions">
+                      @if (canEdit(account)) {
+                        <button
+                          class="text-button"
+                          (click)="openUser(account)"
+                          [attr.aria-label]="'Editar ' + account.name"
+                        >
+                          Editar y permisos
+                        </button>
+                      }
+                      @if (account.id === user()?.id || canEdit(account)) {
+                        <button
+                          class="text-button"
+                          (click)="openReset(account)"
+                          [attr.aria-label]="'Cambiar contraseña de ' + account.name"
+                        >
+                          Contraseña
+                        </button>
+                      }
+                    </div>
+                  </article>
+                }
+              </div>
+            </section>
+          }
+          @if (page() === 'Configuración') {
+            <section class="settings settings-rows" aria-label="Opciones de configuración">
+              <button class="setting-row" (click)="go('Mi cuenta')">
+                <v-icon name="user" /><span
+                  ><strong>Mi cuenta</strong
+                  ><small>{{ user()?.name }} · Contraseña y preferencias personales</small></span
+                ><v-icon name="arrow" />
+              </button>
+              @if (user()?.canManageUsers) {
+                <button class="setting-row" (click)="openSetting('pharmacy')">
+                  <v-icon name="home" /><span
+                    ><strong>Datos de la farmacia</strong><small>Provincia, localidad y datos de contacto</small></span
+                  ><v-icon name="arrow" /></button
+                ><button class="setting-row" (click)="go('Usuarios')">
+                  <v-icon name="users" /><span
+                    ><strong>Usuarios</strong><small>Cuentas, roles y permisos de la farmacia</small></span
+                  ><v-icon name="arrow" /></button
+                ><button class="setting-row" (click)="go('Auditoría')">
+                  <v-icon name="clock" /><span
+                    ><strong>Auditoría</strong><small>Registro de operaciones de la farmacia</small></span
+                  ><v-icon name="arrow" />
+                </button>
+              }
+              <button class="setting-row" (click)="go('Actualizaciones')">
+                <v-icon name="download" /><span
+                  ><strong>Actualizaciones</strong
+                  ><small>{{
+                    update()?.available
+                      ? 'Versión ' + update()?.version + ' disponible'
+                      : 'Buscar versiones y consultar el historial'
+                  }}</small></span
+                >
+                @if (update()?.available) {
+                  <i class="update-dot" aria-label="Actualización disponible"></i>
+                }
+                <v-icon name="arrow" />
+              </button>
+              @if (user()?.canConfigure) {
+                <button class="setting-row" (click)="openSetting('connection')">
+                  <v-icon name="leaf" /><span
+                    ><strong>Conexión a NixFarma</strong
+                    ><small
+                      >{{ nixState()?.configured ? 'Configurada en el servidor' : 'Pendiente de configurar' }} · Solo
+                      Viteka</small
+                    ></span
+                  ><v-icon name="arrow" />
+                </button>
+              }
+            </section>
+            <details>
+              <summary>Información de la aplicación</summary>
+              <p>Viteka Utilidades · {{ version() }}</p>
+            </details>
+          }
+        }
+      </main>
+      @if (page() !== 'Aplicaciones' || selectedUtility() !== 'tenencia-obligatoria') {
+        <footer>
+          <span>Centro de atención y recursos</span><span>Viteka Utilidades · {{ version() }}</span>
+        </footer>
+      }
+    </div>
+  </div>
 }
-@else if(user()?.mustChangePassword) {
-<div class="auth-shell"><section class="auth-card"><img class="auth-brand" src="logotipo.png" alt="Viteka"><div class="eyebrow">PRIMER ACCESO · {{user()?.name}}</div><h1>Cambia tu contraseña</h1><p>La contraseña inicial debe sustituirse antes de acceder a la aplicación.</p>
-<form (ngSubmit)="changePassword()" class="account-form"><label>Contraseña actual<input name="initialCurrent" [(ngModel)]="currentPassword" type="password" autocomplete="current-password" maxlength="128" required></label><label>Nueva contraseña<input name="initialNew" [(ngModel)]="newPassword" type="password" autocomplete="new-password" minlength="3" maxlength="128" required></label><label>Repetir nueva contraseña<input name="initialRepeat" [(ngModel)]="repeatPassword" type="password" autocomplete="new-password" minlength="3" maxlength="128" required></label><small>Usa al menos 3 caracteres.</small>@if(error()){<p class="error" role="alert">{{error()}}</p>}<button class="primary" type="submit" [disabled]="busy()">Guardar contraseña</button><button class="text-button" type="button" (click)="logout()" [disabled]="busy()">Cerrar sesión</button></form></section></div>
+@if (toast()) {
+  <div class="toast" role="status">{{ toast() }}</div>
 }
-@else {
-<div class="layout" [class.collapsed]="collapsed()"><aside><div class="menu-heading"><span>NAVEGACIÓN</span><button class="menu-toggle" (click)="toggleSidebar()" [attr.aria-label]="collapsed()?'Abrir menú lateral':'Cerrar menú lateral'" [attr.aria-expanded]="!collapsed()"><v-icon name="menu"/></button></div><nav aria-label="Navegación principal">@for(item of nav();track item.name){<button [class.active]="page()===item.name||item.name==='Configuración'&&inSettings()" [attr.aria-label]="item.name" [attr.title]="collapsed()?item.name:null" [attr.aria-current]="page()===item.name||item.name==='Configuración'&&inSettings()?'page':null" (click)="go(item.name)"><v-icon [name]="item.icon"/><span>{{item.name}}</span>@if(item.name==='Configuración'&&update()?.available){<i class="update-dot" aria-label="Actualización disponible"></i>}</button>}</nav><div class="sidebar-bottom"><div class="session-strip"><span><strong>{{user()?.name}}</strong><small>{{roleName(user()!.role)}}</small></span></div><button class="logout-button" (click)="logout()" aria-label="Cerrar sesión" [attr.title]="collapsed()?'Cerrar sesión · '+user()?.name:'Cerrar sesión'"><v-icon name="power"/><span>Cerrar sesión</span></button><button class="brand-bottom" aria-label="Web Viteka" (click)="open('website')"><img class="wordmark" src="logotipo.png" alt="Viteka"><img class="isologo" src="isologo.png" alt="Viteka"></button></div></aside>
-<div class="main-area" [class.utility-workspace]="page()==='Aplicaciones'&&selectedUtility()==='tenencia-obligatoria'"><main>
-@if(update()?.available&&page()!=='Actualizaciones'){<div class="update-banner" role="status"><span>Viteka {{update()?.version}} está disponible.</span><button (click)="go('Actualizaciones')">Ver actualización<v-icon name="arrow"/></button></div>}
-@if(error()&&!editorOpen()&&!resetOpen()&&!settingDialog()){<p class="error" role="alert">{{error()}}</p>}
-@if(page()==='Inicio'){<section class="hero"><div class="eyebrow">VITEKA · ESTAMOS CERCA</div><h1>Tu farmacia.<br><em>Siempre acompañada.</em></h1><p>Asistencia, conocimiento y formación. Todo a mano.</p><div class="hours">Lunes a viernes <strong>09:00–14:00 &nbsp; 16:00–19:00</strong></div></section><div class="section-label">Tu asistencia</div><section class="priority-grid"><article class="priority"><div class="priority-top"><div class="portal-icon"><v-icon name="user"/></div><span>ASISTENCIA</span></div><h2>Portal de soporte</h2><p>Crea una solicitud, consulta nuestras respuestas y sigue su evolución.</p><div class="priority-actions"><button class="open-action" (click)="open('support')">Crear o consultar una solicitud<v-icon name="arrow"/></button><button class="guide-link" (click)="dialog.set('ticket')">¿Cómo solicito ayuda?</button></div></article><article class="priority remote"><div class="priority-top"><div class="portal-icon"><v-icon name="monitor"/></div><span>CON UN TÉCNICO VITEKA</span></div><h2>AnyDesk · Viteka</h2><p>Ábrelo cuando te lo pida el técnico de Viteka.</p><div class="priority-actions"><button class="open-action" (click)="open('anydesk')">Abrir AnyDesk<v-icon name="arrow"/></button><button class="guide-link" (click)="dialog.set('remote')">Cómo conectar</button></div></article></section><div class="section-label">Recursos</div><section class="resource-grid">@for(resource of resources;track resource.id){<button class="resource" (click)="open(resource.id)"><div class="resource-icon"><v-icon [name]="resource.icon"/></div><div><strong>{{resource.title}}</strong><small>{{resource.description}}</small></div><v-icon name="arrow"/></button>}</section><section class="contactbar"><button (click)="open('phone')"><v-icon name="phone"/><span><small>Teléfono</small><strong>951 552 730</strong></span></button><button (click)="open('support-email')"><v-icon name="mail"/><span><small>Correo de soporte</small><strong>soporte&#64;viteka.es</strong></span></button><button (click)="open('info-email')"><v-icon name="mail"/><span><small>Información</small><strong>info&#64;viteka.es</strong></span></button></section><div class="copy-row"><span>¿Prefieres escribirnos?</span><button (click)="copy('support-email')">Copiar correo de soporte</button><button (click)="copy('info-email')">Copiar correo de información</button></div>}
-@else {@if(page()==='Mi cuenta'||page()==='Usuarios'||page()==='Actualizaciones'||page()==='Auditoría'){<button class="settings-back text-button" (click)="go('Configuración')">← Configuración</button>}@if(page()!=='Aplicaciones'||selectedUtility()!=='tenencia-obligatoria'){<div class="page-head"><div class="eyebrow">VITEKA / UTILIDADES</div><h1>{{title()}}</h1><p>{{subtitle()}}</p></div>}
-@if(page()==='Aplicaciones'&&selectedUtility()==='tenencia-obligatoria'){<viteka-tenencia (back)="selectedUtility.set(null)"/>}
-@else if(page()==='Aplicaciones'||page()==='Favoritos'||page()==='Auditoría') {
-@if(page()==='Aplicaciones'&&utilities().length){<section class="resource-grid">@for(app of utilities();track app.id){<button class="resource" (click)="openUtility(app.id)"><div class="resource-icon"><v-icon name="grid"/></div><div><strong>{{app.name}}</strong><small>{{app.description}}</small></div><v-icon name="arrow"/></button>}</section>}
-@else {<section class="empty"><div class="icon"><v-icon [name]="page()==='Favoritos'?'star':page()==='Auditoría'?'clock':'grid'"/></div><h2>{{page()==='Favoritos'?'Aún no tienes favoritos':page()==='Auditoría'?'Todavía no hay registros de auditoría':'No hay aplicaciones disponibles para tu cuenta'}}</h2><p>{{page()==='Aplicaciones'?'Las aplicaciones publicadas aparecerán aquí cuando tengas acceso autorizado.':page()==='Auditoría'?'La auditoría de operaciones se incorporará con las utilidades.':'Este espacio se completará al incorporar las primeras aplicaciones.'}}</p></section>}}
-@if(page()==='Actualizaciones') {
-<section class="settings"><div class="card-head"><div class="tile"><v-icon name="download"/></div><div><h2>Tu aplicación, al día</h2><p>Versión actual · {{version()}}</p></div></div><p class="update-copy">Buscamos nuevas versiones cada 24 horas mientras Viteka está abierta, o al volver a abrirla si la comprobación está pendiente.</p><p>Última búsqueda: {{formatDate(update()?.lastChecked)}}</p><div class="actions"><button class="primary" (click)="checkUpdates()" [disabled]="checking()||update()?.checking||updating()||nixBusy()">{{checking()?'Buscando…':'Buscar actualizaciones'}}</button><button class="text-button" (click)="showHistory()">Historial de actualizaciones</button></div><p class="update-status" role="status">{{updating()&&bridge.progress()!==null?'Descargando… '+bridge.progress()+'%':updateMessage()||update()?.message}}</p>
-@if(update()?.available){<div class="available-update"><h3>Versión {{update()?.version}} disponible</h3>@if(user()?.canInstallUpdates&&update()?.canInstallHere){<p>Tú eliges cuándo descargar e instalar la nueva versión.</p><div class="actions"><button class="primary" (click)="install()" [disabled]="updating()||nixBusy()">{{updating()?'Preparando…':'Descargar e instalar'}}</button><button class="text-button" (click)="publication()" [disabled]="updating()">Ver publicación</button></div>}@else{<p>El titular o Viteka pueden ejecutar esta actualización desde el servidor de la farmacia.</p>}</div>}</section>}
-@if(page()==='Mi cuenta') {
-<section class="settings settings-rows" aria-label="Mi cuenta y preferencias">
-<div class="account-summary"><div class="tile"><v-icon name="user"/></div><div><h2>{{user()?.name}}</h2><p>{{roleName(user()!.role)}}</p></div></div>
-<button class="setting-row" (click)="openSetting('password')"><v-icon name="key"/><span><strong>Cambiar mi contraseña</strong><small>Modifica tu contraseña de acceso.</small></span><v-icon name="arrow"/></button>
-<button class="setting-row" (click)="openSetting('appearance')"><v-icon name="palette"/><span><strong>Apariencia</strong><small>{{theme()==='auto'?'Automático · Sigue Windows':theme()==='dark'?'Oscuro':'Claro'}}</small></span><v-icon name="arrow"/></button>
-@if(user()?.role!=='User'){<button class="setting-row" (click)="openSetting('startup')"><v-icon name="star"/><span><strong>Pantalla al iniciar</strong><small>{{openFavorites()?'Favoritos':'Inicio'}}</small></span><v-icon name="arrow"/></button>}
-</section>}
-@if(page()==='Usuarios'&&user()?.canManageUsers){<section class="settings"><div class="users-heading"><div><h2>Cuentas de la farmacia</h2><p>El acceso a las aplicaciones se asigna a cada usuario.</p></div><button class="primary" (click)="openUser()">Crear usuario</button></div>@if(!remoteReady()){<p class="connection-warning">El acceso desde los puestos seguirá cerrado mientras haya cuentas activas con la contraseña inicial de instalación. Cambia o restablece esas contraseñas, o desactiva las cuentas que no se utilicen.</p>}<div class="user-list">@for(account of users();track account.id){<article class="user-row"><div><strong>{{account.name}}</strong><small>{{roleName(account.role)}} · {{account.active?'Activa':'Desactivada'}}{{account.bootstrapPassword?' · Contraseña de instalación pendiente':account.mustChangePassword?' · Cambio de contraseña pendiente':''}}</small></div><div class="actions">@if(canEdit(account)){<button class="text-button" (click)="openUser(account)" [attr.aria-label]="'Editar '+account.name">Editar y permisos</button>}@if(account.id===user()?.id||canEdit(account)){<button class="text-button" (click)="openReset(account)" [attr.aria-label]="'Cambiar contraseña de '+account.name">Contraseña</button>}</div></article>}</div></section>}
-@if(page()==='Configuración'){
-<section class="settings settings-rows" aria-label="Opciones de configuración">
-<button class="setting-row" (click)="go('Mi cuenta')"><v-icon name="user"/><span><strong>Mi cuenta</strong><small>{{user()?.name}} · Contraseña y preferencias personales</small></span><v-icon name="arrow"/></button>
-@if(user()?.canManageUsers){<button class="setting-row" (click)="openSetting('pharmacy')"><v-icon name="home"/><span><strong>Datos de la farmacia</strong><small>Provincia, localidad y datos de contacto</small></span><v-icon name="arrow"/></button><button class="setting-row" (click)="go('Usuarios')"><v-icon name="users"/><span><strong>Usuarios</strong><small>Cuentas, roles y permisos de la farmacia</small></span><v-icon name="arrow"/></button><button class="setting-row" (click)="go('Auditoría')"><v-icon name="clock"/><span><strong>Auditoría</strong><small>Registro de operaciones de la farmacia</small></span><v-icon name="arrow"/></button>}
-<button class="setting-row" (click)="go('Actualizaciones')"><v-icon name="download"/><span><strong>Actualizaciones</strong><small>{{update()?.available?'Versión '+update()?.version+' disponible':'Buscar versiones y consultar el historial'}}</small></span>@if(update()?.available){<i class="update-dot" aria-label="Actualización disponible"></i>}<v-icon name="arrow"/></button>
-@if(user()?.canConfigure){<button class="setting-row" (click)="openSetting('connection')"><v-icon name="leaf"/><span><strong>Conexión a NixFarma</strong><small>{{nixState()?.configured?'Configurada en el servidor':'Pendiente de configurar'}} · Solo Viteka</small></span><v-icon name="arrow"/></button>}
-</section><details><summary>Información de la aplicación</summary><p>Viteka Utilidades · {{version()}}</p></details>}
+@if (user() && !user()?.mustChangePassword && dialog()) {
+  <div class="modal-overlay" (click)="closeModals()">
+    <section
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="dialog() === 'ticket' ? 'Cómo solicitar asistencia' : 'Cómo recibir ayuda remota'"
+      class="dialog"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="dialog-top">
+        <h2>{{ dialog() === 'ticket' ? 'Cómo solicitar asistencia' : 'Cómo recibir ayuda remota' }}</h2>
+        <button aria-label="Cerrar ayuda" (click)="closeModals()"><v-icon name="close" /></button>
+      </div>
+      @if (dialog() === 'ticket') {
+        <p>Registra la solicitud en el portal e incluye el mensaje, cuándo comenzó y una captura si resulta útil.</p>
+        <button class="primary" (click)="open('support')">Ir al portal de soporte</button>
+      } @else {
+        <p>
+          Abre AnyDesk cuando te lo pida un técnico verificado de Viteka. Revisa y acepta únicamente la sesión esperada.
+        </p>
+        <div class="actions">
+          <button class="primary" (click)="open('anydesk')">Abrir AnyDesk</button
+          ><button class="text-button" (click)="open('anydesk-download')">Descargar AnyDesk</button>
+        </div>
+      }
+    </section>
+  </div>
+}
+@if (user() && historyOpen()) {
+  <div class="modal-overlay" (click)="closeModals()">
+    <section
+      role="dialog"
+      aria-modal="true"
+      aria-label="Historial de actualizaciones"
+      class="dialog history-dialog"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="dialog-top">
+        <h2>Historial de actualizaciones</h2>
+        <button aria-label="Cerrar historial" (click)="closeModals()"><v-icon name="close" /></button>
+      </div>
+      @if (historyBusy()) {
+        <p>Cargando historial…</p>
+      } @else {
+        <h3>En este equipo</h3>
+        <p>Se confirma una versión cuando Viteka se abre con ella.</p>
+        <div class="history-list">
+          @for (entry of history()?.local; track $index) {
+            <article>
+              <strong>{{ eventName(entry.kind) }} {{ entry.version }}</strong
+              ><small>{{ formatDate(entry.at) }}</small>
+            </article>
+          } @empty {
+            <p>Aún no hay registros.</p>
+          }
+        </div>
+        <h3>Versiones publicadas</h3>
+        @if (history()?.message) {
+          <p class="error">{{ history()?.message }}</p>
+        }
+        @for (release of history()?.published; track $index) {
+          <details>
+            <summary>{{ release.title }} · {{ formatDate(release.publishedAt) }}</summary>
+            <pre>{{ release.notes }}</pre>
+          </details>
+        }
+      }
+    </section>
+  </div>
+}
+@if (user()?.canManageUsers && editorOpen()) {
+  <div class="modal-overlay">
+    <section
+      role="dialog"
+      aria-modal="true"
+      aria-label="Editar cuenta y permisos"
+      class="dialog"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="dialog-top">
+        <h2>{{ editId ? 'Editar cuenta' : 'Crear usuario' }}</h2>
+        <button aria-label="Cerrar edición" (click)="closeModals()"><v-icon name="close" /></button>
+      </div>
+      <form (ngSubmit)="saveUser()" class="account-form">
+        <label
+          >Nombre de usuario<input
+            name="editName"
+            [(ngModel)]="editName"
+            autocomplete="off"
+            maxlength="64"
+            required /></label
+        ><label
+          >Rol<select aria-label="Rol" name="editRole" [(ngModel)]="editRole">
+            <option value="User">Usuario</option>
+            @if (user()?.role === 'SuperAdministrator') {
+              <option value="Administrator">Administrador</option>
+              <option value="SuperAdministrator">Superadministrador</option>
+            }
+          </select></label
+        >
+        @if (editId) {
+          <label class="inline-check"
+            ><input name="editActive" type="checkbox" [(ngModel)]="editActive" />Cuenta activa</label
+          >
+        } @else {
+          <label
+            >Contraseña inicial<input
+              name="editPassword"
+              [(ngModel)]="editPassword"
+              type="password"
+              autocomplete="new-password"
+              minlength="3"
+              maxlength="128"
+              required /></label
+          ><label
+            >Repetir contraseña inicial<input
+              name="editRepeat"
+              [(ngModel)]="editRepeat"
+              type="password"
+              autocomplete="new-password"
+              minlength="3"
+              maxlength="128"
+              required
+          /></label>
+          <p class="connection-help">Se pedirá cambiarla en el primer acceso.</p>
+        }
+        <fieldset>
+          <legend>Acceso a aplicaciones</legend>
+          @if (editRole !== 'User') {
+            <p>Este rol tiene acceso a todas las aplicaciones publicadas.</p>
+          } @else {
+            @for (app of permissionCatalog(); track app.id) {
+              <label class="inline-check"
+                ><input
+                  type="checkbox"
+                  [checked]="editUtilityIds.includes(app.id)"
+                  (change)="toggleUtility(app.id, $any($event.target).checked)"
+                />{{ app.name }}</label
+              >
+            } @empty {
+              <p>Todavía no hay aplicaciones publicadas. Podrás asignarlas aquí cuando las incorporemos.</p>
+            }
+          }
+        </fieldset>
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+        <div class="actions">
+          <button type="submit" class="primary" [disabled]="busy()">Guardar cuenta</button
+          ><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button>
+        </div>
+      </form>
+    </section>
+  </div>
+}
+@if (user()?.canManageUsers && resetOpen()) {
+  <div class="modal-overlay">
+    <section role="dialog" aria-modal="true" aria-label="Restablecer contraseña" class="dialog">
+      <div class="dialog-top">
+        <h2>Contraseña de {{ resetName }}</h2>
+        <button aria-label="Cerrar contraseña" (click)="closeModals()"><v-icon name="close" /></button>
+      </div>
+      <form (ngSubmit)="resetUserPassword()" class="account-form">
+        <label
+          >Nueva contraseña<input
+            name="resetPassword"
+            [(ngModel)]="resetPassword"
+            type="password"
+            autocomplete="new-password"
+            minlength="3"
+            maxlength="128"
+            required /></label
+        ><label
+          >Repetir nueva contraseña<input
+            name="resetRepeat"
+            [(ngModel)]="resetRepeat"
+            type="password"
+            autocomplete="new-password"
+            minlength="3"
+            maxlength="128"
+            required
+        /></label>
+        <p>Se cerrarán las sesiones de esa cuenta y se pedirá cambiar esta contraseña al volver a entrar.</p>
+        @if (error()) {
+          <p class="error" role="alert">{{ error() }}</p>
+        }
+        <button type="submit" class="primary" [disabled]="busy()">Restablecer contraseña</button>
+      </form>
+    </section>
+  </div>
+}
 
-}</main>@if(page()!=='Aplicaciones'||selectedUtility()!=='tenencia-obligatoria'){<footer><span>Centro de atención y recursos</span><span>Viteka Utilidades · {{version()}}</span></footer>}</div></div>
+@if (user() && !user()?.mustChangePassword && settingDialog()) {
+  <div class="modal-overlay" (click)="closeModals()">
+    <section
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="
+        settingDialog() === 'password'
+          ? 'Cambiar mi contraseña'
+          : settingDialog() === 'appearance'
+            ? 'Apariencia'
+            : settingDialog() === 'startup'
+              ? 'Pantalla al iniciar'
+              : settingDialog() === 'pharmacy'
+                ? 'Datos de la farmacia'
+                : 'Conexión a NixFarma'
+      "
+      class="dialog settings-dialog"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="dialog-top">
+        <h2>
+          {{
+            settingDialog() === 'password'
+              ? 'Cambiar mi contraseña'
+              : settingDialog() === 'appearance'
+                ? 'Apariencia'
+                : settingDialog() === 'startup'
+                  ? 'Pantalla al iniciar'
+                  : settingDialog() === 'pharmacy'
+                    ? 'Datos de la farmacia'
+                    : 'Conexión a NixFarma'
+          }}
+        </h2>
+        <button aria-label="Cerrar ajuste" (click)="closeModals()" [disabled]="busy()"><v-icon name="close" /></button>
+      </div>
+      @if (settingDialog() === 'password') {
+        <form (ngSubmit)="changePassword()" class="account-form">
+          <label
+            >Contraseña actual<input
+              name="ownCurrent"
+              [(ngModel)]="currentPassword"
+              type="password"
+              autocomplete="current-password"
+              maxlength="128"
+              required /></label
+          ><label
+            >Nueva contraseña<input
+              name="ownNew"
+              [(ngModel)]="newPassword"
+              type="password"
+              autocomplete="new-password"
+              minlength="3"
+              maxlength="128"
+              required /></label
+          ><label
+            >Repetir nueva contraseña<input
+              name="ownRepeat"
+              [(ngModel)]="repeatPassword"
+              type="password"
+              autocomplete="new-password"
+              minlength="3"
+              maxlength="128"
+              required /></label
+          ><small>Entre 3 y 128 caracteres.</small
+          ><button class="primary" type="submit" [disabled]="busy()">Cambiar mi contraseña</button
+          ><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button>
+        </form>
+      }
+      @if (settingDialog() === 'appearance' || settingDialog() === 'startup') {
+        <form (ngSubmit)="savePreference()" class="account-form">
+          @if (settingDialog() === 'appearance') {
+            <label
+              >Apariencia<select
+                name="theme"
+                aria-label="Apariencia"
+                [ngModel]="draftTheme()"
+                (ngModelChange)="draftTheme.set($event)"
+              >
+                <option value="auto">Automático</option>
+                <option value="light">Claro</option>
+                <option value="dark">Oscuro</option>
+              </select></label
+            >
+            <p>Automático sigue la apariencia de Windows.</p>
+          } @else {
+            <label class="inline-check"
+              ><input
+                type="checkbox"
+                name="start"
+                [ngModel]="draftStart()"
+                (ngModelChange)="draftStart.set($event)"
+              />Abrir Favoritos al iniciar</label
+            >
+          }
+          <div class="actions">
+            <button type="submit" class="primary" [disabled]="busy()">Guardar cambios</button
+            ><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button>
+          </div>
+        </form>
+      }
+      @if (settingDialog() === 'pharmacy' && user()?.canManageUsers) {
+        <viteka-pharmacy-settings (working)="busy.set($event)" (cancel)="closeModals()" />
+      }
+      @if (settingDialog() === 'connection' && user()?.canConfigure) {
+        <section class="settings nixfarma-settings" aria-label="Conexión a NixFarma">
+          <div class="card-head">
+            <div class="tile"><v-icon name="leaf" /></div>
+            <div>
+              <h2>Conexión a NixFarma</h2>
+              <p>Solo lectura · Configura la conexión en el servidor de la farmacia.</p>
+            </div>
+          </div>
+          <dl class="connection-facts">
+            <div>
+              <dt>DSN de sistema · 64 bits</dt>
+              <dd>{{ nixState()?.dsn || 'NIXFARMA' }}</dd>
+            </div>
+            <div>
+              <dt>Usuario de Oracle</dt>
+              <dd>{{ nixState()?.user || 'Sin configurar' }}</dd>
+            </div>
+            <div>
+              <dt>Estado de configuración</dt>
+              <dd>{{ nixState()?.configured ? 'Guardada en el servidor' : 'Pendiente' }}</dd>
+            </div>
+          </dl>
+          @if (bridge.native && nixState() && !nixState()?.dsnAvailable) {
+            <p class="connection-warning">
+              No se encuentra este DSN de sistema de 64 bits en este equipo. Compruébalo en el servidor de NixFarma.
+            </p>
+          }
+          <div class="actions">
+            <button
+              class="primary"
+              (click)="connectionAction('configure')"
+              [disabled]="!bridge.native || nixBusy() || schemaBusy() || updating()"
+            >
+              Configurar conexión</button
+            ><button
+              class="text-button"
+              (click)="inspectSchema()"
+              [disabled]="schemaBusy() || nixBusy() || updating() || !nixState()?.configured"
+            >
+              {{ schemaBusy() ? 'Comprobando…' : 'Comprobar tablas de tenencia' }}</button
+            ><button
+              class="primary"
+              (click)="connectionAction('test')"
+              [disabled]="!bridge.native || !nixState()?.configured || nixBusy() || schemaBusy() || updating()"
+            >
+              {{ nixBusy() ? 'Espera…' : 'Probar conexión' }}
+            </button>
+            @if (nixState()?.saved) {
+              <button
+                class="text-button"
+                (click)="connectionAction('forget')"
+                [disabled]="nixBusy() || schemaBusy() || updating()"
+              >
+                Olvidar conexión
+              </button>
+            }
+          </div>
+          @if (schemaMessage()) {
+            <p class="connection-diagnostic" role="status">{{ schemaMessage() }}</p>
+          }
+          @if (nixMessage()) {
+            <p class="connection-result" [class.verified]="nixResult()?.success" role="status">{{ nixMessage() }}</p>
+          }
+          @if (nixResult()?.sqlState || nixResult()?.oracleCode) {
+            <p class="connection-diagnostic">
+              Diagnóstico: {{ nixResult()?.sqlState || '' }}
+              @if (nixResult()?.oracleCode) {
+                · ORA-{{ oracleCodeLabel() }}
+              }
+            </p>
+          }
+          <p class="connection-help">
+            Las credenciales se introducen en una ventana de Windows y se guardan protegidas en el servicio del
+            servidor. La prueba abre y cierra una conexión de solo lectura; no mantiene una sesión abierta.
+          </p>
+        </section>
+      }
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+    </section>
+  </div>
 }
-@if(toast()){<div class="toast" role="status">{{toast()}}</div>}
-@if(user()&&!user()?.mustChangePassword&&dialog()) {<div class="modal-overlay" (click)="closeModals()"><section role="dialog" aria-modal="true" [attr.aria-label]="dialog()==='ticket'?'Cómo solicitar asistencia':'Cómo recibir ayuda remota'" class="dialog" (click)="$event.stopPropagation()"><div class="dialog-top"><h2>{{dialog()==='ticket'?'Cómo solicitar asistencia':'Cómo recibir ayuda remota'}}</h2><button aria-label="Cerrar ayuda" (click)="closeModals()"><v-icon name="close"/></button></div>@if(dialog()==='ticket'){<p>Registra la solicitud en el portal e incluye el mensaje, cuándo comenzó y una captura si resulta útil.</p><button class="primary" (click)="open('support')">Ir al portal de soporte</button>}@else{<p>Abre AnyDesk cuando te lo pida un técnico verificado de Viteka. Revisa y acepta únicamente la sesión esperada.</p><div class="actions"><button class="primary" (click)="open('anydesk')">Abrir AnyDesk</button><button class="text-button" (click)="open('anydesk-download')">Descargar AnyDesk</button></div>}</section></div>}
-@if(user()&&historyOpen()){<div class="modal-overlay" (click)="closeModals()"><section role="dialog" aria-modal="true" aria-label="Historial de actualizaciones" class="dialog history-dialog" (click)="$event.stopPropagation()"><div class="dialog-top"><h2>Historial de actualizaciones</h2><button aria-label="Cerrar historial" (click)="closeModals()"><v-icon name="close"/></button></div>@if(historyBusy()){<p>Cargando historial…</p>}@else{<h3>En este equipo</h3><p>Se confirma una versión cuando Viteka se abre con ella.</p><div class="history-list">@for(entry of history()?.local;track $index){<article><strong>{{eventName(entry.kind)}} {{entry.version}}</strong><small>{{formatDate(entry.at)}}</small></article>}@empty{<p>Aún no hay registros.</p>}</div><h3>Versiones publicadas</h3>@if(history()?.message){<p class="error">{{history()?.message}}</p>}@for(release of history()?.published;track $index){<details><summary>{{release.title}} · {{formatDate(release.publishedAt)}}</summary><pre>{{release.notes}}</pre></details>}}</section></div>}
-@if(user()?.canManageUsers&&editorOpen()){<div class="modal-overlay"><section role="dialog" aria-modal="true" aria-label="Editar cuenta y permisos" class="dialog" (click)="$event.stopPropagation()"><div class="dialog-top"><h2>{{editId?'Editar cuenta':'Crear usuario'}}</h2><button aria-label="Cerrar edición" (click)="closeModals()"><v-icon name="close"/></button></div><form (ngSubmit)="saveUser()" class="account-form"><label>Nombre de usuario<input name="editName" [(ngModel)]="editName" autocomplete="off" maxlength="64" required></label><label>Rol<select aria-label="Rol" name="editRole" [(ngModel)]="editRole"><option value="User">Usuario</option>@if(user()?.role==='SuperAdministrator'){<option value="Administrator">Administrador</option><option value="SuperAdministrator">Superadministrador</option>}</select></label>@if(editId){<label class="inline-check"><input name="editActive" type="checkbox" [(ngModel)]="editActive">Cuenta activa</label>}@else{<label>Contraseña inicial<input name="editPassword" [(ngModel)]="editPassword" type="password" autocomplete="new-password" minlength="3" maxlength="128" required></label><label>Repetir contraseña inicial<input name="editRepeat" [(ngModel)]="editRepeat" type="password" autocomplete="new-password" minlength="3" maxlength="128" required></label><p class="connection-help">Se pedirá cambiarla en el primer acceso.</p>}
-<fieldset><legend>Acceso a aplicaciones</legend>@if(editRole!=='User'){<p>Este rol tiene acceso a todas las aplicaciones publicadas.</p>}@else{@for(app of permissionCatalog();track app.id){<label class="inline-check"><input type="checkbox" [checked]="editUtilityIds.includes(app.id)" (change)="toggleUtility(app.id,$any($event.target).checked)">{{app.name}}</label>}@empty{<p>Todavía no hay aplicaciones publicadas. Podrás asignarlas aquí cuando las incorporemos.</p>}}</fieldset>@if(error()){<p class="error" role="alert">{{error()}}</p>}<div class="actions"><button type="submit" class="primary" [disabled]="busy()">Guardar cuenta</button><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button></div></form></section></div>}
-@if(user()?.canManageUsers&&resetOpen()){<div class="modal-overlay"><section role="dialog" aria-modal="true" aria-label="Restablecer contraseña" class="dialog"><div class="dialog-top"><h2>Contraseña de {{resetName}}</h2><button aria-label="Cerrar contraseña" (click)="closeModals()"><v-icon name="close"/></button></div><form (ngSubmit)="resetUserPassword()" class="account-form"><label>Nueva contraseña<input name="resetPassword" [(ngModel)]="resetPassword" type="password" autocomplete="new-password" minlength="3" maxlength="128" required></label><label>Repetir nueva contraseña<input name="resetRepeat" [(ngModel)]="resetRepeat" type="password" autocomplete="new-password" minlength="3" maxlength="128" required></label><p>Se cerrarán las sesiones de esa cuenta y se pedirá cambiar esta contraseña al volver a entrar.</p>@if(error()){<p class="error" role="alert">{{error()}}</p>}<button type="submit" class="primary" [disabled]="busy()">Restablecer contraseña</button></form></section></div>}
-
-@if(user()&&!user()?.mustChangePassword&&settingDialog()){
-<div class="modal-overlay" (click)="closeModals()"><section role="dialog" aria-modal="true" [attr.aria-label]="settingDialog()==='password'?'Cambiar mi contraseña':settingDialog()==='appearance'?'Apariencia':settingDialog()==='startup'?'Pantalla al iniciar':settingDialog()==='pharmacy'?'Datos de la farmacia':'Conexión a NixFarma'" class="dialog settings-dialog" (click)="$event.stopPropagation()">
-<div class="dialog-top"><h2>{{settingDialog()==='password'?'Cambiar mi contraseña':settingDialog()==='appearance'?'Apariencia':settingDialog()==='startup'?'Pantalla al iniciar':settingDialog()==='pharmacy'?'Datos de la farmacia':'Conexión a NixFarma'}}</h2><button aria-label="Cerrar ajuste" (click)="closeModals()" [disabled]="busy()"><v-icon name="close"/></button></div>
-@if(settingDialog()==='password'){<form (ngSubmit)="changePassword()" class="account-form"><label>Contraseña actual<input name="ownCurrent" [(ngModel)]="currentPassword" type="password" autocomplete="current-password" maxlength="128" required></label><label>Nueva contraseña<input name="ownNew" [(ngModel)]="newPassword" type="password" autocomplete="new-password" minlength="3" maxlength="128" required></label><label>Repetir nueva contraseña<input name="ownRepeat" [(ngModel)]="repeatPassword" type="password" autocomplete="new-password" minlength="3" maxlength="128" required></label><small>Entre 3 y 128 caracteres.</small><button class="primary" type="submit" [disabled]="busy()">Cambiar mi contraseña</button><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button></form>}
-@if(settingDialog()==='appearance'||settingDialog()==='startup'){<form (ngSubmit)="savePreference()" class="account-form">
-@if(settingDialog()==='appearance'){<label>Apariencia<select name="theme" aria-label="Apariencia" [ngModel]="draftTheme()" (ngModelChange)="draftTheme.set($event)"><option value="auto">Automático</option><option value="light">Claro</option><option value="dark">Oscuro</option></select></label><p>Automático sigue la apariencia de Windows.</p>}
-@else{<label class="inline-check"><input type="checkbox" name="start" [ngModel]="draftStart()" (ngModelChange)="draftStart.set($event)">Abrir Favoritos al iniciar</label>}
-<div class="actions"><button type="submit" class="primary" [disabled]="busy()">Guardar cambios</button><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button></div></form>}
-@if(settingDialog()==='pharmacy'&&user()?.canManageUsers){<viteka-pharmacy-settings (working)="busy.set($event)" (cancel)="closeModals()"/>}
-@if(settingDialog()==='connection'&&user()?.canConfigure){<section class="settings nixfarma-settings" aria-label="Conexión a NixFarma"><div class="card-head"><div class="tile"><v-icon name="leaf"/></div><div><h2>Conexión a NixFarma</h2><p>Solo lectura · Configura la conexión en el servidor de la farmacia.</p></div></div><dl class="connection-facts"><div><dt>DSN de sistema · 64 bits</dt><dd>{{nixState()?.dsn||'NIXFARMA'}}</dd></div><div><dt>Usuario de Oracle</dt><dd>{{nixState()?.user||'Sin configurar'}}</dd></div><div><dt>Estado de configuración</dt><dd>{{nixState()?.configured?'Guardada en el servidor':'Pendiente'}}</dd></div></dl>@if(bridge.native&&nixState()&&!nixState()?.dsnAvailable){<p class="connection-warning">No se encuentra este DSN de sistema de 64 bits en este equipo. Compruébalo en el servidor de NixFarma.</p>}<div class="actions"><button class="primary" (click)="connectionAction('configure')" [disabled]="!bridge.native||nixBusy()||schemaBusy()||updating()">Configurar conexión</button><button class="text-button" (click)="inspectSchema()" [disabled]="schemaBusy()||nixBusy()||updating()||!nixState()?.configured">{{schemaBusy()?'Comprobando…':'Comprobar tablas de tenencia'}}</button><button class="primary" (click)="connectionAction('test')" [disabled]="!bridge.native||!nixState()?.configured||nixBusy()||schemaBusy()||updating()">{{nixBusy()?'Espera…':'Probar conexión'}}</button>@if(nixState()?.saved){<button class="text-button" (click)="connectionAction('forget')" [disabled]="nixBusy()||schemaBusy()||updating()">Olvidar conexión</button>}</div>@if(schemaMessage()){<p class="connection-diagnostic" role="status">{{schemaMessage()}}</p>}@if(nixMessage()){<p class="connection-result" [class.verified]="nixResult()?.success" role="status">{{nixMessage()}}</p>}@if(nixResult()?.sqlState||nixResult()?.oracleCode){<p class="connection-diagnostic">Diagnóstico: {{nixResult()?.sqlState||''}} @if(nixResult()?.oracleCode){· ORA-{{oracleCodeLabel()}}}</p>}<p class="connection-help">Las credenciales se introducen en una ventana de Windows y se guardan protegidas en el servicio del servidor. La prueba abre y cierra una conexión de solo lectura; no mantiene una sesión abierta.</p></section>}
-@if(error()){<p class="error" role="alert">{{error()}}</p>}
-</section></div>}

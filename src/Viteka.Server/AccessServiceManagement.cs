@@ -77,7 +77,7 @@ internal static class AccessServiceManagement
         {
             var path = Path.Combine(privateDirectory, file); if (!File.Exists(path)) continue;
             var acl = new FileInfo(path).GetAccessControl();
-            if (acl.GetOwner(typeof(SecurityIdentifier)) is not {} owner || !Trusted.Contains(owner.Value)) throw new InvalidDataException("El propietario del registro protegido no es el esperado. Se ha conservado para revisión.");
+            if (acl.GetOwner(typeof(SecurityIdentifier)) is not { } owner || !Trusted.Contains(owner.Value)) throw new InvalidDataException("El propietario del registro protegido no es el esperado. Se ha conservado para revisión.");
             foreach (FileSystemAccessRule rule in acl.GetAccessRules(true, true, typeof(SecurityIdentifier)))
                 if (rule.AccessControlType == AccessControlType.Allow && !Trusted.Contains(rule.IdentityReference.Value) &&
                     (rule.FileSystemRights & (FileSystemRights.Write | FileSystemRights.ChangePermissions | FileSystemRights.TakeOwnership)) != 0)
