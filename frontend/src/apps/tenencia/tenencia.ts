@@ -54,14 +54,14 @@ export class TenenciaComponent implements OnInit {
   private previousFocus: HTMLElement | null = null;
   readonly groupSort = signal<GroupSort | null>(null);
   readonly groupDescending = signal(false);
-  readonly articleSort = signal<ArticleSort | null>(null);
-  readonly articleDescending = signal(false);
+  // Por defecto, los artículos se ordenan de más a menos existencias.
+  readonly articleSort = signal<ArticleSort | null>('stock');
+  readonly articleDescending = signal(true);
   private collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
   readonly hasStock = computed(() => this.result()?.code === 'ok' && !!this.result()?.checkedAt);
   readonly rows = computed(() => this.result()?.rows ?? []);
   readonly covered = computed(() => this.rows().filter((r) => r.status === 'covered').length);
   readonly shortfalls = computed(() => this.rows().filter((r) => r.status === 'shortfall').length);
-  readonly review = computed(() => this.rows().filter((r) => r.status === 'review').length);
   readonly filtered = computed(() => {
     const q = this.search().trim().toLocaleLowerCase('es');
     return this.rows()
@@ -117,18 +117,12 @@ export class TenenciaComponent implements OnInit {
       const x = a[key],
         y = b[key];
       if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
-      return (
+      const order =
         (typeof x === 'number' && typeof y === 'number' ? x - y : this.collator.compare(String(x), String(y))) *
-        (this.articleDescending() ? -1 : 1)
-      );
+        (this.articleDescending() ? -1 : 1);
+      // A igualdad de existencias, orden alfabético.
+      return order || this.collator.compare(a.description, b.description);
     });
-  }
-  reason(row: Row) {
-    if (row.status !== 'review') return '';
-    return (
-      (row.selectionNote ? row.selectionNote + ' ' : '') +
-      'La suma llega al mínimo, pero hay que comprobar cada dosis o tamaño por separado.'
-    );
   }
   async ngOnInit() {
     await this.state();
@@ -225,26 +219,10 @@ export class TenenciaComponent implements OnInit {
     return s ? new Date(s).toLocaleString('es-ES') : 'Sin consultar';
   }
   shortLabel(s: string) {
-    return s === 'not_checked'
-      ? 'Sin consultar'
-      : s === 'covered'
-        ? 'Cubierto'
-        : s === 'shortfall'
-          ? 'Faltas'
-          : s === 'review'
-            ? 'Revisar'
-            : '—';
+    return s === 'not_checked' ? 'Sin consultar' : s === 'covered' ? 'Correcto' : s === 'shortfall' ? 'Falta' : '—';
   }
   label(s: string) {
-    return s === 'not_checked'
-      ? 'Sin consultar'
-      : s === 'covered'
-        ? 'Cubierto'
-        : s === 'shortfall'
-          ? 'Faltan unidades'
-          : s === 'review'
-            ? 'Revisar dosis o tamaño'
-            : '—';
+    return s === 'not_checked' ? 'Sin consultar' : s === 'covered' ? 'Correcto' : s === 'shortfall' ? 'Falta' : '—';
   }
   detail(row: Row) {
     this.previousFocus = document.activeElement as HTMLElement;
