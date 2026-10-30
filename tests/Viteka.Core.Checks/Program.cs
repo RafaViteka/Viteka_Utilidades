@@ -387,6 +387,12 @@ try
         using(var connection=new TenenciaFixture{AmbiguousColumns=true}){try{TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Inspect(connection,tx));throw new Exception("Expected ambiguity");}catch(InvalidDataException){}}
         using(var connection=new TenenciaFixture{DuplicateStock=true}){var stocks=TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Read(connection,tx,TenenciaStockQuery.Inspect(connection,tx),["650001"]));Require(stocks["650001"].Issue=="ambiguous_stock");}
     });
+    Check("Stock diagnostics distinguish missing article missing row null ambiguous and zero",()=>{
+        foreach(var item in new[]{(new TenenciaFixture{MissingArticle=true},"not_found"),(new TenenciaFixture{MissingStock=true},"stock_not_found"),(new TenenciaFixture{NullStock=true},"stock_null"),(new TenenciaFixture{DuplicateStock=true},"ambiguous_stock")}){
+            using var c=item.Item1;var value=TenenciaStockQuery.ReadOnly(c,tx=>TenenciaStockQuery.Read(c,tx,TenenciaStockQuery.Inspect(c,tx),["650001"]))["650001"];Require(value.Stock is null&&value.Issue==item.Item2);
+        }
+        using var zero=new TenenciaFixture{ZeroStock=true};var known=TenenciaStockQuery.ReadOnly(zero,tx=>TenenciaStockQuery.Read(zero,tx,TenenciaStockQuery.Inspect(zero,tx),["650001"]))["650001"];Require(known.Stock==0&&known.Issue is null);
+    });
     Check("Stock queries reject SQL payloads and unknown utilities remain denied",()=>{
         using var connection=new TenenciaFixture();try{TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaStockQuery.Read(connection,tx,new("\"ARTICULO\"","\"DESCRIPCION\"","\"ARTICULO\"","\"ACTUAL\""),["650001 OR 1=1"]));throw new Exception("Expected invalid code");}catch(ArgumentException){}Require(!connection.Steps.Any(s=>s.Contains("OR 1=1")));
     });

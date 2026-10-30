@@ -43,7 +43,10 @@ public static class TenenciaStockQuery
                 if(!values.TryAdd(code,stock))issues[code]="ambiguous_stock";
             }
         }
-        return codes.Distinct().ToDictionary(c=>c,c=>new StockArticle(c,descriptions.GetValueOrDefault(c,"Artículo no identificado"),descriptions.ContainsKey(c)&&values.TryGetValue(c,out var stock)?stock:null,issues.GetValueOrDefault(c)));
+        return codes.Distinct().ToDictionary(c=>c,c=>{
+            var issue=issues.GetValueOrDefault(c)??(!descriptions.ContainsKey(c)?"not_found":!values.ContainsKey(c)?"stock_not_found":values[c] is null?"stock_null":null);
+            return new StockArticle(c,descriptions.GetValueOrDefault(c,"Artículo no identificado"),issue is null?values[c]:null,issue);
+        });
     }
     internal static string Quote(string identifier){if(!Regex.IsMatch(identifier,"^[A-Za-z][A-Za-z0-9_ ]{0,127}$"))throw new InvalidDataException();return "\""+identifier+"\"";}
     private static string Code(object value){var s=Convert.ToString(value,CultureInfo.InvariantCulture)?.Trim()??"";if(!TenenciaRules.ValidCode(s))throw new InvalidDataException("Código nacional no reconocido.");return s;}
