@@ -67,3 +67,9 @@ El lector distingue not_found (CN ausente de artículos), stock_not_found (sin f
 - Un CN que no está dado de alta en NixFarma, sin ficha de existencias o con el stock vacío cuenta como 0 unidades. El motivo se muestra como información junto al artículo, pero nunca deja el artículo ni el grupo pendiente.
 - Si un CN tiene varias fichas de existencias, se suman.
 - Todo grupo consultado queda como **Cubierto** (check verde) o **Faltas** (advertencia amarilla). Los tres grupos con condiciones de dosis o tamaño (fentanilo 25/50, diazepam microenemas y sondas Foley CH16/CH18) muestran **Revisar** con la misma advertencia cuando la suma llega al mínimo, porque la suma no demuestra cada dosis o tamaño por separado. Si no llegan al mínimo, aparecen con faltas.
+
+## Correcto o falta · 0.15.2
+
+- Los CN que no están dados de alta en NixFarma no aparecen en la lista de medicamentos del grupo.
+- Los medicamentos se ordenan por defecto de más a menos existencias (a igualdad, por nombre).
+- Solo hay dos estados: **Correcto** (check verde) y **Falta** (advertencia amarilla). En la tabla de grupos se muestra solo el icono; el nombre del estado aparece al pasar el ratón. Los grupos con condiciones de dosis o tamaño se evalúan por la suma y conservan su nota informativa.

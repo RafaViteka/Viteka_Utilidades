@@ -319,10 +319,10 @@ try
         var preview = TenenciaRules.Preview(named); Require(preview.Length == 2 && preview[0].Articles.Length == 2 && preview[1].Articles.Single().Code == "650003"); Require(preview[0].Articles[0].Description == "Medicamento A1" && preview.All(r => r.Status == "not_checked" && r.Stock is null && r.Missing is null));
         Require(preview.SelectMany(r => r.Articles).All(a => a.Stock is null && a.Issue == "not_checked"));
     });
-    Check("Reference medicine names survive articles not registered in NixFarma, which count as zero", () =>
+    Check("Articles not registered in NixFarma are hidden and the group falls short", () =>
     {
         var named = tenenciaList with { Groups = [new("a", "Grupo A", 3, ["650001"]) { Descriptions = new() { { "650001", "Medicamento de referencia" } } }] };
-        var row = TenenciaRules.Evaluate(named, new Dictionary<string, Viteka.Contracts.StockArticle>()).Single(); Require(row.Articles.Single().Description == "Medicamento de referencia" && row.Articles.Single().Stock == 0 && row.Status == "shortfall" && row.Stock == 0 && row.Missing == 3);
+        var row = TenenciaRules.Evaluate(named, new Dictionary<string, Viteka.Contracts.StockArticle>()).Single(); Require(row.Articles.Length == 0 && row.Status == "shortfall" && row.Stock == 0 && row.Missing == 3);
         try { TenenciaRules.Validate(named with { Groups = [new("a", "A", 1, ["650001"]) { Descriptions = new() { { "650099", "No pertenece al grupo" } } }] }); throw new Exception("Expected invalid association"); } catch (InvalidDataException) { }
     });
     Check("The supplied Malaga Excel preserves all83 groups minima duplicate ATCs and source rows", () =>
@@ -352,7 +352,7 @@ try
         var path = Path.GetFullPath(Path.Combine(AppContext.BaseDirectory, "../../../../../src/Viteka.Server/Catalogs/tenencia")); var list = TenenciaRules.Load(path, "29")!;
         Require(list.Groups.Where(g => g.RequiresReview).Select(g => g.SourceRow!.Value).Order().SequenceEqual(new[] { 53, 61, 83 }));
         var rectal = list.Groups.Single(g => g.SourceRow == 61); Require(rectal.Codes.Contains("718796") && rectal.SelectionNote!.Contains("ampollas"));
-        var stocks = list.Groups.SelectMany(g => g.Codes).Distinct().ToDictionary(c => c, c => new Viteka.Contracts.StockArticle(c, "Fixture", 99)); var result = TenenciaRules.Evaluate(list, stocks); Require(result.Single(r => r.SourceRow == 61).Status == "review" && result.Single(r => r.SourceRow == 84).Status == "covered");
+        var stocks = list.Groups.SelectMany(g => g.Codes).Distinct().ToDictionary(c => c, c => new Viteka.Contracts.StockArticle(c, "Fixture", 99)); var result = TenenciaRules.Evaluate(list, stocks); Require(result.Single(r => r.SourceRow == 61).Status == "covered" && result.Single(r => r.SourceRow == 84).Status == "covered");
     });
     var atcList = tenenciaList with { Groups = [new("a", "ATC A", 3, []) { AtcPrefix = "A01AB" }, new("b", "ATC B", 2, []) { AtcPrefix = "A02B" }, new("c", "Producto sanitario", 4, []) { ClassificationCode = "M02BC", RequiresReview = true }] };
     Check("ATC prefixes resolve exact code associations using parameters without mixing sanitary codes", () =>
@@ -366,7 +366,7 @@ try
     });
     Check("Route and dose constraints never pass from an ATC aggregate alone", () =>
     {
-        var constrained = atcList with { Groups = [atcList.Groups[0] with { RequiresReview = true, SelectionNote = "Solo inyectable" }] }; var mapping = new Dictionary<string, string[]> { { "a", ["650001"] } }; var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "Oral", 99) } }; var row = TenenciaRules.Evaluate(constrained, stocks, mapping, null).Single(); Require(row.Status == "review" && row.Stock == 99 && row.Articles.Single().Stock == 99 && row.SelectionNote == "Solo inyectable");
+        var constrained = atcList with { Groups = [atcList.Groups[0] with { RequiresReview = true, SelectionNote = "Solo inyectable" }] }; var mapping = new Dictionary<string, string[]> { { "a", ["650001"] } }; var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "Oral", 99) } }; var row = TenenciaRules.Evaluate(constrained, stocks, mapping, null).Single(); Require(row.Status == "covered" && row.Stock == 99 && row.Articles.Single().Stock == 99 && row.SelectionNote == "Solo inyectable");
         var short_ = TenenciaRules.Evaluate(constrained, new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "Oral", 1) } }, mapping, null).Single(); Require(short_.Status == "shortfall" && short_.Missing == 2);
     });
     Check("Tenencia groups aggregate only known codes and compute shortfalls", () =>
@@ -377,7 +377,7 @@ try
     Check("Articles missing from NixFarma count as zero so no stock stays pending", () =>
     {
         var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "A", 10) } };
-        var row = TenenciaRules.Evaluate(tenenciaList, stocks).Single(); Require(row.Stock == 10 && row.Missing == 0 && row.Status == "covered" && row.Articles.Single(a => a.Code == "650002").Stock == 0); stocks["650001"] = new("650001", "A", 1); Require(TenenciaRules.Evaluate(tenenciaList, stocks).Single() is { Status: "shortfall", Stock: 1, Missing: 2 });
+        var row = TenenciaRules.Evaluate(tenenciaList, stocks).Single(); Require(row.Stock == 10 && row.Missing == 0 && row.Status == "covered" && row.Articles.All(a => a.Code != "650002")); stocks["650002"] = new("650002", "B", 0, "stock_not_found"); Require(TenenciaRules.Evaluate(tenenciaList, stocks).Single().Articles.Single(a => a.Code == "650002").Stock == 0); stocks["650001"] = new("650001", "A", 1); Require(TenenciaRules.Evaluate(tenenciaList, stocks).Single() is { Status: "shortfall", Stock: 1, Missing: 2 });
     });
     Check("Provincial catalogs fail closed when absent mismatched duplicated or malformed", () =>
     {

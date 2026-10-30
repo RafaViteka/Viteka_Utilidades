@@ -45,9 +45,8 @@
         >
           <option value="all">Todos</option>
           <option value="not_checked">Sin consultar</option>
-          <option value="shortfall">Con faltas</option>
-          <option value="covered">Cubiertos</option>
-          <option value="review">Revisar dosis o tamaño</option>
+          <option value="shortfall">Falta</option>
+          <option value="covered">Correcto</option>
         </select></label
       >
     </div>
@@ -59,19 +58,14 @@
         @if (hasStock()) {
           <strong>{{ covered() }}</strong>
         }
-        cubiertos</span
+        correctos</span
       ><span class="summary-chip"
         ><i class="status-dot shortfall" aria-hidden="true"></i>
         @if (hasStock()) {
           <strong>{{ shortfalls() }}</strong>
         }
-        con faltas</span
+        con falta</span
       >
-      @if (hasStock() && review()) {
-        <span class="summary-chip"
-          ><i class="status-dot review"></i><strong>{{ review() }}</strong> a revisar</span
-        >
-      }
     </section>
   </div>
   <div class="tenencia-workspace">
@@ -124,10 +118,14 @@
                 </td>
                 <td class="numeric">{{ row.minimum }}</td>
                 <td>
-                  <span class="row-state" [attr.data-status]="row.status" [title]="label(row.status)"
+                  <span
+                    class="row-state"
+                    role="img"
+                    [attr.data-status]="row.status"
+                    [title]="label(row.status)"
+                    [attr.aria-label]="label(row.status)"
                     ><i [class]="'status-dot ' + row.status" aria-hidden="true"></i
-                    ><span>{{ shortLabel(row.status) }}</span></span
-                  >
+                  ></span>
                 </td>
               </tr>
             } @empty {
@@ -240,9 +238,7 @@
             </div>
           }
         </div>
-        @if (reason(row)) {
-          <p class="selection-note" role="status">{{ reason(row) }}</p>
-        } @else if (row.selectionNote) {
+        @if (row.selectionNote) {
           <p class="selection-note">{{ row.selectionNote }}</p>
         } @else {
           <p class="reference-help">
