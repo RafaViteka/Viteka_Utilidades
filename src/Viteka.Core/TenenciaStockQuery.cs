@@ -42,13 +42,16 @@ public static class TenenciaStockQuery
                 ct.ThrowIfCancellationRequested();
                 if (++count > 100000) throw new InvalidDataException("Demasiadas filas: revisa el alcance de la consulta."); var code = Code(reader.GetValue(0)); if (!batch.Contains(code)) throw new InvalidDataException();
                 decimal? stock = reader.IsDBNull(1) ? null : Convert.ToDecimal(reader.GetValue(1), CultureInfo.InvariantCulture);
-                if (!values.TryAdd(code, stock)) issues[code] = "ambiguous_stock";
+                // Varias filas del mismo CN (p. ej. por almacén): se suman; un stock vacío cuenta como 0.
+                if (!values.TryAdd(code, stock)) { values[code] = (values[code] ?? 0) + (stock ?? 0); issues[code] = "summed_stock"; }
             }
         }
         return codes.Distinct().ToDictionary(c => c, c =>
         {
-            var issue = issues.GetValueOrDefault(c) ?? (!descriptions.ContainsKey(c) ? "not_found" : !values.ContainsKey(c) ? "stock_not_found" : values[c] is null ? "stock_null" : null);
-            return new StockArticle(c, descriptions.GetValueOrDefault(c, "Artículo no identificado"), issue is null ? values[c] : null, issue);
+            // Nunca quedan existencias pendientes: un CN que no está dado de alta, sin fila de existencias o con stock
+            // vacío tiene 0 unidades en la farmacia. El motivo se conserva como información.
+            var issue = !descriptions.ContainsKey(c) ? "not_found" : !values.ContainsKey(c) ? "stock_not_found" : values[c] is null ? "stock_null" : issues.GetValueOrDefault(c);
+            return new StockArticle(c, descriptions.GetValueOrDefault(c, "Artículo no identificado"), issue == "not_found" ? 0 : values.GetValueOrDefault(c) ?? 0, issue);
         });
     }
     internal static string Quote(string identifier) { if (!Regex.IsMatch(identifier, "^[A-Za-z][A-Za-z0-9_ ]{0,127}$")) throw new InvalidDataException(); return "\"" + identifier + "\""; }
