@@ -46,6 +46,23 @@ internal static class AccessHost
         var oracle = new OracleService(privateRoot);
         var pharmacy = new PharmacyDirectory(privateRoot, Protect, Unprotect);
         var sessions = new ConcurrentDictionary<string, Session>();
+        // Las sesiones sobreviven a un reinicio del servicio (p. ej. al actualizar): solo se guarda el hash del token.
+        var sessionStore = new AccessSessionStore(privateRoot, Protect, Unprotect);
+        foreach (var saved in sessionStore.Load())
+            sessions[saved.TokenHash] = new(AccessSessionAgent.Restore(authority, new(saved.UserId, saved.PasswordVersion), saved.Expires), saved.Expires);
+        void PersistSessions()
+        {
+            try
+            {
+                sessionStore.Save(sessions
+                    .Where(item => item.Value.Agent.Ticket is not null && item.Value.Expires > DateTimeOffset.UtcNow)
+                    .Select(item => new PersistedAccessSession(item.Key, item.Value.Agent.Ticket!.UserId, item.Value.Agent.Ticket.PasswordVersion, item.Value.Expires)));
+            }
+            catch (Exception error) when (error is IOException or UnauthorizedAccessException or CryptographicException)
+            {
+                // Sin persistencia, las sesiones siguen funcionando en memoria hasta el próximo reinicio.
+            }
+        }
         var builder = WebApplication.CreateBuilder(new WebApplicationOptions { ContentRootPath = AppContext.BaseDirectory, Args = [] });
         if (service) builder.Services.AddWindowsService(options => options.ServiceName = ServiceName);
         var protocols = SslProtocols.Tls12 | (OperatingSystem.IsWindowsVersionAtLeast(10, 0, 20348) ? SslProtocols.Tls13 : SslProtocols.None);
@@ -96,7 +113,8 @@ internal static class AccessHost
             var agent = new AccessSessionAgent(authority);
             var state = await agent.HandleAsync("auth.login", request);
             var token = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
-            sessions[Hash(token)] = new(agent, DateTimeOffset.UtcNow.AddHours(8));
+            sessions[Hash(token)] = new(agent, agent.Expires);
+            PersistSessions();
             return Results.Ok(new { token, state });
         }).RequireRateLimiting("access-login");
         app.MapGet("/access/me", (HttpContext context) => Results.Ok(Agent(context).State()));
@@ -108,6 +126,7 @@ internal static class AccessHost
             if (command is not ("auth.password" or "auth.logout" or "users.list" or "users.create" or "users.modify" or "users.password")) throw new AccessDeniedException();
             var result = await agent.HandleAsync(command, request);
             if (command == "auth.logout") sessions.TryRemove(Hash(context.Request.Headers.Authorization.ToString()[7..]), out _);
+            if (command is "auth.password" or "auth.logout" or "users.modify") PersistSessions();
             return Results.Ok(result);
         });
         app.MapPost("/access/oracle/{action}", async (string action, HttpContext context, JsonElement request) =>

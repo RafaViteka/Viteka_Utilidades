@@ -9,19 +9,22 @@ namespace Viteka.Desktop;
 
 internal sealed class DesktopUpdates : IDisposable
 {
-    private readonly Window owner;
     private readonly UpdateJournal journal;
     private readonly Func<Task<AccessUserView>> currentUser;
     private readonly Action<object> post;
     private readonly Func<bool> isLocalServer;
+    private readonly Action saveSession;
+    private readonly Action discardSession;
     private readonly HttpClient readHttp = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(20) };
     private readonly HttpClient downloadHttp = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMinutes(10) };
     private readonly string directory;
     private readonly Version version = typeof(MainWindow).Assembly.GetName().Version!;
     internal bool IsBusy { get; private set; }
-    internal DesktopUpdates(Window owner, string directory, Func<Task<AccessUserView>> currentUser, Action<object> post, Func<bool> isLocalServer)
+    internal DesktopUpdates(string directory, Func<Task<AccessUserView>> currentUser, Action<object> post, Func<bool> isLocalServer,
+        Action saveSession, Action discardSession)
     {
-        this.owner = owner; this.directory = directory; this.currentUser = currentUser; this.post = post; this.isLocalServer = isLocalServer;
+        this.directory = directory; this.currentUser = currentUser; this.post = post; this.isLocalServer = isLocalServer;
+        this.saveSession = saveSession; this.discardSession = discardSession;
         journal = new UpdateJournal(directory);
         journal.RecordRunningVersion(version);
     }
@@ -86,13 +89,22 @@ internal sealed class DesktopUpdates : IDisposable
                 {
                     // Fetch a fresh, verified offer; do not trust a persisted filename/digest.
                     var update = await new PreviewUpdater(readHttp).FindAsync(version, ct) ?? throw new InvalidOperationException("No hay una versión posterior verificable.");
-                    if (MessageBox.Show(owner, "Se descargará y verificará el instalador desde GitHub. Es una versión de prueba sin firma digital. Viteka se cerrará al iniciar la instalación y Windows podrá pedir permisos. Tus datos se conservarán. Cierra Viteka en los puestos que usen la carpeta compartida; el servicio se reiniciará y deberán volver a entrar. ¿Continuar?", "Actualizar Viteka Utilidades", MessageBoxButton.YesNo, MessageBoxImage.Question) != MessageBoxResult.Yes)
-                        return new { cancelled = true };
                     var progress = new Progress<int>(percent => post(new { type = "update-progress", percent }));
                     using var installer = await new PreviewUpdater(downloadHttp).DownloadAsync(update, Path.Combine(directory, "Updates"), progress, ct);
                     if (!AccessPolicy.CanInstallUpdates(await currentUser())) throw new AccessDeniedException();
-                    var process = Process.Start(new ProcessStartInfo(installer.Path) { UseShellExecute = true, Verb = "runas" }) ?? throw new InvalidOperationException();
+                    // Instalación desatendida: sin asistente ni preguntas. Windows solo pide su confirmación de permisos (UAC).
+                    // El instalador vuelve a abrir Viteka al terminar (/RELAUNCH=1) y la sesión se recupera sin pedir contraseña.
+                    saveSession();
+                    var log = Path.Combine(Path.GetDirectoryName(installer.Path)!, "instalacion.log");
+                    Process process;
+                    try
+                    {
+                        process = Process.Start(new ProcessStartInfo(installer.Path, SilentArguments(log)) { UseShellExecute = true, Verb = "runas" })
+                            ?? throw new InvalidOperationException();
+                    }
+                    catch { discardSession(); throw; }
                     process.Dispose();
+                    post(new { type = "update-installing" });
                     try { journal.RecordInstallerStarted(update.Version); } catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
                     Application.Current.Shutdown(); return new { started = true };
                 }
@@ -100,5 +112,8 @@ internal sealed class DesktopUpdates : IDisposable
             default: throw new InvalidOperationException();
         }
     }
+    /// <summary>Parámetros de Inno Setup para una actualización silenciosa que reabre la aplicación al terminar.</summary>
+    internal static string SilentArguments(string log) =>
+        $"/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP- /CLOSEAPPLICATIONS /RELAUNCH=1 \"/LOG={log}\"";
     public void Dispose() { readHttp.Dispose(); downloadHttp.Dispose(); }
 }

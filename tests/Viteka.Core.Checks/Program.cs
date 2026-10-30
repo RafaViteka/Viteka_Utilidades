@@ -571,6 +571,32 @@ try
         var entries = new PreviewUpdater(client).GetHistoryAsync().GetAwaiter().GetResult();
         Require(entries.Length == 1 && entries[0].Notes == "<script>untrusted</script>" && entries[0].ReleasePage.StartsWith("https://github.com/RafaViteka/", StringComparison.Ordinal));
     });
+    Check("Service sessions survive a restart, stay protected and are revalidated against the account", () =>
+    {
+        byte[] Flip(byte[] b) => b.Select(x => (byte)(x ^ 0x5A)).ToArray();
+        var sessionPath = Path.Combine(root, "sessions");
+        var hash = new string('a', 64);
+        var sessionsStore = new AccessSessionStore(sessionPath, Flip, Flip);
+        var live = new PersistedAccessSession(hash, Guid.NewGuid().ToString("N"), "v1", DateTimeOffset.UtcNow.AddHours(1));
+        var expired = live with { TokenHash = new string('b', 64), Expires = DateTimeOffset.UtcNow.AddMinutes(-1) };
+        sessionsStore.Save([live, expired]);
+        var raw = File.ReadAllBytes(Path.Combine(sessionPath, "sessions.dat"));
+        Require(!System.Text.Encoding.UTF8.GetString(raw).Contains(hash));
+        var loaded = new AccessSessionStore(sessionPath, Flip, Flip).Load();
+        Require(loaded.Count == 1 && loaded[0] == live);
+        File.WriteAllBytes(Path.Combine(sessionPath, "sessions.dat"), [1, 2, 3]);
+        Require(new AccessSessionStore(sessionPath, Flip, Flip).Load().Count == 0);
+        var restorePath = Path.Combine(root, "restore-authority");
+        var restoreAuthority = new AccessDirectory(restorePath, accessCatalog, b => b.ToArray(), b => b.ToArray());
+        restoreAuthority.InitializeDefaults();
+        var login = restoreAuthority.Login("usuario", "0000");
+        var restored = AccessSessionAgent.Restore(restoreAuthority, login.Ticket, DateTimeOffset.UtcNow.AddHours(1));
+        Require(restored.RequireUser(true).Id == login.User.Id && restored.Ticket == login.Ticket);
+        restoreAuthority.ChangeOwnPassword(login.Ticket, "0000", "abcd");
+        try { restored.RequireUser(true); throw new Exception("Expected the restored session to end after a password change"); } catch (AccessSessionException) { }
+        var stale = AccessSessionAgent.Restore(restoreAuthority, restoreAuthority.Login("usuario", "abcd").Ticket, DateTimeOffset.UtcNow.AddMinutes(-1));
+        try { stale.RequireUser(true); throw new Exception("Expected an expired restored session to be rejected"); } catch (AccessSessionException) { }
+    });
     Console.WriteLine($"{passed} checks passed.");
 }
 finally { if (Directory.Exists(root)) Directory.Delete(root, recursive: true); }

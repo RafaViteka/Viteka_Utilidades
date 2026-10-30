@@ -10,6 +10,19 @@ public sealed class AccessSessionAgent(AccessDirectory authority)
     private DateTimeOffset expires;
     private int operation;
     private readonly Queue<DateTimeOffset> loginAttempts = new();
+
+    /// <summary>Ticket vigente, para persistir la sesión cuando el servicio se reinicia.</summary>
+    public AccessTicket? Ticket => ticket;
+
+    /// <summary>Caducidad de la sesión.</summary>
+    public DateTimeOffset Expires => expires;
+
+    /// <summary>
+    /// Restaura una sesión guardada. La identidad se vuelve a validar en cada petición mediante
+    /// <see cref="AccessDirectory.Current"/>; si la contraseña o el estado de la cuenta cambiaron, la sesión deja de valer.
+    /// </summary>
+    public static AccessSessionAgent Restore(AccessDirectory authority, AccessTicket ticket, DateTimeOffset expires) =>
+        new(authority) { ticket = ticket, expires = expires };
     public AccessUserView RequireUser(bool allowFirstPassword = false)
     {
         if (DateTimeOffset.UtcNow >= expires) ticket = null;

@@ -288,19 +288,25 @@
               </div>
               <p class="update-status" role="status">
                 {{
-                  updating() && bridge.progress() !== null
-                    ? 'Descargando… ' + bridge.progress() + '%'
-                    : updateMessage() || update()?.message
+                  bridge.installing()
+                    ? 'Instalando… Viteka se cerrará y volverá a abrirse con tu sesión iniciada.'
+                    : updating() && bridge.progress() !== null
+                      ? 'Descargando… ' + bridge.progress() + '%'
+                      : updateMessage() || update()?.message
                 }}
               </p>
               @if (update()?.available) {
                 <div class="available-update">
                   <h3>Versión {{ update()?.version }} disponible</h3>
                   @if (user()?.canInstallUpdates && update()?.canInstallHere) {
-                    <p>Tú eliges cuándo descargar e instalar la nueva versión.</p>
+                    <p>
+                      La actualización se instala sola, sin asistente. Windows pedirá una única confirmación de permisos
+                      y Viteka volverá a abrirse con tu sesión iniciada. Los puestos conectados conservan su sesión. Es
+                      un paquete de prueba sin firma digital del editor.
+                    </p>
                     <div class="actions">
                       <button class="primary" (click)="install()" [disabled]="updating() || nixBusy()">
-                        {{ updating() ? 'Preparando…' : 'Descargar e instalar' }}</button
+                        {{ updating() ? 'Actualizando…' : 'Actualizar ahora' }}</button
                       ><button class="text-button" (click)="publication()" [disabled]="updating()">
                         Ver publicación
                       </button>

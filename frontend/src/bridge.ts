@@ -80,6 +80,8 @@ export class DesktopBridge {
   readonly native = !!window.chrome?.webview;
   readonly zoom = signal(100);
   readonly progress = signal<number | null>(null);
+  /** El instalador silencioso se ha lanzado; Viteka se cerrará y volverá a abrirse con la sesión iniciada. */
+  readonly installing = signal(false);
   readonly user = signal<UserView | null>(null);
   readonly updateNotice = signal<UpdateState | null>(null);
   private pending = new Map<
@@ -99,6 +101,10 @@ export class DesktopBridge {
       }
       if (d.type === 'zoom-changed' && typeof d.percent === 'number') {
         this.zoom.set(d.percent);
+        return;
+      }
+      if (d.type === 'update-installing') {
+        this.installing.set(true);
         return;
       }
       if (d.type === 'update-progress' && typeof d.percent === 'number') {

@@ -3,6 +3,7 @@ using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
+using System.Security.Cryptography;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using Viteka.Core;
@@ -48,6 +49,84 @@ internal sealed class AccessServiceClient : IDisposable
         finally { if (command == "auth.logout") token = null; }
     }
     internal bool IsLocalServer => trust.Server.IsLoopback;
+
+    private sealed record ResumeTicket(string Token, string Server, DateTimeOffset Expires);
+    private static readonly TimeSpan ResumeLifetime = TimeSpan.FromMinutes(15);
+    private static string ResumePath(string directory) => Path.Combine(directory, "resume-session.dat");
+
+    /// <summary>
+    /// Guarda la sesión actual para reabrirla tras una actualización. Se cifra con DPAPI (usuario actual),
+    /// caduca a los 15 minutos y se elimina en cuanto se lee, así que solo sirve una vez.
+    /// </summary>
+    internal void SaveResume(string directory)
+    {
+        if (token is null) return;
+        var clear = JsonSerializer.SerializeToUtf8Bytes(new ResumeTicket(token, trust.Server.AbsoluteUri, DateTimeOffset.UtcNow.Add(ResumeLifetime)));
+        try
+        {
+            Directory.CreateDirectory(directory);
+            var temporary = Path.Combine(directory, $".resume-{Guid.NewGuid():N}.tmp");
+            try
+            {
+                File.WriteAllBytes(temporary, ProtectedData.Protect(clear, null, DataProtectionScope.CurrentUser));
+                File.Move(temporary, ResumePath(directory), true);
+            }
+            finally { if (File.Exists(temporary)) File.Delete(temporary); }
+        }
+        finally { CryptographicOperations.ZeroMemory(clear); }
+    }
+
+    internal static void DiscardResume(string directory)
+    {
+        try { File.Delete(ResumePath(directory)); }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { }
+    }
+
+    internal static bool HasResume(string directory) => File.Exists(ResumePath(directory));
+
+    /// <summary>
+    /// Recupera la sesión guardada antes de la actualización. Espera a que el servicio de la farmacia vuelva a estar
+    /// disponible (puede estar reiniciándose) durante un máximo de 90 segundos.
+    /// </summary>
+    internal async Task<bool> TryResumeAsync(string directory, CancellationToken ct)
+    {
+        var path = ResumePath(directory);
+        if (!File.Exists(path)) return false;
+        ResumeTicket? saved;
+        byte[]? clear = null;
+        try
+        {
+            var encrypted = File.ReadAllBytes(path);
+            File.Delete(path);
+            clear = ProtectedData.Unprotect(encrypted, null, DataProtectionScope.CurrentUser);
+            saved = JsonSerializer.Deserialize<ResumeTicket>(clear);
+        }
+        catch (Exception error) when (error is IOException or UnauthorizedAccessException or CryptographicException or JsonException)
+        {
+            DiscardResume(directory);
+            return false;
+        }
+        finally { if (clear is not null) CryptographicOperations.ZeroMemory(clear); }
+        if (saved is null || saved.Expires <= DateTimeOffset.UtcNow || saved.Expires > DateTimeOffset.UtcNow.Add(ResumeLifetime)
+            || saved.Server != trust.Server.AbsoluteUri || saved.Token.Length is < 16 or > 128) return false;
+        token = saved.Token;
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(90);
+        while (true)
+        {
+            try
+            {
+                await RequireUserAsync(allowFirstPassword: true);
+                return true;
+            }
+            catch (Exception error) when (error is AccessSessionException or AccessDeniedException or InvalidDataException or JsonException)
+            { token = null; return false; }
+            catch (Exception error) when (error is HttpRequestException or TaskCanceledException && !ct.IsCancellationRequested)
+            {
+                if (DateTimeOffset.UtcNow >= deadline) { token = null; return false; }
+                await Task.Delay(TimeSpan.FromSeconds(2), ct);
+            }
+        }
+    }
     internal Task<JsonElement> OracleAsync(string action, object? payload = null)
     {
         if (action is not ("state" or "configure" or "forget" or "test")) throw new ArgumentException();

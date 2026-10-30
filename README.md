@@ -16,7 +16,7 @@ Actualizaciones tiene una pantalla propia dentro de Configuración: búsqueda ca
 - Isotipo bicolor transparente original en ventana, ejecutable e instalador.
 - Aplicaciones incluye Tenencia obligatoria:83 grupos de Málaga del Excel, 2.089 asociaciones explícitas por CN de los vídeos y lectura de stock de NixFarma. Favoritos y Auditoría conservan estados vacíos.
 - Preferencias locales por usuario, conservadas entre versiones.
-- Canal de pruebas GitHub: búsqueda, descarga verificada y apertura del instalador con confirmación/UAC.
+- Canal de pruebas GitHub: búsqueda, descarga verificada e instalación desatendida (sin asistente; solo la confirmación UAC de Windows). Viteka se reinicia sola y recupera la sesión sin pedir la contraseña.
 - Instalador x64 autocontenido para .NET, con bootstrapper de WebView2 verificado como Microsoft. Si falta el runtime, su instalación inicial puede requerir internet.
 
 La configuración Oracle y la prueba fija de solo lectura se ejecutan ahora en el servicio del servidor, bajo LocalService y con DSN de sistema de 64 bits. Las credenciales previas se migran desde el perfil original al entrar Viteka en el propio servidor. Tenencia obligatoria incorpora consultas de clasificación y existencias de solo lectura; las restricciones de vía/dosis/tamaño se revisan por separado. Ver [conexión a NixFarma](docs/conexion-nixfarma.md).

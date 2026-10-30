@@ -41,7 +41,20 @@ public partial class MainWindow : Window
         {
             access ??= new AccessServiceClient();
             nixfarma ??= new NixFarmaConnectionController(this, store.DirectoryPath, Access);
-            updates ??= new DesktopUpdates(this, store.DirectoryPath, () => Access.RequireUserAsync(), Post, () => Access.IsLocalServer);
+            updates ??= new DesktopUpdates(store.DirectoryPath, () => Access.RequireUserAsync(), Post, () => Access.IsLocalServer,
+                () => Access.SaveResume(store.DirectoryPath), () => AccessServiceClient.DiscardResume(store.DirectoryPath));
+            if (!App.SmokeTest && AccessServiceClient.HasResume(store.DirectoryPath))
+            {
+                // Reapertura tras una actualización: se recupera la sesión sin volver a pedir la contraseña.
+                LoadingMessage.Text = "Reiniciando tras la actualización. Recuperando tu sesión…";
+                try
+                {
+                    if (!await Access.TryResumeAsync(store.DirectoryPath, lifetime.Token))
+                        LoadingMessage.Text = "Preparando tu espacio de trabajo…";
+                }
+                catch (OperationCanceledException) { return; }
+                if (closing) return;
+            }
             var files = Path.Combine(AppContext.BaseDirectory, "Web");
             if (!File.Exists(Path.Combine(files, "index.html"))) throw new FileNotFoundException();
             var environment = await CoreWebView2Environment.CreateAsync(null, Path.Combine(store.DirectoryPath, "WebView2"));
