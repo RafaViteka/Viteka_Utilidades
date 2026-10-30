@@ -61,7 +61,7 @@ export class TenenciaComponent implements OnInit {
   readonly rows = computed(() => this.result()?.rows ?? []);
   readonly covered = computed(() => this.rows().filter((r) => r.status === 'covered').length);
   readonly shortfalls = computed(() => this.rows().filter((r) => r.status === 'shortfall').length);
-  readonly unresolved = computed(() => this.rows().filter((r) => r.status === 'unresolved').length);
+  readonly review = computed(() => this.rows().filter((r) => r.status === 'review').length);
   readonly filtered = computed(() => {
     const q = this.search().trim().toLocaleLowerCase('es');
     return this.rows()
@@ -124,16 +124,10 @@ export class TenenciaComponent implements OnInit {
     });
   }
   reason(row: Row) {
-    if (row.status !== 'unresolved') return '';
-    if (row.requiresReview) return row.selectionNote || 'Este grupo requiere revisar sus condiciones de presentación.';
-    if (!row.articles.length) return 'No hay referencias asociadas para evaluar el grupo.';
-    const count = row.articles.filter((a) => a.stock === null || (a.issue && a.issue !== 'not_checked')).length;
+    if (row.status !== 'review') return '';
     return (
-      'No se puede calcular el total: ' +
-      count +
-      ' de ' +
-      row.articles.length +
-      ' artículos tienen existencias sin confirmar. Pendiente no significa cero.'
+      (row.selectionNote ? row.selectionNote + ' ' : '') +
+      'La suma llega al mínimo, pero hay que comprobar cada dosis o tamaño por separado.'
     );
   }
   async ngOnInit() {
@@ -225,7 +219,7 @@ export class TenenciaComponent implements OnInit {
     }
   }
   number(n: number | null) {
-    return n === null ? 'Pendiente' : new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3 }).format(n);
+    return n === null ? '—' : new Intl.NumberFormat('es-ES', { maximumFractionDigits: 3 }).format(n);
   }
   date(s?: string) {
     return s ? new Date(s).toLocaleString('es-ES') : 'Sin consultar';
@@ -237,7 +231,9 @@ export class TenenciaComponent implements OnInit {
         ? 'Cubierto'
         : s === 'shortfall'
           ? 'Faltas'
-          : 'Revisar';
+          : s === 'review'
+            ? 'Revisar'
+            : '—';
   }
   label(s: string) {
     return s === 'not_checked'
@@ -246,7 +242,9 @@ export class TenenciaComponent implements OnInit {
         ? 'Cubierto'
         : s === 'shortfall'
           ? 'Faltan unidades'
-          : 'Pendiente de revisar';
+          : s === 'review'
+            ? 'Revisar dosis o tamaño'
+            : '—';
   }
   detail(row: Row) {
     this.previousFocus = document.activeElement as HTMLElement;
@@ -258,21 +256,22 @@ export class TenenciaComponent implements OnInit {
     if (this.previousFocus?.isConnected) this.previousFocus.focus();
   }
   issue(a: Article) {
-    return a.issue === 'not_checked'
-      ? 'Existencias sin consultar.'
-      : a.issue === 'ambiguous_stock'
-        ? 'Varias filas de existencias: hay que concretar el almacén.'
-        : a.issue === 'duplicate_article'
-          ? 'Código de artículo duplicado: hay que concretar empresa o clase.'
-          : a.issue === 'not_found'
-            ? 'CN no encontrado en la tabla de artículos.'
-            : a.issue === 'stock_not_found'
-              ? 'No hay una fila de existencias para este CN.'
-              : a.issue === 'stock_null'
-                ? 'La fila de existencias no contiene un stock informado.'
-                : a.stock === null
-                  ? 'Sin un dato de existencias inequívoco.'
-                  : '';
+    switch (a.issue) {
+      case 'not_checked':
+        return 'Existencias sin consultar.';
+      case 'not_found':
+        return 'No dado de alta en NixFarma: cuenta como 0.';
+      case 'stock_not_found':
+        return 'Sin ficha de existencias en NixFarma: cuenta como 0.';
+      case 'stock_null':
+        return 'Existencias vacías en NixFarma: cuenta como 0.';
+      case 'summed_stock':
+        return 'Varias fichas de existencias: se muestra la suma.';
+      case 'duplicate_article':
+        return 'CN repetido en artículos: se usa la primera descripción.';
+      default:
+        return '';
+    }
   }
   @HostListener('document:keydown.escape') escape() {
     this.close();

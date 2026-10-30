@@ -40,8 +40,12 @@ public static class TenenciaRules
         {
             var codes = resolved?.GetValueOrDefault(g.Id) ?? g.Codes;
             var articles = codes.Select(c => stocks.TryGetValue(c, out var a) ? a with { Description = a.Description == "Artículo no identificado" ? g.Descriptions?.GetValueOrDefault(c) ?? a.Description : a.Description } : new StockArticle(c, g.Descriptions?.GetValueOrDefault(c) ?? "Artículo no identificado", null, "not_found")).ToArray();
-            decimal? total = articles.Length > 0 && !g.RequiresReview && articles.All(a => a.Stock is not null && a.Issue is null) ? articles.Sum(a => a.Stock!.Value) : null;
-            var row = Decorate(g, new TenenciaRow(g.Id, g.Name, g.Minimum, total, total is { } value ? Math.Max(0, g.Minimum - value) : null, total is null ? "unresolved" : total >= g.Minimum ? "covered" : "shortfall", articles));
+            // Todo artículo consultado tiene existencias: si no está en NixFarma, cuenta como 0.
+            articles = articles.Select(a => a.Stock is null ? a with { Stock = 0 } : a).ToArray();
+            decimal total = articles.Sum(a => a.Stock!.Value);
+            // Con condiciones de dosis o tamaño, la suma solo puede demostrar faltas; si llega al mínimo hay que revisarlo.
+            var status = total < g.Minimum ? "shortfall" : g.RequiresReview ? "review" : "covered";
+            var row = Decorate(g, new TenenciaRow(g.Id, g.Name, g.Minimum, total, Math.Max(0, g.Minimum - total), status, articles));
             if (notes?.TryGetValue(g.Id, out var note) == true) row = row with { SelectionNote = string.Join(" ", new[] { row.SelectionNote, note }.Where(x => !string.IsNullOrWhiteSpace(x))) };
             return row;
         }).ToArray();

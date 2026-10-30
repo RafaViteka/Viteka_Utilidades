@@ -43,9 +43,31 @@ Type: files; Name: "{app}\Servidor\Catalogs\tenencia\*.json"
 Type: files; Name: "{group}\Iniciar servidor de demostración.lnk"
 
 [Run]
-Filename: "{app}\Cliente\Viteka.Desktop.exe"; Description: "Abrir Viteka Utilidades"; Flags: nowait postinstall skipifsilent runasoriginaluser
+Filename: "{app}\Cliente\Viteka.Desktop.exe"; Description: "Abrir Viteka Utilidades"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: not IsUpgrade
 
 [Code]
+var
+  Upgrade: Boolean;
+
+// Actualización sobre una instalación existente: no se muestra ningún paso del asistente (bienvenida, LEEME,
+// carpeta, grupo, listo ni finalizado). Solo queda la ventana de progreso y, al terminar, se reabre Viteka.
+// Así funciona igual aunque el instalador lo abra una versión anterior de la app sin parámetros silenciosos.
+function InitializeSetup(): Boolean;
+begin
+  Upgrade := RegKeyExists(HKLM, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{AAC03BF6-8845-4E96-AFC1-73AF54176983}_is1');
+  Result := True;
+end;
+
+function IsUpgrade(): Boolean;
+begin
+  Result := Upgrade;
+end;
+
+function ShouldSkipPage(PageID: Integer): Boolean;
+begin
+  Result := Upgrade;
+end;
+
 procedure StopAccessService();
 var Code: Integer;
 begin
@@ -85,7 +107,7 @@ var Code: Integer;
 begin
   if RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\VitekaUtilidadesAccess') and FileExists(ExpandConstant('{app}\Servidor\Viteka.Server.exe')) then
     Exec(ExpandConstant('{app}\Servidor\Viteka.Server.exe'), '--access-manage start', '', SW_HIDE, ewWaitUntilTerminated, Code);
-  if RelaunchRequested() then
+  if RelaunchRequested() or (Upgrade and not WizardSilent()) then
     RelaunchApplication();
 end;
 

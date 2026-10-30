@@ -47,7 +47,7 @@
           <option value="not_checked">Sin consultar</option>
           <option value="shortfall">Con faltas</option>
           <option value="covered">Cubiertos</option>
-          <option value="unresolved">Pendientes de revisar</option>
+          <option value="review">Revisar dosis o tamaño</option>
         </select></label
       >
     </div>
@@ -55,24 +55,23 @@
       <span
         ><strong>{{ rows().length }}</strong> grupos</span
       ><span class="summary-chip"
-        ><i class="status-dot covered"></i>
+        ><i class="status-dot covered" aria-hidden="true"></i>
         @if (hasStock()) {
           <strong>{{ covered() }}</strong>
         }
         cubiertos</span
       ><span class="summary-chip"
-        ><i class="status-dot shortfall"></i>
+        ><i class="status-dot shortfall" aria-hidden="true"></i>
         @if (hasStock()) {
           <strong>{{ shortfalls() }}</strong>
         }
         con faltas</span
-      ><span class="summary-chip"
-        ><i class="status-dot unresolved"></i>
-        @if (hasStock()) {
-          <strong>{{ unresolved() }}</strong>
-        }
-        pendientes</span
       >
+      @if (hasStock() && review()) {
+        <span class="summary-chip"
+          ><i class="status-dot review"></i><strong>{{ review() }}</strong> a revisar</span
+        >
+      }
     </section>
   </div>
   <div class="tenencia-workspace">
@@ -126,7 +125,8 @@
                 <td class="numeric">{{ row.minimum }}</td>
                 <td>
                   <span class="row-state" [attr.data-status]="row.status" [title]="label(row.status)"
-                    ><i [class]="'status-dot ' + row.status"></i><span>{{ shortLabel(row.status) }}</span></span
+                    ><i [class]="'status-dot ' + row.status" aria-hidden="true"></i
+                    ><span>{{ shortLabel(row.status) }}</span></span
                   >
                 </td>
               </tr>
