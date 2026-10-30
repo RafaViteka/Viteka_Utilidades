@@ -105,12 +105,27 @@
             (click)="navigate(item)"
           >
             <v-icon [name]="item.icon" /><span>{{ item.name }}</span>
-            @if (item.utility && tenenciaSummary()?.shortfall) {
-              <i class="nav-count" [attr.aria-label]="tenenciaSummary()?.shortfall + ' faltas'">{{
-                tenenciaSummary()?.shortfall
-              }}</i>
-            }
           </button>
+        }
+        @if (shortcuts().length) {
+          <div class="nav-section" aria-hidden="true"><span>Accesos directos</span></div>
+          @for (item of shortcuts(); track item.utility) {
+            <button
+              class="nav-utility"
+              [class.active]="isActive(item)"
+              [attr.aria-label]="'Acceso directo ' + item.name"
+              [attr.title]="item.name"
+              [attr.aria-current]="isActive(item) ? 'page' : null"
+              (click)="navigate(item)"
+            >
+              <v-icon [name]="item.icon" /><span>{{ item.name }}</span>
+              @if (item.utility === 'tenencia-obligatoria' && tenenciaSummary()?.shortfall) {
+                <i class="nav-count" [attr.aria-label]="tenenciaSummary()?.shortfall + ' faltas'">{{
+                  tenenciaSummary()?.shortfall
+                }}</i>
+              }
+            </button>
+          }
         }
       </nav>
       <button class="palette-trigger" (click)="openPalette()" title="Buscar en Viteka (Ctrl+K)">
@@ -190,37 +205,38 @@
               </div>
             </article>
           </section>
-          @if (hasTenencia()) {
-            <button
-              class="tenencia-card"
-              [class.has-shortfall]="!!tenenciaSummary()?.shortfall"
-              (click)="openTenencia()"
-              aria-label="Abrir tenencia"
-            >
-              <span class="tenencia-card-icon"
-                ><v-icon [name]="tenenciaSummary() ? (tenenciaSummary()!.shortfall ? 'warning' : 'check') : 'shield'"
-              /></span>
-              <span class="tenencia-card-text">
-                <small>TENENCIA OBLIGATORIA</small>
-                @if (tenenciaSummary(); as t) {
-                  <strong>{{
-                    t.shortfall
-                      ? t.shortfall + (t.shortfall === 1 ? ' grupo con falta' : ' grupos con falta')
-                      : 'Todo correcto'
-                  }}</strong>
-                  <span>{{ t.covered }} de {{ t.total }} correctos · consultado {{ summaryTime(t.checkedAt) }}</span>
-                } @else {
-                  <strong>Sin consultar todavía</strong>
-                  <span>Comprueba las existencias mínimas de tu provincia.</span>
-                }
-              </span>
-              @if (tenenciaSummary(); as t) {
-                <span class="tenencia-card-bar" aria-hidden="true"
-                  ><i [style.width.%]="t.total ? (t.covered * 100) / t.total : 0"></i
-                ></span>
+          @if (utilities().length) {
+            <div class="section-label">Acceso rápido a consultas</div>
+            <section class="quick-grid" aria-label="Acceso rápido a consultas">
+              @for (app of utilities(); track app.id) {
+                <div class="utility-card">
+                  <button
+                    class="resource quick-access"
+                    [attr.aria-label]="'Abrir ' + app.name"
+                    (click)="
+                      navigate({ name: app.name, icon: utilityIcon(app.id), page: 'Aplicaciones', utility: app.id })
+                    "
+                  >
+                    <span class="resource-icon"><v-icon [name]="utilityIcon(app.id)" /></span>
+                    <span
+                      ><strong>{{ app.name }}</strong
+                      ><small>{{ app.description }}</small></span
+                    >
+                    <v-icon name="arrow" />
+                  </button>
+                  <button
+                    class="favorite-toggle"
+                    [class.on]="isFavorite(app.id)"
+                    [attr.aria-pressed]="isFavorite(app.id)"
+                    aria-label="Favorito"
+                    [title]="isFavorite(app.id) ? 'Quitar de la barra lateral' : 'Añadir a la barra lateral'"
+                    (click)="toggleFavorite(app.id, $event)"
+                  >
+                    <v-icon name="star" />
+                  </button>
+                </div>
               }
-              <v-icon name="arrow" />
-            </button>
+            </section>
           }
           <div class="section-label">Recursos</div>
           <section class="resource-grid">
@@ -282,6 +298,8 @@
               [userKey]="user()?.id || ''"
               [initialSearch]="tenenciaSearch()"
               (summary)="onTenenciaSummary($event)"
+              [canConfigure]="!!user()?.canConfigure"
+              (toast)="notify($event)"
               (back)="selectedUtility.set(null)"
             />
           } @else if (page() === 'Aplicaciones' || page() === 'Favoritos' || page() === 'Auditoría') {
@@ -305,13 +323,17 @@
                       </div>
                       <v-icon name="arrow" />
                     </button>
-                    @if (user()?.role !== 'User') {
+                    @if (app.id) {
                       <button
                         class="favorite-toggle"
                         [class.on]="isFavorite(app.id)"
                         [attr.aria-pressed]="isFavorite(app.id)"
                         aria-label="Favorito"
-                        [title]="isFavorite(app.id) ? 'Quitar de favoritos' : 'Añadir a favoritos'"
+                        [title]="
+                          isFavorite(app.id)
+                            ? 'Quitar de favoritos y de la barra lateral'
+                            : 'Añadir a favoritos y a la barra lateral'
+                        "
                         (click)="toggleFavorite(app.id, $event)"
                       >
                         <v-icon name="star" />
@@ -431,6 +453,48 @@
                   ><v-icon name="arrow" />
                 </button>
               }
+            </section>
+          }
+          @if (page() === 'Utilidades' && user()?.canManageUsers) {
+            <section class="settings grants">
+              <h2>Utilidades por usuario</h2>
+              <p class="hint">
+                Los administradores y el superadministrador tienen todas las utilidades. Marca las que puede usar cada
+                usuario; el cambio se aplica en su próximo acceso a la utilidad.
+              </p>
+              <div class="grant-table" role="region" aria-label="Utilidades por usuario" tabindex="0">
+                <table>
+                  <thead>
+                    <tr>
+                      <th scope="col">Cuenta</th>
+                      @for (u of permissionCatalog(); track u.id) {
+                        <th scope="col" class="center">{{ u.name }}</th>
+                      }
+                    </tr>
+                  </thead>
+                  <tbody>
+                    @for (target of users(); track target.id) {
+                      <tr>
+                        <th scope="row">
+                          <strong>{{ target.name }}</strong
+                          ><small>{{ roleName(target.role) }}</small>
+                        </th>
+                        @for (u of permissionCatalog(); track u.id) {
+                          <td class="center">
+                            <input
+                              type="checkbox"
+                              [checked]="hasGrant(target, u.id)"
+                              [disabled]="target.role !== 'User' || !canEdit(target) || busy()"
+                              [attr.aria-label]="u.name + ' para ' + target.name"
+                              (change)="grant(target, u.id, $any($event.target).checked)"
+                            />
+                          </td>
+                        }
+                      </tr>
+                    }
+                  </tbody>
+                </table>
+              </div>
             </section>
           }
           @if (page() === 'Usuarios' && user()?.canManageUsers) {
@@ -615,9 +679,9 @@
         @for (c of paletteResults(); track c.label; let i = $index) {
           <button
             role="option"
-            [class.active]="i === paletteIndex()"
-            [attr.aria-selected]="i === paletteIndex()"
-            (mouseenter)="paletteIndex.set(i)"
+            [class.active]="i === paletteActive()"
+            [attr.aria-selected]="i === paletteActive()"
+            (mousemove)="paletteIndex.set(i)"
             (click)="runCommand(c)"
           >
             <v-icon [name]="c.icon" /><span

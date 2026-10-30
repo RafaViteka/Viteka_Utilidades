@@ -376,39 +376,42 @@ public partial class MainWindow : Window
                     break;
                 case "file.save":
                 case "file.pdf":
-                {
-                    // Exportaciones (Excel, CSV y PDF): el usuario elige dónde guardarlas; las descargas del navegador siguen bloqueadas.
-                    var payload = root.GetProperty("payload");
-                    var name = payload.GetProperty("name").GetString() ?? "";
-                    var pdf = command == "file.pdf";
-                    if (!System.Text.RegularExpressions.Regex.IsMatch(name, pdf ? @"^[\w\-. ]{1,80}\.pdf$" : @"^[\w\-. ]{1,80}\.(csv|xlsx)$")) { Reply(id, error: "Nombre de archivo no válido."); break; }
-                    var extension = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
-                    byte[]? bytes = null;
-                    if (!pdf)
                     {
-                        var data = payload.GetProperty("base64").GetString() ?? "";
-                        if (data.Length > 7 * 1024 * 1024) { Reply(id, error: "Archivo demasiado grande."); break; }
-                        bytes = Convert.FromBase64String(data);
+                        // Exportaciones (Excel, CSV y PDF): el usuario elige dónde guardarlas; las descargas del navegador siguen bloqueadas.
+                        var payload = root.GetProperty("payload");
+                        var name = payload.GetProperty("name").GetString() ?? "";
+                        var pdf = command == "file.pdf";
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(name, pdf ? @"^[\w\-. ]{1,80}\.pdf$" : @"^[\w\-. ]{1,80}\.(csv|xlsx)$")) { Reply(id, error: "Nombre de archivo no válido."); break; }
+                        var extension = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
+                        byte[]? bytes = null;
+                        if (!pdf)
+                        {
+                            var data = payload.GetProperty("base64").GetString() ?? "";
+                            if (data.Length > 7 * 1024 * 1024) { Reply(id, error: "Archivo demasiado grande."); break; }
+                            bytes = Convert.FromBase64String(data);
+                        }
+                        var dialog = new Microsoft.Win32.SaveFileDialog
+                        {
+                            FileName = name,
+                            DefaultExt = "." + extension,
+                            AddExtension = true,
+                            OverwritePrompt = true,
+                            Filter = extension switch { "xlsx" => "Libro de Excel (*.xlsx)|*.xlsx", "csv" => "CSV para Excel (*.csv)|*.csv", _ => "Documento PDF (*.pdf)|*.pdf" },
+                            InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
+                        };
+                        if (dialog.ShowDialog(this) != true) { Reply(id, new { saved = false }); break; }
+                        if (pdf)
+                        {
+                            var settings = Browser.CoreWebView2.Environment.CreatePrintSettings();
+                            settings.ShouldPrintBackgrounds = true; settings.ShouldPrintHeaderAndFooter = false;
+                            settings.MarginTop = settings.MarginBottom = 0.4; settings.MarginLeft = settings.MarginRight = 0.4;
+                            var ok = await Browser.CoreWebView2.PrintToPdfAsync(dialog.FileName, settings);
+                            if (!ok) { Reply(id, error: "No se pudo crear el PDF."); break; }
+                        }
+                        else await File.WriteAllBytesAsync(dialog.FileName, bytes!);
+                        Reply(id, new { saved = true, file = Path.GetFileName(dialog.FileName) });
+                        break;
                     }
-                    var dialog = new Microsoft.Win32.SaveFileDialog
-                    {
-                        FileName = name, DefaultExt = "." + extension, AddExtension = true, OverwritePrompt = true,
-                        Filter = extension switch { "xlsx" => "Libro de Excel (*.xlsx)|*.xlsx", "csv" => "CSV para Excel (*.csv)|*.csv", _ => "Documento PDF (*.pdf)|*.pdf" },
-                        InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
-                    };
-                    if (dialog.ShowDialog(this) != true) { Reply(id, new { saved = false }); break; }
-                    if (pdf)
-                    {
-                        var settings = Browser.CoreWebView2.Environment.CreatePrintSettings();
-                        settings.ShouldPrintBackgrounds = true; settings.ShouldPrintHeaderAndFooter = false;
-                        settings.MarginTop = settings.MarginBottom = 0.4; settings.MarginLeft = settings.MarginRight = 0.4;
-                        var ok = await Browser.CoreWebView2.PrintToPdfAsync(dialog.FileName, settings);
-                        if (!ok) { Reply(id, error: "No se pudo crear el PDF."); break; }
-                    }
-                    else await File.WriteAllBytesAsync(dialog.FileName, bytes!);
-                    Reply(id, new { saved = true, file = Path.GetFileName(dialog.FileName) });
-                    break;
-                }
                 case "clipboard.copy":
                     var email = PortalResources.Email(root.GetProperty("payload").GetProperty("id").GetString() ?? "");
                     if (email is null) { Reply(id, error: "Correo no disponible."); break; }

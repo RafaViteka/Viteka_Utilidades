@@ -1,15 +1,10 @@
-Aviso de actualización, búsqueda rápida y Tenencia más práctica.
+Tenencia con caducidades, exportación con logo y listado editable.
 
-- Ventana emergente cuando hay una nueva versión: «Actualizar ahora», «Más tarde» o «Ver detalles». La franja de aviso desaparece y queda un acceso en el menú lateral.
-- Tenencia directamente en el menú lateral, con el número de faltas de la última consulta.
-- Búsqueda rápida con Ctrl+K: pantallas, opciones y búsqueda de un grupo, artículo o CN en Tenencia.
-- Tenencia: chips de «correctos» y «con falta» que filtran al pulsarlos, resumen «N de M correctos» con barra de progreso, hora de la última consulta, exportar faltas a Excel (CSV) e imprimir faltas.
-- Atajos en Tenencia: ↑/↓ cambian de grupo, «/» va al buscador y F salta a la siguiente falta.
-- Viteka recuerda la última pantalla y el último grupo de Tenencia de cada usuario.
-- Inicio muestra una tarjeta con el estado de Tenencia de la última consulta.
-- Configuración con pestañas (Mi cuenta, Usuarios, Auditoría, Actualizaciones).
-- Usuarios con iniciales, rol y avisos de contraseña pendiente; acciones como iconos.
-- Favoritos: marca aplicaciones con la estrella para tenerlas a mano.
-- Botones principales en lima en modo oscuro, avisos abajo a la derecha con icono y texto algo mayor en pantallas grandes.
-
-Actualizar desde la ventana de aviso o desde Configuración → Actualizaciones en el servidor: se instala sin asistente y Viteka se vuelve a abrir con la sesión iniciada.
+- Iconos y números centrados en las tablas de Tenencia.
+- Viteka guarda la última consulta en el servidor e indica su fecha y hora; al entrar se ve sin volver a consultar NixFarma.
+- Exportar a Excel, CSV o PDF con el logo de Viteka: resumen de grupos, correctos, con falta y unidades que faltan, ordenado por faltas. Los archivos se guardan con la ventana «Guardar como».
+- Caducidad de la ficha junto a cada artículo con existencias: verde con más de 6 meses, amarillo si caduca en 6 meses o menos, rojo si está caducado y gris sin fecha.
+- En grupos con más de 10 artículos se muestran los que tienen existencias y los de compra o venta más reciente hasta completar 10, con «Ver todos». Nunca se oculta un artículo con existencias.
+- Superadministrador: «Editar listado» para añadir, editar o borrar grupos (código, mínimo, nombre y nota) y añadir artículos por código nacional, por descripción o por agrupación homogénea. Importación y exportación masiva de códigos en Excel o CSV y opción de restaurar el listado original.
+- Inicio pasa a ser una página de información con «Acceso rápido a consultas»; la estrella añade la utilidad como acceso directo en la barra lateral.
+- Configuración → Utilidades: administradores y superadministrador habilitan las utilidades de cada usuario.

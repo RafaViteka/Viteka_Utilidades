@@ -1,0 +1,382 @@
+<section class="editor-bar" aria-label="Edición del listado">
+  <div class="editor-title">
+    <v-icon name="edit" />
+    <div>
+      <strong>Editar listado · {{ provinceName() }}</strong>
+      <small
+        >{{ list()?.groups.length ?? 0 }} grupos · {{ totalCodes() }} códigos ·
+        {{ customized() ? 'Personalizado' : 'Original' }} · {{ list()?.version }}</small
+      >
+    </div>
+  </div>
+  <div class="editor-actions">
+    <button class="text-button" (click)="newGroup()" [disabled]="busy()"><v-icon name="plus" />Añadir grupo</button
+    ><button class="text-button" (click)="openImport()" [disabled]="busy()">
+      <v-icon name="upload" />Importar códigos</button
+    ><button
+      class="text-button"
+      (click)="exportCodes('xlsx')"
+      [disabled]="busy()"
+      title="Todos los grupos y códigos en Excel"
+    >
+      <v-icon name="sheet" />Exportar Excel</button
+    ><button
+      class="text-button"
+      (click)="exportCodes('csv')"
+      [disabled]="busy()"
+      title="Todos los grupos y códigos en CSV"
+    >
+      <v-icon name="download" />CSV
+    </button>
+    @if (customized()) {
+      <button class="text-button danger" (click)="resetList()" [disabled]="busy()">
+        <v-icon name="undo" />Restaurar original
+      </button>
+    }
+    <button class="primary" (click)="finish()" [disabled]="busy()">Terminar edición</button>
+  </div>
+</section>
+@if (error()) {
+  <p class="error" role="alert">{{ error() }}</p>
+}
+<div class="editor-workspace">
+  <section class="editor-groups" aria-label="Grupos del listado">
+    <div class="editor-head">
+      <h2>Grupos de tenencia</h2>
+      <input
+        type="search"
+        aria-label="Filtrar grupos"
+        placeholder="Filtrar por nombre, código o CN"
+        [ngModel]="filterText()"
+        (ngModelChange)="filterText.set($event)"
+      />
+    </div>
+    <div class="editor-scroll" tabindex="0">
+      <table>
+        <thead>
+          <tr>
+            <th scope="col">Código</th>
+            <th scope="col">Grupo</th>
+            <th scope="col" class="center">Mín.</th>
+            <th scope="col" class="center">CN</th>
+            <th scope="col" class="center"><span class="sr">Acciones</span></th>
+          </tr>
+        </thead>
+        <tbody>
+          @for (g of groups(); track g.id) {
+            <tr [class.chosen]="chosen()?.id === g.id">
+              <td class="mono">{{ code(g) || '—' }}</td>
+              <td>
+                <button class="row-pick" [attr.aria-label]="'Editar artículos de ' + g.name" (click)="choose(g)">
+                  {{ g.name }}
+                </button>
+              </td>
+              <td class="center">{{ g.minimum }}</td>
+              <td class="center">{{ g.codes.length }}</td>
+              <td class="center nowrap">
+                <button
+                  class="icon-mini"
+                  [attr.aria-label]="'Editar grupo ' + g.name"
+                  title="Editar grupo"
+                  (click)="editGroup(g)"
+                >
+                  <v-icon name="edit" /></button
+                ><button
+                  class="icon-mini danger"
+                  [attr.aria-label]="'Eliminar grupo ' + g.name"
+                  title="Eliminar grupo"
+                  (click)="deleteGroup(g)"
+                >
+                  <v-icon name="trash" />
+                </button>
+              </td>
+            </tr>
+          } @empty {
+            <tr>
+              <td colspan="5" class="empty">Sin grupos para este filtro.</td>
+            </tr>
+          }
+        </tbody>
+      </table>
+    </div>
+  </section>
+  <section class="editor-articles" aria-label="Artículos del grupo">
+    @if (chosen(); as g) {
+      <div class="editor-head">
+        <div>
+          <h2>{{ code(g) ? code(g) + ' · ' : '' }}{{ g.name }}</h2>
+          <small
+            >Mínimo {{ g.minimum }} · {{ g.codes.length }} artículos{{
+              g.selectionNote ? ' · ' + g.selectionNote : ''
+            }}</small
+          >
+        </div>
+        <button class="text-button" (click)="editGroup(g)"><v-icon name="edit" />Editar grupo</button>
+      </div>
+      <div class="editor-scroll articles" tabindex="0">
+        <table>
+          <tbody>
+            @for (a of chosenArticles(); track a.code) {
+              <tr>
+                <td class="mono">{{ a.code }}</td>
+                <td>{{ a.description }}</td>
+                <td class="center">
+                  <button
+                    class="icon-mini danger"
+                    [attr.aria-label]="'Quitar ' + a.code"
+                    title="Quitar del grupo"
+                    (click)="removeCode(a.code)"
+                    [disabled]="busy()"
+                  >
+                    <v-icon name="close" />
+                  </button>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="3" class="empty">
+                  Este grupo no tiene artículos: añádelos abajo. Sin artículos cuenta como falta.
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+      <div class="add-panel">
+        <div class="add-tabs" role="group" aria-label="Añadir artículos">
+          <button [class.active]="mode() === 'code'" (click)="setMode('code')">Por código nacional</button
+          ><button [class.active]="mode() === 'description'" (click)="setMode('description')">Por descripción</button
+          ><button [class.active]="mode() === 'homogeneous'" (click)="setMode('homogeneous')">
+            Por agrupación homogénea
+          </button>
+        </div>
+        <form class="add-form" (submit)="$event.preventDefault(); search()">
+          @if (mode() === 'code') {
+            <textarea
+              name="codes"
+              rows="2"
+              aria-label="Códigos nacionales"
+              placeholder="Pega uno o varios CN separados por espacios, comas o saltos de línea"
+              [ngModel]="searchText()"
+              (ngModelChange)="searchText.set($event)"
+            ></textarea>
+          } @else if (mode() === 'description') {
+            <input
+              name="description"
+              aria-label="Descripción"
+              placeholder="Palabras de la descripción, p. ej. ADRENALINA 1MG"
+              [ngModel]="searchText()"
+              (ngModelChange)="searchText.set($event)"
+            />
+          } @else {
+            @if (homogeneous().length) {
+              @if (homogeneous().length > 1) {
+                <select
+                  name="field"
+                  aria-label="Campo de agrupación"
+                  [ngModel]="field()"
+                  (ngModelChange)="field.set($event)"
+                >
+                  @for (f of homogeneous(); track f) {
+                    <option [value]="f">{{ f }}</option>
+                  }
+                </select>
+              }
+              <input
+                name="homogeneous"
+                aria-label="Código de agrupación homogénea"
+                placeholder="Código de agrupación homogénea de Andalucía o del Ministerio"
+                [ngModel]="searchText()"
+                (ngModelChange)="searchText.set($event)"
+              />
+            } @else {
+              <p class="hint">
+                No se ha detectado en NixFarma la columna de agrupación homogénea. Revisa Configuración → Comprobar
+                tablas de tenencia.
+              </p>
+            }
+          }
+          <button
+            class="primary"
+            type="submit"
+            [disabled]="searching() || !searchText().trim() || (mode() === 'homogeneous' && !homogeneous().length)"
+          >
+            <v-icon name="search" />{{ searching() ? 'Buscando…' : 'Buscar en NixFarma' }}
+          </button>
+        </form>
+        @if (searchMessage()) {
+          <p class="search-message" role="status">{{ searchMessage() }}</p>
+        }
+        @if (results().length) {
+          <div class="editor-scroll results" tabindex="0">
+            <table>
+              <thead>
+                <tr>
+                  <th scope="col" class="center">
+                    <input
+                      type="checkbox"
+                      aria-label="Seleccionar todos"
+                      [checked]="addable().length > 0 && picked().length === addable().length"
+                      (change)="pickAll($any($event.target).checked)"
+                    />
+                  </th>
+                  <th scope="col">CN</th>
+                  <th scope="col">Descripción en NixFarma</th>
+                  <th scope="col" class="center">Exist.</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (a of results(); track a.code) {
+                  <tr [class.muted]="g.codes.includes(a.code)">
+                    <td class="center">
+                      <input
+                        type="checkbox"
+                        [attr.aria-label]="'Añadir ' + a.code"
+                        [disabled]="!!g.codes.includes(a.code)"
+                        [checked]="isPicked(a.code) || !!g.codes.includes(a.code)"
+                        (change)="togglePick(a.code, $any($event.target).checked)"
+                      />
+                    </td>
+                    <td class="mono">{{ a.code }}</td>
+                    <td>
+                      {{ a.issue === 'not_found' ? 'No dado de alta en NixFarma' : a.description }}
+                      @if (g.codes.includes(a.code)) {
+                        <small class="tag">Ya en el grupo</small>
+                      }
+                    </td>
+                    <td class="center">{{ stock(a.stock) }}</td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="add-footer">
+            <span>{{ picked().length }} seleccionados</span>
+            <button class="primary" (click)="addPicked()" [disabled]="busy() || !picked().length">
+              <v-icon name="plus" />Añadir al grupo
+            </button>
+          </div>
+        }
+      </div>
+    } @else {
+      <p class="empty">Añade un grupo para empezar.</p>
+    }
+  </section>
+</div>
+
+@if (draft(); as d) {
+  <div class="modal-overlay" (click)="draft.set(null)">
+    <form
+      class="dialog editor-dialog"
+      role="dialog"
+      aria-modal="true"
+      [attr.aria-label]="d.id ? 'Editar grupo' : 'Nuevo grupo'"
+      (click)="$event.stopPropagation()"
+      (submit)="$event.preventDefault(); saveGroup()"
+    >
+      <div class="dialog-top">
+        <h2>{{ d.id ? 'Editar grupo' : 'Nuevo grupo' }}</h2>
+        <button type="button" aria-label="Cerrar" (click)="draft.set(null)"><v-icon name="close" /></button>
+      </div>
+      <div class="draft-grid">
+        <label
+          >Código<input
+            name="code"
+            maxlength="12"
+            placeholder="ATC o código propio"
+            [ngModel]="d.code"
+            (ngModelChange)="patchDraft({ code: $event })" /></label
+        ><label
+          >Mínimo<input
+            name="minimum"
+            type="number"
+            min="1"
+            max="10000"
+            [ngModel]="d.minimum"
+            (ngModelChange)="patchDraft({ minimum: $event })"
+        /></label>
+      </div>
+      <label
+        >Grupo<input
+          name="name"
+          maxlength="200"
+          required
+          [ngModel]="d.name"
+          (ngModelChange)="patchDraft({ name: $event })"
+      /></label>
+      <label
+        >Nota<textarea
+          name="note"
+          rows="2"
+          maxlength="600"
+          placeholder="Observaciones visibles en Información (opcional)"
+          [ngModel]="d.note"
+          (ngModelChange)="patchDraft({ note: $event })"
+        ></textarea>
+      </label>
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+      <div class="dialog-actions">
+        <button type="button" class="text-button" (click)="draft.set(null)">Cancelar</button>
+        <button class="primary" type="submit" [disabled]="busy() || !d.name.trim()">Guardar</button>
+      </div>
+    </form>
+  </div>
+}
+@if (importing()) {
+  <div class="modal-overlay" (click)="importing.set(false)">
+    <section
+      class="dialog import-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Importar códigos"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="dialog-top">
+        <h2>Importar códigos</h2>
+        <button aria-label="Cerrar" (click)="importing.set(false)"><v-icon name="close" /></button>
+      </div>
+      <p class="hint">
+        Pega filas desde Excel con el formato exportado (Código grupo; Grupo; Mínimo; CN; Descripción) o filas cortas
+        «código o nombre del grupo; CN». Los grupos que no existan se crean con el formato completo.
+      </p>
+      <textarea
+        rows="10"
+        aria-label="Filas a importar"
+        placeholder="N02AA;Morfina;2;654321;MORFINA 10 MG 10 AMPOLLAS"
+        [ngModel]="importText()"
+        (ngModelChange)="importText.set($event)"
+      ></textarea>
+      @if (importReport()) {
+        <p class="search-message" role="status">{{ importReport() }}</p>
+      }
+      @if (error()) {
+        <p class="error" role="alert">{{ error() }}</p>
+      }
+      <div class="dialog-actions">
+        <button class="text-button" (click)="importing.set(false)">Cerrar</button>
+        <button class="primary" (click)="runImport()" [disabled]="busy() || !importText().trim()">
+          {{ busy() ? 'Importando…' : 'Importar' }}
+        </button>
+      </div>
+    </section>
+  </div>
+}
+@if (confirming(); as c) {
+  <div class="modal-overlay" (click)="confirming.set(null)">
+    <section
+      class="dialog confirm-dialog"
+      role="alertdialog"
+      aria-modal="true"
+      aria-label="Confirmar"
+      (click)="$event.stopPropagation()"
+    >
+      <p>{{ c.text }}</p>
+      <div class="dialog-actions">
+        <button class="text-button" (click)="confirming.set(null)">Cancelar</button>
+        <button class="primary danger" (click)="confirm()">{{ c.label }}</button>
+      </div>
+    </section>
+  </div>
+}

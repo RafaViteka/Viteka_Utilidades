@@ -369,6 +369,52 @@ try
         var constrained = atcList with { Groups = [atcList.Groups[0] with { RequiresReview = true, SelectionNote = "Solo inyectable" }] }; var mapping = new Dictionary<string, string[]> { { "a", ["650001"] } }; var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "Oral", 99) } }; var row = TenenciaRules.Evaluate(constrained, stocks, mapping, null).Single(); Require(row.Status == "covered" && row.Stock == 99 && row.Articles.Single().Stock == 99 && row.SelectionNote == "Solo inyectable");
         var short_ = TenenciaRules.Evaluate(constrained, new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "Oral", 1) } }, mapping, null).Single(); Require(short_.Status == "shortfall" && short_.Missing == 2);
     });
+    Check("Tenencia parses NixFarma expiry and movement dates", () =>
+    {
+        Require(TenenciaStockQuery.ParseDate(null) is null && TenenciaStockQuery.ParseDate(DBNull.Value) is null && TenenciaStockQuery.ParseDate("") is null);
+        Require(TenenciaStockQuery.ParseDate(new DateTime(2027, 3, 15)) == new DateOnly(2027, 3, 15));
+        Require(TenenciaStockQuery.ParseDate("20270315") == new DateOnly(2027, 3, 15) && TenenciaStockQuery.ParseDate(20270315m) == new DateOnly(2027, 3, 15));
+        Require(TenenciaStockQuery.ParseDate("202702") == new DateOnly(2027, 2, 28) && TenenciaStockQuery.ParseDate("2702") == new DateOnly(2027, 2, 28));
+        Require(TenenciaStockQuery.ParseDate("15/03/2027") == new DateOnly(2027, 3, 15) && TenenciaStockQuery.ParseDate("03/2027") == new DateOnly(2027, 3, 31) && TenenciaStockQuery.ParseDate("2027-03-15T00:00:00") == new DateOnly(2027, 3, 15));
+        Require(TenenciaStockQuery.ParseDate("texto") is null && TenenciaStockQuery.ParseDate("18000101") is null && TenenciaStockQuery.ParseDate("1399") is null);
+    });
+    Check("Tenencia catalogue edits persist, validate and reset", () =>
+    {
+        var packaged = Path.Combine(root, "tenencia-packaged"); Directory.CreateDirectory(packaged); File.WriteAllBytes(Path.Combine(packaged, "29.json"), JsonSerializer.SerializeToUtf8Bytes(tenenciaList));
+        var store = new TenenciaCatalogStore(Path.Combine(root, "tenencia-custom"), packaged); Directory.CreateDirectory(Path.Combine(root, "tenencia-custom"));
+        JsonElement J(object o) => JsonSerializer.SerializeToElement(o);
+        Require(!store.IsCustomized("29") && store.Load("29")!.Groups.Length == 1);
+        var added = store.Apply("29", "group.save", J(new { name = "Grupo nuevo", code = "ah123", minimum = 2, note = "Nota" })); Require(store.IsCustomized("29") && added.Groups.Length == 2 && added.Version.StartsWith("Personalizada-") && added.Source.EndsWith("Editada en Viteka."));
+        var id = added.Groups[1].Id; Require(added.Groups[1] is { Name: "Grupo nuevo", Minimum: 2, ClassificationCode: "AH123", SelectionNote: "Nota" });
+        var edited = store.Apply("29", "group.save", J(new { id, name = "Grupo editado", code = "A01AB", minimum = 4 })); Require(edited.Groups[1] is { Name: "Grupo editado", Minimum: 4, AtcPrefix: "A01AB", ClassificationCode: null });
+        var withCodes = store.Apply("29", "codes.add", J(new { id, items = new[] { new { code = "650010", description = "Artículo diez" }, new { code = "650011", description = "" }, new { code = "650010", description = "Artículo diez" } } })); Require(withCodes.Groups[1].Codes.SequenceEqual(new[] { "650010", "650011" }) && withCodes.Groups[1].Descriptions!["650010"] == "Artículo diez");
+        var removed = store.Apply("29", "codes.remove", J(new { id, codes = new[] { "650010" } })); Require(removed.Groups[1].Codes.Single() == "650011" && !removed.Groups[1].Descriptions!.ContainsKey("650010"));
+        Require(store.Load("29")!.Groups[1].Codes.Single() == "650011");
+        foreach (var (action, data) in new (string, object)[] { ("group.save", new { name = "", minimum = 1 }), ("group.save", new { name = "X", minimum = 0 }), ("group.save", new { name = "X", minimum = 1, code = "../x" }), ("codes.add", new { id, items = new[] { new { code = "12AB" } } }), ("codes.add", new { id, items = Array.Empty<object>() }), ("otra", new { }) })
+            try { store.Apply("29", action, J(data)); throw new Exception("Expected rejection: " + action); } catch (ArgumentException) { }
+        try { store.Apply("29", "group.delete", J(new { id = "no-existe" })); throw new Exception("Expected missing group"); } catch (KeyNotFoundException) { }
+        store.Apply("29", "group.delete", J(new { id })); try { store.Apply("29", "group.delete", J(new { id = "a" })); throw new Exception("Expected last group kept"); } catch (ArgumentException) { }
+        var last = new Viteka.Contracts.TenenciaResponse("ok", "Consulta completada", "29", store.Load("29")!.Version, CheckedAt: DateTimeOffset.UtcNow, Rows: []); store.SaveLast("29", last);
+        Require(store.LoadLast("29", last.ListVersion!) is { Code: "ok" } && store.LoadLast("29", "otra-version") is null);
+        store.SaveLast("29", last with { Code = "error", Rows = null }); Require(store.LoadLast("29", last.ListVersion!) is not null);
+        var reset = store.Apply("29", "reset", J(new { })); Require(!store.IsCustomized("29") && reset.Version == "fixture-v1" && store.LoadLast("29", last.ListVersion!) is null);
+        try { store.Load("../29"); throw new Exception("Expected invalid province"); } catch (ArgumentException) { }
+    });
+    Check("Tenencia article finder validates input before querying NixFarma", () =>
+    {
+        using var c = new TenenciaFixture();
+        TenenciaStockQuery.ReadOnly(c, tx =>
+        {
+            var schema = TenenciaStockQuery.Inspect(c, tx);
+            Require(TenenciaArticleFinder.Search(c, tx, schema, "code", "sin codigos", null).Code == "empty");
+            Require(TenenciaArticleFinder.Search(c, tx, schema, "description", "a", null).Code == "empty");
+            Require(TenenciaArticleFinder.Search(c, tx, schema, "homogeneous", "1234", "COLUMNA_INVENTADA").Code == "unavailable");
+            try { TenenciaArticleFinder.Search(c, tx, schema, "sql", "x", null); throw new Exception("Expected invalid mode"); } catch (ArgumentException) { }
+            var found = TenenciaArticleFinder.Search(c, tx, schema, "code", "650001, 650002 y 650001", null); Require(found.Code == "ok" && found.Articles.Length == 2);
+            return true;
+        });
+        Require(c.Steps.Last() == "rollback");
+    });
     Check("Tenencia groups aggregate only known codes and compute shortfalls", () =>
     {
         var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "A", 1) }, { "650002", new("650002", "B", 1) } };

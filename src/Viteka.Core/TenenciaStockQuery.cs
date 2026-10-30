@@ -9,7 +9,8 @@ public static class TenenciaStockQuery
 {
     public sealed record Schema(string ArticleCode, string Description, string StockCode, string Stock)
     {
-        public string ArticleTable { get; init; } = "ARTICULOS"; public string StockTable { get; init; } = "EXISTENCIAS"; public string? Atc { get; init; } public string[] ArticleColumns { get; init; } = []; public string[] AtcCandidates { get; init; } = [];
+        public string ArticleTable { get; init; } = "ARTICULOS"; public string StockTable { get; init; } = "EXISTENCIAS"; public string? Atc { get; init; }
+        public string[] ArticleColumns { get; init; } = []; public string[] AtcCandidates { get; init; } = [];
         public string[] StockColumns { get; init; } = [];
         /// <summary>Columnas opcionales de la ficha de existencias (identificadores entre comillas) o null si no se identifican sin ambigüedad.</summary>
         public string? Expiry { get; init; }
@@ -78,7 +79,12 @@ public static class TenenciaStockQuery
         var homogeneous = a.Where(c => SafeName(c) && Normalize(c).Contains("HOMOG", StringComparison.Ordinal)).Take(6).Select(Quote).ToArray();
         return new(Find(a, nativeNixFarma ? "CODIGO" : "ARTICULO"), Find(a, "DESCRIPCION"), Find(e, nativeNixFarma ? "ARTCODIGO" : "ARTICULO"), Find(e, nativeNixFarma ? ["EXIACTUALES"] : ["ACTUAL", "STOCKACTUAL"]))
         {
-            ArticleTable = articleTable, StockTable = stockTable, Atc = exact.Length == 1 ? Quote(exact[0]) : null, ArticleColumns = a, AtcCandidates = candidates.Select(Quote).ToArray(), StockColumns = e,
+            ArticleTable = articleTable,
+            StockTable = stockTable,
+            Atc = exact.Length == 1 ? Quote(exact[0]) : null,
+            ArticleColumns = a,
+            AtcCandidates = candidates.Select(Quote).ToArray(),
+            StockColumns = e,
             // La caducidad y las últimas compras/ventas se leen de la ficha de existencias.
             Expiry = Pick(e, IsExpiry, "FECCADUCIDAD", "FECHACADUCIDAD", "CADUCIDAD", "FCADUCIDAD", "FECCAD"),
             LastPurchase = Pick(e, IsLastPurchase, "FECULTCOMPRA", "FECHAULTIMACOMPRA", "FECULTIMACOMPRA", "FECHAULTCOMPRA", "FULTCOMPRA", "FECULTENTRADA"),

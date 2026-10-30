@@ -51,62 +51,62 @@ public sealed class TenenciaCatalogStore(string directory, string packagedDirect
             switch (action)
             {
                 case "group.save":
-                {
-                    var id = data.TryGetProperty("id", out var idValue) && idValue.ValueKind == JsonValueKind.String ? idValue.GetString() : null;
-                    var name = Text("name", 200);
-                    var code = Text("code", 12, false).ToUpperInvariant();
-                    var note = Text("note", 600, false);
-                    if (!data.TryGetProperty("minimum", out var minValue) || !minValue.TryGetInt32(out var minimum) || minimum is < 1 or > 10000) throw new ArgumentException("El mínimo debe estar entre 1 y 10.000 unidades.");
-                    if (code.Length > 0 && !TenenciaRules.ValidAtc(code) && !Regex.IsMatch(code, "^[A-Z0-9]{2,12}$", RegexOptions.CultureInvariant)) throw new ArgumentException("El código solo admite letras y números (máximo 12).");
-                    string? atc = code.Length > 0 && TenenciaRules.ValidAtc(code) ? code : null;
-                    string? classification = code.Length > 0 && atc is null ? code : null;
-                    if (id is null)
                     {
-                        if (groups.Count >= 250) throw new ArgumentException("Máximo 250 grupos.");
-                        var next = new TenenciaGroup("custom-" + Guid.NewGuid().ToString("N")[..10], name, minimum, []) { AtcPrefix = atc, ClassificationCode = classification, SelectionNote = note.Length > 0 ? note : null };
-                        var after = data.TryGetProperty("afterId", out var a) && a.ValueKind == JsonValueKind.String ? groups.FindIndex(g => g.Id == a.GetString()) : -1;
-                        groups.Insert(after < 0 ? groups.Count : after + 1, next);
+                        var id = data.TryGetProperty("id", out var idValue) && idValue.ValueKind == JsonValueKind.String ? idValue.GetString() : null;
+                        var name = Text("name", 200);
+                        var code = Text("code", 12, false).ToUpperInvariant();
+                        var note = Text("note", 600, false);
+                        if (!data.TryGetProperty("minimum", out var minValue) || !minValue.TryGetInt32(out var minimum) || minimum is < 1 or > 10000) throw new ArgumentException("El mínimo debe estar entre 1 y 10.000 unidades.");
+                        if (code.Length > 0 && !TenenciaRules.ValidAtc(code) && !Regex.IsMatch(code, "^[A-Z0-9]{2,12}$", RegexOptions.CultureInvariant)) throw new ArgumentException("El código solo admite letras y números (máximo 12).");
+                        string? atc = code.Length > 0 && TenenciaRules.ValidAtc(code) ? code : null;
+                        string? classification = code.Length > 0 && atc is null ? code : null;
+                        if (id is null)
+                        {
+                            if (groups.Count >= 250) throw new ArgumentException("Máximo 250 grupos.");
+                            var next = new TenenciaGroup("custom-" + Guid.NewGuid().ToString("N")[..10], name, minimum, []) { AtcPrefix = atc, ClassificationCode = classification, SelectionNote = note.Length > 0 ? note : null };
+                            var after = data.TryGetProperty("afterId", out var a) && a.ValueKind == JsonValueKind.String ? groups.FindIndex(g => g.Id == a.GetString()) : -1;
+                            groups.Insert(after < 0 ? groups.Count : after + 1, next);
+                        }
+                        else
+                        {
+                            var current = Find(id); var index = groups.IndexOf(current);
+                            groups[index] = current with { Name = name, Minimum = minimum, AtcPrefix = atc, ClassificationCode = classification, SelectionNote = note.Length > 0 ? note : null };
+                        }
+                        break;
                     }
-                    else
-                    {
-                        var current = Find(id); var index = groups.IndexOf(current);
-                        groups[index] = current with { Name = name, Minimum = minimum, AtcPrefix = atc, ClassificationCode = classification, SelectionNote = note.Length > 0 ? note : null };
-                    }
-                    break;
-                }
                 case "group.delete":
-                {
-                    if (groups.Count == 1) throw new ArgumentException("La lista debe conservar al menos un grupo.");
-                    groups.Remove(Find(Text("id", 80)));
-                    break;
-                }
-                case "codes.add":
-                {
-                    var group = Find(Text("id", 80));
-                    if (!data.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array || items.GetArrayLength() is < 1 or > 1000) throw new ArgumentException("Indica entre 1 y 1.000 artículos.");
-                    var codes = group.Codes.ToList(); var descriptions = new Dictionary<string, string>(group.Descriptions ?? []);
-                    foreach (var item in items.EnumerateArray())
                     {
-                        var code = item.TryGetProperty("code", out var c) ? c.GetString()?.Trim() : null;
-                        if (!TenenciaRules.ValidCode(code)) throw new ArgumentException("Código nacional no válido: " + code);
-                        var description = item.TryGetProperty("description", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString()!.Trim() : "";
-                        if (description.Length > 200 || description.Any(char.IsControl)) description = description[..Math.Min(200, description.Length)].Replace("\n", " ").Replace("\r", " ");
-                        if (!codes.Contains(code!)) codes.Add(code!);
-                        if (description.Length > 0) descriptions[code!] = description;
+                        if (groups.Count == 1) throw new ArgumentException("La lista debe conservar al menos un grupo.");
+                        groups.Remove(Find(Text("id", 80)));
+                        break;
                     }
-                    if (codes.Count > 1000) throw new ArgumentException("Máximo 1.000 artículos por grupo.");
-                    groups[groups.IndexOf(group)] = group with { Codes = codes.ToArray(), Descriptions = descriptions };
-                    break;
-                }
+                case "codes.add":
+                    {
+                        var group = Find(Text("id", 80));
+                        if (!data.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array || items.GetArrayLength() is < 1 or > 1000) throw new ArgumentException("Indica entre 1 y 1.000 artículos.");
+                        var codes = group.Codes.ToList(); var descriptions = new Dictionary<string, string>(group.Descriptions ?? []);
+                        foreach (var item in items.EnumerateArray())
+                        {
+                            var code = item.TryGetProperty("code", out var c) ? c.GetString()?.Trim() : null;
+                            if (!TenenciaRules.ValidCode(code)) throw new ArgumentException("Código nacional no válido: " + code);
+                            var description = item.TryGetProperty("description", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString()!.Trim() : "";
+                            if (description.Length > 200 || description.Any(char.IsControl)) description = description[..Math.Min(200, description.Length)].Replace("\n", " ").Replace("\r", " ");
+                            if (!codes.Contains(code!)) codes.Add(code!);
+                            if (description.Length > 0) descriptions[code!] = description;
+                        }
+                        if (codes.Count > 1000) throw new ArgumentException("Máximo 1.000 artículos por grupo.");
+                        groups[groups.IndexOf(group)] = group with { Codes = codes.ToArray(), Descriptions = descriptions };
+                        break;
+                    }
                 case "codes.remove":
-                {
-                    var group = Find(Text("id", 80));
-                    if (!data.TryGetProperty("codes", out var items) || items.ValueKind != JsonValueKind.Array) throw new ArgumentException("Indica los códigos que quieres quitar.");
-                    var remove = items.EnumerateArray().Select(i => i.GetString()).ToHashSet();
-                    var descriptions = (group.Descriptions ?? []).Where(p => !remove.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
-                    groups[groups.IndexOf(group)] = group with { Codes = group.Codes.Where(c => !remove.Contains(c)).ToArray(), Descriptions = descriptions };
-                    break;
-                }
+                    {
+                        var group = Find(Text("id", 80));
+                        if (!data.TryGetProperty("codes", out var items) || items.ValueKind != JsonValueKind.Array) throw new ArgumentException("Indica los códigos que quieres quitar.");
+                        var remove = items.EnumerateArray().Select(i => i.GetString()).ToHashSet();
+                        var descriptions = (group.Descriptions ?? []).Where(p => !remove.Contains(p.Key)).ToDictionary(p => p.Key, p => p.Value);
+                        groups[groups.IndexOf(group)] = group with { Codes = group.Codes.Where(c => !remove.Contains(c)).ToArray(), Descriptions = descriptions };
+                        break;
+                    }
                 default: throw new ArgumentException("Operación de listado no válida.");
             }
             var now = DateTime.Now;

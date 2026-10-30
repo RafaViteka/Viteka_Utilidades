@@ -19,29 +19,29 @@ public static class TenenciaArticleFinder
         switch (mode)
         {
             case "code":
-            {
-                var codes = Regex.Matches(text, "[0-9]{6,7}").Select(m => m.Value).Distinct().ToArray();
-                if (codes.Length == 0) return new("empty", "Escribe o pega uno o varios códigos nacionales.", []);
-                if (codes.Length > 1000) throw new ArgumentException("Máximo 1.000 códigos por búsqueda.");
-                var found = TenenciaStockQuery.Read(connection, tx, schema, codes, ct);
-                var articles = codes.Select(c => found[c]).ToArray();
-                var missing = articles.Count(a => a.Issue == "not_found");
-                return new("ok", articles.Length + " códigos" + (missing > 0 ? " · " + missing + " no están dados de alta en NixFarma" : ""), articles);
-            }
+                {
+                    var codes = Regex.Matches(text, "[0-9]{6,7}").Select(m => m.Value).Distinct().ToArray();
+                    if (codes.Length == 0) return new("empty", "Escribe o pega uno o varios códigos nacionales.", []);
+                    if (codes.Length > 1000) throw new ArgumentException("Máximo 1.000 códigos por búsqueda.");
+                    var found = TenenciaStockQuery.Read(connection, tx, schema, codes, ct);
+                    var articles = codes.Select(c => found[c]).ToArray();
+                    var missing = articles.Count(a => a.Issue == "not_found");
+                    return new("ok", articles.Length + " códigos" + (missing > 0 ? " · " + missing + " no están dados de alta en NixFarma" : ""), articles);
+                }
             case "description":
-            {
-                var words = Regex.Split(text.ToUpperInvariant(), "\\s+").Where(w => w.Length >= 2).Take(5).ToArray();
-                if (words.Length == 0 || words.Any(w => w.Length > 40)) return new("empty", "Escribe al menos 2 letras de la descripción.", []);
-                var predicate = string.Join(" AND ", words.Select(_ => $"UPPER({schema.Description}) LIKE ?"));
-                return Find(connection, tx, schema, predicate, words.Select(w => "%" + w.Replace("%", "").Replace("_", "") + "%").ToArray(), "descripción «" + text + "»", null, ct);
-            }
+                {
+                    var words = Regex.Split(text.ToUpperInvariant(), "\\s+").Where(w => w.Length >= 2).Take(5).ToArray();
+                    if (words.Length == 0 || words.Any(w => w.Length > 40)) return new("empty", "Escribe al menos 2 letras de la descripción.", []);
+                    var predicate = string.Join(" AND ", words.Select(_ => $"UPPER({schema.Description}) LIKE ?"));
+                    return Find(connection, tx, schema, predicate, words.Select(w => "%" + w.Replace("%", "").Replace("_", "") + "%").ToArray(), "descripción «" + text + "»", null, ct);
+                }
             case "homogeneous":
-            {
-                if (field is null || !schema.Homogeneous.Contains("\"" + field + "\"")) return new("unavailable", "No se ha identificado en NixFarma la columna de agrupación homogénea. Viteka debe revisarla en Comprobar tablas.", []);
-                if (text.Length is < 1 or > 40 || text.Any(char.IsControl)) return new("empty", "Escribe el código de la agrupación homogénea.", []);
-                var column = "\"" + field + "\"";
-                return Find(connection, tx, schema, $"UPPER(TRIM({column})) = ?", [text.ToUpperInvariant()], "agrupación homogénea " + text, column, ct);
-            }
+                {
+                    if (field is null || !schema.Homogeneous.Contains("\"" + field + "\"")) return new("unavailable", "No se ha identificado en NixFarma la columna de agrupación homogénea. Viteka debe revisarla en Comprobar tablas.", []);
+                    if (text.Length is < 1 or > 40 || text.Any(char.IsControl)) return new("empty", "Escribe el código de la agrupación homogénea.", []);
+                    var column = "\"" + field + "\"";
+                    return Find(connection, tx, schema, $"UPPER(TRIM({column})) = ?", [text.ToUpperInvariant()], "agrupación homogénea " + text, column, ct);
+                }
             default: throw new ArgumentException("Tipo de búsqueda no válido.");
         }
     }

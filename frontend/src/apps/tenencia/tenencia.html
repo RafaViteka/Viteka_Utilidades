@@ -22,29 +22,61 @@
   </div>
   <div class="actions">
     @if (hasStock()) {
-      <span class="checked-at" title="Hora de la última consulta">Consultado a las {{ checkedTime() }}</span>
-      <button
-        class="icon-button"
-        (click)="exportShortfalls()"
-        [disabled]="!shortfalls()"
-        aria-label="Exportar faltas"
-        title="Exportar faltas a Excel (CSV)"
+      <span
+        class="checked-at"
+        [class.cached]="result()?.cached"
+        title="Fecha y hora de la última consulta de existencias"
+        ><v-icon name="clock" />Última consulta: {{ checkedTime() }}</span
       >
-        <v-icon name="sheet" /></button
-      ><button class="icon-button" (click)="print()" aria-label="Imprimir faltas" title="Imprimir faltas">
-        <v-icon name="printer" />
+      <details class="export-menu">
+        <summary class="text-button" aria-label="Exportar" title="Exportar el informe de faltas">
+          <v-icon name="download" />{{ exporting() ? 'Exportando…' : 'Exportar' }}
+        </summary>
+        <div class="export-options" role="menu">
+          <button role="menuitem" (click)="exportExcel()" [disabled]="exporting()">
+            <v-icon name="sheet" /><span
+              ><strong>Excel</strong><small>Faltas con logo y todos los grupos</small></span
+            ></button
+          ><button role="menuitem" (click)="exportCsv()" [disabled]="exporting()">
+            <v-icon name="sheet" /><span
+              ><strong>CSV</strong><small>Faltas, una fila por medicamento</small></span
+            ></button
+          ><button role="menuitem" (click)="exportPdf()" [disabled]="exporting()">
+            <v-icon name="file" /><span><strong>PDF</strong><small>Informe de faltas con logo</small></span></button
+          ><button role="menuitem" (click)="print()">
+            <v-icon name="printer" /><span><strong>Imprimir</strong><small>Mismo informe en papel</small></span>
+          </button>
+        </div>
+      </details>
+    }
+    @if (canConfigure() && result()?.province) {
+      <button
+        class="text-button"
+        [class.on]="editing()"
+        (click)="editing() ? finishEditing(true) : editing.set(true)"
+        title="Añadir o editar grupos y artículos (solo Viteka)"
+      >
+        <v-icon name="edit" />{{ editing() ? 'Terminar edición' : 'Editar listado' }}
       </button>
     }
-    <button class="text-button" (click)="state()" [disabled]="busy()">Revisar disponibilidad</button
-    ><button class="primary" (click)="query()" [disabled]="!canQuery()">
-      {{ busy() ? 'Espera…' : 'Consultar existencias' }}
-    </button>
+    @if (!editing()) {
+      <button class="text-button" (click)="state()" [disabled]="busy()">Revisar disponibilidad</button
+      ><button class="primary" (click)="query()" [disabled]="!canQuery()">
+        {{ busy() ? 'Espera…' : 'Consultar existencias' }}
+      </button>
+    }
   </div>
 </header>
 @if (error()) {
   <p class="error" role="alert">{{ error() }}</p>
 }
-@if (rows().length) {
+@if (editing()) {
+  <viteka-tenencia-editor
+    [fields]="result()?.fields ?? null"
+    (done)="finishEditing($event)"
+    (toast)="toast.emit($event)"
+  />
+} @else if (rows().length) {
   <div class="tenencia-commandbar">
     <div class="tenencia-filters">
       <label
@@ -127,12 +159,12 @@
                   Grupo {{ groupOrder('name') === 'none' ? '↕' : groupDescending() ? '↓' : '↑' }}
                 </button>
               </th>
-              <th scope="col" class="numeric" [attr.aria-sort]="groupOrder('minimum')">
+              <th scope="col" class="center" [attr.aria-sort]="groupOrder('minimum')">
                 <button (click)="sortGroups('minimum')">
                   Mín. {{ groupOrder('minimum') === 'none' ? '↕' : groupDescending() ? '↓' : '↑' }}
                 </button>
               </th>
-              <th scope="col" [attr.aria-sort]="groupOrder('status')">
+              <th scope="col" class="center" [attr.aria-sort]="groupOrder('status')">
                 <button (click)="sortGroups('status')">
                   Estado {{ groupOrder('status') === 'none' ? '↕' : groupDescending() ? '↓' : '↑' }}
                 </button>
@@ -155,8 +187,8 @@
                     <strong [title]="row.name">{{ row.name }}</strong>
                   </button>
                 </td>
-                <td class="numeric">{{ row.minimum }}</td>
-                <td>
+                <td class="center">{{ row.minimum }}</td>
+                <td class="center">
                   <span
                     class="row-state"
                     role="img"
@@ -188,8 +220,8 @@
             </h2>
             <p>
               {{ row.articles.length }} medicamentos asociados
-              @if (row.classification) {
-                · {{ row.classification }}
+              @if (row.articles.length > visibleArticles(row).length) {
+                · se muestran {{ visibleArticles(row).length }}: con existencias y últimas compras o ventas
               }
             </p>
           </div>
@@ -211,15 +243,18 @@
                     Medicamento {{ articleOrder('description') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
                   </button>
                 </th>
-                <th scope="col" class="numeric" [attr.aria-sort]="articleOrder('stock')">
+                <th scope="col" class="center" [attr.aria-sort]="articleOrder('stock')">
                   <button (click)="sortArticles('stock')">
                     Existencias {{ articleOrder('stock') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
                   </button>
                 </th>
+                @if (showExpiry()) {
+                  <th scope="col" class="center">Caducidad</th>
+                }
               </tr>
             </thead>
             <tbody>
-              @for (a of sortedArticles(row); track a.code) {
+              @for (a of visibleArticles(row); track a.code) {
                 <tr [class.article-chosen]="activeArticle()?.code === a.code">
                   <td class="article-code">{{ a.code }}</td>
                   <td>
@@ -237,17 +272,33 @@
                       <small>{{ issue(a) }}</small>
                     }
                   </td>
-                  <td class="numeric drug-stock" [attr.title]="issue(a) || null">
+                  <td class="center drug-stock" [attr.title]="issue(a) || null">
                     {{ row.status === 'not_checked' ? 'Sin consultar' : number(a.stock) }}
                   </td>
+                  @if (showExpiry()) {
+                    <td class="center">
+                      @if (expiryState(a); as e) {
+                        <span class="expiry" [attr.data-expiry]="e" [title]="expiryTitle(a)">{{ expiryText(a) }}</span>
+                      }
+                    </td>
+                  }
                 </tr>
               } @empty {
                 <tr>
-                  <td colspan="3" class="group-empty">No hay medicamentos asociados a este grupo.</td>
+                  <td [attr.colspan]="showExpiry() ? 4 : 3" class="group-empty">
+                    No hay medicamentos asociados a este grupo.
+                  </td>
                 </tr>
               }
             </tbody>
           </table>
+          @if (row.articles.length > VISIBLE || isExpanded(row)) {
+            @if (row.articles.length > visibleArticles(row).length || isExpanded(row)) {
+              <button class="text-button show-all" (click)="toggleExpanded(row)">
+                {{ isExpanded(row) ? 'Ver solo los más recientes' : 'Ver todos (' + row.articles.length + ')' }}
+              </button>
+            }
+          }
         </div>
       } @else {
         <p class="group-empty">Selecciona un grupo para ver sus medicamentos asociados.</p>
@@ -275,6 +326,14 @@
               <small>Artículo · CN {{ article.code }}</small
               ><strong>{{ article.description }}</strong>
             </div>
+            @if (article.lastPurchase || article.lastSale) {
+              <div>
+                <small>Movimientos</small
+                ><strong
+                  >Compra {{ movementDate(article.lastPurchase) }} · Venta {{ movementDate(article.lastSale) }}</strong
+                >
+              </div>
+            }
           }
         </div>
         @if (row.selectionNote) {
@@ -362,11 +421,14 @@
                   Medicamento {{ articleOrder('description') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
                 </button>
               </th>
-              <th scope="col" class="numeric" [attr.aria-sort]="articleOrder('stock')">
+              <th scope="col" class="center" [attr.aria-sort]="articleOrder('stock')">
                 <button (click)="sortArticles('stock')">
                   Existencias {{ articleOrder('stock') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
                 </button>
               </th>
+              @if (showExpiry()) {
+                <th scope="col" class="center">Caducidad</th>
+              }
             </tr>
           </thead>
           <tbody>
@@ -379,7 +441,14 @@
                     <small>{{ issue(a) }}</small>
                   }
                 </td>
-                <td class="numeric">{{ row.status === 'not_checked' ? 'Sin consultar' : number(a.stock) }}</td>
+                <td class="center">{{ row.status === 'not_checked' ? 'Sin consultar' : number(a.stock) }}</td>
+                @if (showExpiry()) {
+                  <td class="center">
+                    @if (expiryState(a); as e) {
+                      <span class="expiry" [attr.data-expiry]="e" [title]="expiryTitle(a)">{{ expiryText(a) }}</span>
+                    }
+                  </td>
+                }
               </tr>
             }
           </tbody>
@@ -389,44 +458,88 @@
   </div>
 }
 
-@if (hasStock()) {
+@if (hasStock() && !editing()) {
   <section class="tenencia-print" aria-hidden="true">
-    <h1>Tenencia obligatoria · faltas</h1>
-    <p>
-      {{ result()?.provinceName || 'Provincia ' + result()?.province }} · {{ date(result()?.checkedAt) }} ·
-      {{ covered() }} de {{ rows().length }} grupos correctos · {{ shortfalls() }} con falta
-    </p>
+    <header class="print-head">
+      <img src="logotipo.png" alt="Viteka" />
+      <div>
+        <h1>Tenencia obligatoria · informe de faltas</h1>
+        <p>
+          {{ result()?.provinceName || 'Provincia ' + result()?.province }} · Última consulta {{ checkedTime() }} ·
+          Listado {{ result()?.listVersion }}
+        </p>
+      </div>
+    </header>
+    <div class="print-kpis">
+      <div>
+        <small>Grupos</small><strong>{{ rows().length }}</strong>
+      </div>
+      <div class="ok">
+        <small>Correctos</small><strong>{{ covered() }}</strong>
+      </div>
+      <div class="bad">
+        <small>Con falta</small><strong>{{ shortfalls() }}</strong>
+      </div>
+      <div class="bad">
+        <small>Unidades que faltan</small><strong>{{ number(totalMissing()) }}</strong>
+      </div>
+    </div>
     <table>
       <thead>
         <tr>
           <th>Código</th>
           <th>Grupo</th>
-          <th>Mín.</th>
-          <th>Exist.</th>
-          <th>Faltan</th>
-          <th>Medicamentos asociados (CN · existencias)</th>
+          <th class="c">Mín.</th>
+          <th class="c">Exist.</th>
+          <th class="c">Faltan</th>
+          <th class="c">Caducidad</th>
         </tr>
       </thead>
-      <tbody>
-        @for (r of shortfallRows(); track r.id) {
-          <tr>
+      @for (r of shortfallsByMissing(); track r.id) {
+        <tbody class="print-group">
+          <tr class="group-line">
             <td>{{ r.classification || '—' }}</td>
             <td>{{ r.name }}</td>
-            <td>{{ r.minimum }}</td>
-            <td>{{ number(r.stock) }}</td>
-            <td>{{ number(r.missing) }}</td>
-            <td>
-              @for (a of sortedArticles(r); track a.code) {
-                <div>{{ a.code }} · {{ a.description }} · {{ number(a.stock ?? 0) }}</div>
-              }
-            </td>
+            <td class="c">{{ r.minimum }}</td>
+            <td class="c">{{ number(r.stock) }}</td>
+            <td class="c missing">{{ number(r.missing) }}</td>
+            <td></td>
           </tr>
-        } @empty {
+          @for (a of visibleArticles(r); track a.code) {
+            <tr class="article-line">
+              <td>{{ a.code }}</td>
+              <td>{{ a.description }}</td>
+              <td></td>
+              <td class="c">{{ number(a.stock ?? 0) }}</td>
+              <td></td>
+              <td class="c">
+                @if (showExpiry() && expiryState(a); as e) {
+                  <span class="expiry" [attr.data-expiry]="e">{{ expiryText(a) }}</span>
+                }
+              </td>
+            </tr>
+          }
+          @if (r.articles.length > visibleArticles(r).length) {
+            <tr class="article-line">
+              <td></td>
+              <td colspan="5" class="more">
+                {{ r.articles.length - visibleArticles(r).length }} artículos más sin existencias ni movimientos
+                recientes
+              </td>
+            </tr>
+          }
+        </tbody>
+      } @empty {
+        <tbody>
           <tr>
             <td colspan="6">Sin faltas en la última consulta.</td>
           </tr>
-        }
-      </tbody>
+        </tbody>
+      }
     </table>
+    <footer>
+      Viteka Utilidades · {{ checkedTime() }} · Caducidad: verde más de 6 meses, amarillo 6 meses o menos, rojo
+      caducado, gris sin fecha.
+    </footer>
   </section>
 }
