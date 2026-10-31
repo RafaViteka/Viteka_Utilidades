@@ -24,6 +24,7 @@ internal sealed class DesktopUpdates : IDisposable
     private CancellationTokenSource? downloadCancellation;
     private bool cancellable;
     private void Phase(string phase,int? percent=null)=>post(new{type="update-phase",phase,percent});
+    private sealed class DownloadProgress(Action<int> emit):IProgress<int>{public void Report(int value)=>emit(value);}
     internal DesktopUpdates(string directory, Func<Task<AccessUserView>> currentUser, Action<object> post, Func<bool> isLocalServer,
         Action saveSession, Action discardSession, Func<string,string?,Task> audit)
     {
@@ -102,7 +103,7 @@ internal sealed class DesktopUpdates : IDisposable
                 {
                     // Fetch a fresh, verified offer; do not trust a persisted filename/digest.
                     var update = await new PreviewUpdater(readHttp).FindAsync(version, ct) ?? throw new InvalidOperationException("No hay una versión posterior verificable.");
-                    var progress = new Progress<int>(percent => Phase("downloading",percent));
+                    var progress = new DownloadProgress(percent => Phase("downloading",percent));
                     using var installer = await new PreviewUpdater(downloadHttp).DownloadAsync(update, Path.Combine(directory, "Updates"), progress, ct, ()=>Phase("verifying"));
                     if (!AccessPolicy.CanInstallUpdates(await currentUser())) throw new AccessDeniedException();
                     // Instalación desatendida: sin asistente ni preguntas. Windows solo pide su confirmación de permisos (UAC).

@@ -186,6 +186,13 @@ public partial class MainWindow : Window
             if (savedPharmacy.GetProperty("profile").GetProperty("province").GetString() != "29") throw new InvalidOperationException("Central pharmacy profile failed.");
             var pendingTenencia = await Access.UtilityAsync("tenencia.query");
             if (pendingTenencia.GetProperty("code").GetString() != "not_configured" || pendingTenencia.GetProperty("rows").GetArrayLength() != 83) throw new InvalidOperationException("Excel groups must remain visible without an Oracle connection.");
+            stage = "catalog-audit-declaration";
+            var declaration=await Access.UtilityAsync("declaration.state");
+            var group=declaration.GetProperty("groups")[0];var selection=new Dictionary<string,string[]>{{group.GetProperty("id").GetString()!,[group.GetProperty("codes")[0].GetString()!]}};
+            await Access.UtilityAsync("declaration.save",JsonSerializer.SerializeToElement(new{listVersion=declaration.GetProperty("listVersion").GetString(),selections=selection}));
+            var restored=await Access.UtilityAsync("declaration.state");if(restored.GetProperty("selections").GetProperty(group.GetProperty("id").GetString()!).GetArrayLength()!=1)throw new InvalidOperationException("Declaration draft did not persist centrally.");
+            var audit=await Access.UtilityAsync("audit.query");if(!audit.GetProperty("rows").EnumerateArray().Any(r=>r.GetProperty("action").GetString()=="declaration.save"))throw new InvalidOperationException("Central audit did not retain the confirmed operation.");
+            var dataState=await Access.UtilityAsync("catalog.data.state");if(dataState.GetProperty("canPrepare").GetBoolean())throw new InvalidOperationException("A pharmacy fixture must never have an editorial signing key.");
             stage = "sidebar";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('.menu-toggle').click()");
             await WaitForScript("document.querySelector('.layout')?.classList.contains('collapsed') === true");
@@ -214,16 +221,12 @@ public partial class MainWindow : Window
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.resource')].find(b=>b.querySelector('strong')?.textContent==='Tenencia obligatoria').click()");
             await WaitForScript("document.querySelector('h1')?.textContent === 'Tenencia obligatoria' && document.querySelectorAll('viteka-tenencia .group-button').length === 83");
             stage = "preference";
-            await OpenAccountSmoke();
-            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Pantalla al iniciar').click()");
-            await WaitForScript("document.querySelector('[role=dialog] input[type=checkbox]') !== null");
-            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click();[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Guardar cambios').click()"); await WaitForPreference(true);
-            Browser.CoreWebView2.Reload(); await WaitForScript("document.querySelector('h1')?.textContent === 'Inicio'");
-            await OpenAccountSmoke();
-            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Pantalla al iniciar').click()");
-            await WaitForScript("document.querySelector('input[type=checkbox]')?.checked === true");
-            await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click();[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Guardar cambios').click()"); await WaitForPreference(false);
-            await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('nav button')].find(b=>b.textContent.trim()==='Inicio').click()");
+            // Seed a legacy preference; the new UI deliberately no longer offers this option.
+            Preferences.SetOpenFavorites(true);Preferences.SetTheme("dark");
+            Browser.CoreWebView2.Reload();
+            await WaitForScript("document.querySelector('h1')?.textContent === 'Inicio' && document.documentElement.dataset.theme === 'dark'");
+            if(!Preferences.Load().OpenFavoritesOnStart||Preferences.Load().Theme!="dark")throw new InvalidOperationException("Startup must retain preferences while opening Inicio.");
+            Preferences.SetOpenFavorites(false);
             await WaitForScript("document.querySelector('.priority-grid') !== null");
             var screenshot = Environment.GetEnvironmentVariable("VITEKA_UI_SMOKE_SCREENSHOT");
             if (!string.IsNullOrEmpty(screenshot)) { using var file = File.Create(screenshot); await Browser.CoreWebView2.CapturePreviewAsync(CoreWebView2CapturePreviewImageFormat.Png, file); }
