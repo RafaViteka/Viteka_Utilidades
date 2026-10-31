@@ -154,7 +154,7 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          $version = ([xml](Get-Content 'Directory.Build.props' -Raw)).Project.PropertyGroup.Version
+          $version = ([xml](Get-Content 'Directory.Build.props' -Raw)).SelectSingleNode('/Project/PropertyGroup/Version').InnerText
           $tag = if ($env:GITHUB_REF_TYPE -eq 'tag') { $env:GITHUB_REF_NAME } else { "v$version-preview.1" }
           if ($tag -notmatch "^v$([regex]::Escape($version))-preview\.[1-9][0-9]*$") { throw 'Release tag does not match the built version.' }
           $zip = "artifacts/VitekaUtilidades-$version-win-x64-preview.zip"

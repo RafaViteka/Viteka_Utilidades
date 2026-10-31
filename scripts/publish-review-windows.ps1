@@ -19,7 +19,7 @@ try{
  $compiler=Get-Command ISCC.exe -ErrorAction SilentlyContinue
  $iscc=if($compiler){$compiler.Source}else{Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe'}
  & ./packaging/windows/prepare-webview.ps1
- $version=([xml](Get-Content Directory.Build.props -Raw)).Project.PropertyGroup.Version
+ $version=([xml](Get-Content Directory.Build.props -Raw)).SelectSingleNode('/Project/PropertyGroup/Version').InnerText
  & $iscc '/DReviewBuild=1' ('/DAppVersion='+$version) ('/DPublishRoot='+ (Join-Path $root 'artifacts/review/windows-x64')) 'packaging/windows/Viteka.Utilidades.iss'
  if($LASTEXITCODE -ne 0){throw 'Review installer failed.'}
 }finally{Pop-Location}

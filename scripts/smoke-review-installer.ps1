@@ -1,6 +1,6 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
-$version=([xml](Get-Content (Join-Path $root 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version
+$version=([xml](Get-Content (Join-Path $root 'Directory.Build.props') -Raw)).SelectSingleNode('/Project/PropertyGroup/Version').InnerText
 $normal=Join-Path $root 'artifacts/normal-server/Viteka.Server.exe'
 $setup=Join-Path $root "artifacts/installer/VitekaUtilidades-Test-Setup-$version-win-x64.exe"
 $production=Join-Path $env:ProgramData 'Viteka/UtilidadesAccess'
@@ -32,7 +32,8 @@ try{
  New-ItemProperty $normalKey -Name ProductionSmokeMarker -Value 'unchanged'|Out-Null
  New-ItemProperty $normalKey -Name DisplayName -Value 'Viteka normal coexistence fixture'|Out-Null
  Run -Exe $setup -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$install+'"'),('/LOG="'+(Join-Path $directory 'review-install.log')+'"'))
- if((Get-Item $setup).VersionInfo.ProductName -ne 'Viteka Utilidades - Pruebas'){throw 'Wrong installer product identity.'}
+ $info=(Get-Item $setup).VersionInfo
+ if($info.ProductName -ne 'Viteka Utilidades - Pruebas'){throw ('Wrong installer product identity: product=['+$info.ProductName+'] description=['+$info.FileDescription+'] file=['+$setup+']')}
  if(-not(Test-Path $reviewKey) -or (Get-ItemProperty $normalKey).DisplayName -ne 'Viteka normal coexistence fixture'){throw 'Review installer changed normal registration.'}
  $metadata=Get-Content (Join-Path $install 'Cliente/access-server.json') -Raw|ConvertFrom-Json
  if($metadata.ServerUrl -ne 'https://localhost:7448/'){throw 'Review installer did not use its local test endpoint.'}

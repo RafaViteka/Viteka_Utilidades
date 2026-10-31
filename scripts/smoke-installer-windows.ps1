@@ -1,6 +1,6 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
-$version=([xml](Get-Content (Join-Path $root 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version
+$version=([xml](Get-Content (Join-Path $root 'Directory.Build.props') -Raw)).SelectSingleNode('/Project/PropertyGroup/Version').InnerText
 $setup=Join-Path $root "artifacts/installer/VitekaUtilidades-Setup-$version-win-x64-preview.exe"
 $state=Join-Path $env:ProgramData 'Viteka/UtilidadesAccess'
 if((Get-Service VitekaUtilidadesAccess -ErrorAction SilentlyContinue) -or (Test-Path $state)){throw 'Refusing installer test over an existing authority.'}
