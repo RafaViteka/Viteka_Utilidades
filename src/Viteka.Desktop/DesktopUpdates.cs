@@ -25,7 +25,8 @@ internal sealed class DesktopUpdates : IDisposable
     internal bool IsBusy { get; private set; }
     private CancellationTokenSource? downloadCancellation;
     private bool cancellable;
-    private void Phase(string phase,int? percent=null)=>post(new{type="update-phase",phase,percent});
+    private string currentPhase = "preparing";
+    private void Phase(string phase,int? percent=null){currentPhase=phase;post(new{type="update-phase",phase,percent});}
     private sealed class DownloadProgress(Action<int> emit):IProgress<int>{public void Report(int value)=>emit(value);}
     internal DesktopUpdates(string directory, Func<Task<AccessUserView>> currentUser, Action<object> post, Func<bool> isLocalServer,
         Action saveSession, Action discardSession, Func<string,string?,Task> audit, Func<Task<string>> reviewIdentity)
@@ -111,9 +112,9 @@ internal sealed class DesktopUpdates : IDisposable
                     if (!AccessPolicy.CanInstallUpdates(await currentUser())) throw new AccessDeniedException();
                     // Instalación desatendida: sin asistente ni preguntas. Windows solo pide su confirmación de permisos (UAC).
                     // El instalador vuelve a abrir Viteka al terminar (/RELAUNCH=1) y la sesión se recupera sin pedir contraseña.
+                    cancellable=false;Phase("handoff");
                     saveSession();
                     var log = Path.Combine(Path.GetDirectoryName(installer.Path)!, "instalacion.log");
-                    cancellable=false;Phase("handoff");
                     try { await audit("update.requested",update.Version.ToString(3));await UpdateCompanion.PrepareAsync(installer.Path,update.Sha256,update.Size,log,update.Version.ToString(3),ct); }
                     catch { discardSession(); throw; }
                     try{await audit("update.started",update.Version.ToString(3));}catch(Exception e)when(e is HttpRequestException or OperationCanceledException or AccessSessionException or AccessDeniedException){/* The service may already be restarting. Requested was persisted before handoff. */}
@@ -122,7 +123,11 @@ internal sealed class DesktopUpdates : IDisposable
                     Application.Current.Shutdown(); return new { started = true };
                 }
                 catch(OperationCanceledException){Phase("cancelled");return new{cancelled=true};}
-                catch {Phase("failed");try{await audit("update.failed",null);}catch(Exception e)when(e is HttpRequestException or OperationCanceledException or AccessSessionException or AccessDeniedException){}throw;}
+                catch(Exception updateFailure) when(updateFailure is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or System.ComponentModel.Win32Exception or System.Security.Cryptography.CryptographicException or HttpRequestException or JsonException){
+                    var failure=UpdateDiagnostics.Capture(updateFailure,currentPhase);UpdateDiagnostics.Save(directory,failure);
+                    Phase("failed");try{await audit("update.failed",null);}catch(Exception e)when(e is HttpRequestException or OperationCanceledException or AccessSessionException or AccessDeniedException){}
+                    throw new UpdateOperationException(failure);
+                }
                 finally { IsBusy = false;cancellable=false;downloadCancellation.Dispose();downloadCancellation=null;downloadGate.Release(); }
             }
             default: throw new InvalidOperationException();

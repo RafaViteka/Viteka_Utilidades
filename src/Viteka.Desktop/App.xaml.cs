@@ -7,7 +7,9 @@ public partial class App : Application
     internal static bool SmokeTest { get; private set; }
     protected override void OnStartup(StartupEventArgs e)
     {
-        if(e.Args is ["--watch-update",var manifest]) { StartupUri=null; UpdateCompanion.Run(manifest); return; }
+        // StartupUri's setter rejects null. Leave its default unset for the
+        // monitor and assign the normal window only on the regular app path.
+        if(e.Args is ["--watch-update",var manifest]) { UpdateCompanion.Run(manifest); return; }
         SmokeTest = e.Args.Contains("--smoke-ui");
         if (e.Args.Contains("--check-webview-runtime"))
         {
@@ -18,6 +20,7 @@ public partial class App : Application
         if (SmokeTest) DispatcherUnhandledException += (_, args) => { WriteSmokeFailure(args.Exception, "dispatcher"); args.Handled = true; Shutdown(1); };
         try { WindowsShellIntegration.RegisterIdentity(); }
         catch (Exception exception) { if (SmokeTest) { WriteSmokeFailure(exception, "shell-startup"); Shutdown(1); return; } throw; }
+        StartupUri = new Uri("MainWindow.xaml", UriKind.Relative);
         base.OnStartup(e);
     }
     private static void WriteSmokeFailure(Exception exception, string stage)

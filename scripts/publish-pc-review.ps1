@@ -51,7 +51,7 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
-Permite comprobar el ciclo de búsqueda, descarga e instalación desde Configuración → Actualizaciones. No añade funciones nuevas respecto al instalador de arranque 0.18.0. Conserva el ID, las cuentas y los datos propios de pruebas; la edición habitual utiliza otro servicio y otras carpetas.
+Corrige el cierre del monitor antes de solicitar permisos de Windows. El arranque normal y el monitor utilizan rutas de inicio independientes. Incorpora diagnóstico por fase con código público, sin credenciales ni datos de conexión. Las versiones 0.18.0 y 0.18.1 requieren ejecutar este instalador una vez sobre la instalación existente, sin desinstalar. Conserva el ID, las cuentas y los datos propios de pruebas; la edición habitual utiliza otro servicio y otras carpetas.
 
 La publicación exige las pruebas Windows de ambas ediciones y de convivencia del mismo commit. No acredita conexión a Oracle en la farmacia. Las ediciones normales y los demás identificadores de pruebas omiten esta etiqueta.
 

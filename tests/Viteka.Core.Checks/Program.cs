@@ -227,6 +227,17 @@ try
         Require(ProductProfile.ServiceName==(ProductProfile.IsReview?"VitekaUtilidadesReviewAccess":"VitekaUtilidadesAccess"));
         Require(ProductProfile.AccessPort==(ProductProfile.IsReview?7448:7447));
     });
+    Check("Update diagnostics preserve phase and Windows code without exception secrets", () => {
+        const string secret="sensitive-session-and-connection-placeholder";
+        var failure=UpdateDiagnostics.Capture(new UnauthorizedAccessException(secret),"handoff");
+        Require(failure.Phase=="handoff"&&failure.Category=="PERMISSION"&&failure.Code.StartsWith("VU-UPD-HANDOFF-PERMISSION-"));
+        var folder=Path.Combine(root,"update-diagnostics");UpdateDiagnostics.Save(folder,failure);
+        Require(!File.ReadAllText(Path.Combine(folder,"Updates","last-error.json")).Contains(secret));
+        var wrapped=new UpdateOperationException(failure);
+        Require(!wrapped.Message.Contains(secret)&&wrapped.Message.Contains(failure.Code));
+        Require(UpdateDiagnostics.Capture(wrapped,"preparing")==failure);
+        Require(UpdateDiagnostics.Capture(new System.ComponentModel.Win32Exception(1223,secret),"handoff").Category=="CANCELLED");
+    });
     Check("Preview channel offers later verified installer", () =>
     {
         offer = updater.FindAsync(new Version(0, 5, 0)).GetAwaiter().GetResult();

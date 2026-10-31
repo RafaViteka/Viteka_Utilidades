@@ -306,13 +306,14 @@ public partial class MainWindow : Window
     {
         if (closing || !Trusted(e.Source) || e.WebMessageAsJson.Length > 8 * 1024 * 1024) return;
         string? id = null;
+        string? command = null;
         try
         {
             using var document = JsonDocument.Parse(e.WebMessageAsJson);
             var root = document.RootElement;
             if (root.ValueKind != JsonValueKind.Object || !root.TryGetProperty("id", out var identifier) || identifier.ValueKind != JsonValueKind.String || !Guid.TryParse(identifier.GetString(), out _)) return;
             id = identifier.GetString()!;
-            var command = root.GetProperty("command").GetString();
+            command = root.GetProperty("command").GetString();
             if (command is "auth.state" or "auth.login" or "auth.logout" or "auth.password" or "users.list" or "users.create" or "users.modify" or "users.password" or "utilities.list")
             {
                 if (command is "auth.login" or "auth.logout") { profile = null; profileId = null; }
@@ -472,7 +473,13 @@ public partial class MainWindow : Window
         }
         catch (AccessSessionException) { profile = null; profileId = null; Post(new { type = "session-ended" }); if (id is not null) Reply(id, error: "AUTH_REQUIRED"); }
         catch (AccessDeniedException error) { if (id is not null) Reply(id, error: error.Message); }
+        catch (UpdateOperationException error) { if (id is not null) Reply(id, error: error.Message); }
         catch (ArgumentException error) { if (id is not null) Reply(id, error: error.Message); }
+        catch (Exception error) when (command=="update.install" && error is IOException or InvalidDataException or UnauthorizedAccessException or InvalidOperationException or Win32Exception or System.Security.Cryptography.CryptographicException or HttpRequestException or JsonException)
+        {
+            var failure=UpdateDiagnostics.Capture(error,"preparing");UpdateDiagnostics.Save(store.DirectoryPath,failure);
+            Post(new{type="update-phase",phase="failed"});if(id is not null)Reply(id,error:UpdateDiagnostics.Describe(failure));
+        }
         catch (HttpRequestException) { if (id is not null) Reply(id, error: "No se pudo contactar con el servicio de usuarios. Revisa que esté iniciado en el servidor y que su identidad esté configurada."); }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) { if (id is not null) Reply(id, new { cancelled = true }); }
         catch (Exception ex) when (ex is IOException or InvalidDataException or JsonException or UnauthorizedAccessException or InvalidOperationException or System.Security.Cryptography.CryptographicException or KeyNotFoundException or HttpRequestException or OperationCanceledException or System.Runtime.InteropServices.ExternalException)

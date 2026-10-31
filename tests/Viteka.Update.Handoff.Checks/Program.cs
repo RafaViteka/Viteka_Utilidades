@@ -27,7 +27,8 @@ try
         .GetMethod("PrepareAsync", BindingFlags.Static | BindingFlags.NonPublic)!;
     var log = Path.Combine(Path.GetDirectoryName(installer)!, "instalacion.log");
     using var timeout = new CancellationTokenSource(TimeSpan.FromMinutes(2));
-    var task = (Task<string>)method.Invoke(null, [installer, hash, guard.Length, log, "test", timeout.Token])!;
+    var version = new Version(metadata.ProductMajorPart, metadata.ProductMinorPart, metadata.ProductBuildPart).ToString(3);
+    var task = (Task<string>)method.Invoke(null, [installer, hash, guard.Length, log, version, timeout.Token])!;
     var manifest = await task;
     File.WriteAllText(report, JsonSerializer.Serialize(new { passed = true, stage = "handoff-ready", manifest }));
     return 0;

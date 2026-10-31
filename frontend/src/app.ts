@@ -915,6 +915,8 @@ export class AppComponent {
   }
   async install() {
     this.updating.set(true);
+    this.error.set('');
+    this.updateMessage.set('');
     this.bridge.progress.set(null);
     try {
       const r = await this.bridge.call<{ cancelled?: boolean }>('update.install');

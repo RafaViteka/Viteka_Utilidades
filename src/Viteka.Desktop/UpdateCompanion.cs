@@ -27,7 +27,8 @@ internal static class UpdateCompanion
         var deadline=DateTimeOffset.UtcNow.AddMinutes(5);
         while(!File.Exists(value.ReadyFile)){
             ct.ThrowIfCancellationRequested();
-            if(File.Exists(value.ErrorFile)||process.HasExited)throw new IOException("No se inició la instalación. Puede haberse cancelado el permiso de Windows. La aplicación sigue abierta.");
+            if(process.HasExited)throw new Viteka.Core.UpdateOperationException(new(DateTimeOffset.UtcNow,"handoff","MONITOR",$"VU-UPD-HANDOFF-MONITOR-{process.ExitCode:X8}"));
+            if(File.Exists(value.ErrorFile))throw new IOException("No se inició la instalación. La aplicación sigue abierta.");
             if(DateTimeOffset.UtcNow>=deadline){try{process.Kill();}catch(InvalidOperationException){}throw new IOException("No se recibió confirmación del instalador. Puedes volver a intentarlo.");}
             await Task.Delay(250,ct);
         }
@@ -58,10 +59,11 @@ internal static class UpdateCompanion
                     text.Text="Instalando "+handoff.Version+"… El instalador no ofrece un porcentaje medible. Viteka volverá a abrirse al finalizar.";
                     await installer.WaitForExitAsync();
                     if(installer.ExitCode!=0)throw new IOException("La instalación no terminó correctamente (código "+installer.ExitCode+"). Reabre Viteka y consulta el historial y el registro de instalación.");
+                    await File.WriteAllTextAsync(Path.Combine(AppContext.BaseDirectory,"result.json"),JsonSerializer.Serialize(new{success=true,exitCode=installer.ExitCode}));
                 }
                 text.Text="Instalación finalizada. Viteka se está abriendo en Inicio.";progress.IsIndeterminate=false;progress.Value=100;
             }
-            catch(Exception e) when(e is IOException or InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or JsonException or CryptographicException){
+            catch(Exception e) when(e is IOException or InvalidDataException or InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or JsonException or CryptographicException){
                 text.Text=e is System.ComponentModel.Win32Exception?"Se canceló el permiso de Windows o no se pudo iniciar el instalador. La instalación no se ha confirmado.":e.Message;
                 if(handoff is not null){try{await File.WriteAllTextAsync(Path.Combine(AppContext.BaseDirectory,"error"),"No se confirmó la instalación.");}catch(IOException){}}
                 progress.Visibility=Visibility.Collapsed;

@@ -64,13 +64,21 @@ try{
  if(-not $handoff.passed){throw "Packaged update handoff failed: $($handoff.stage) $($handoff.error)"}
  $monitor=Join-Path $updateFolder 'Monitor/Viteka.Desktop.exe'
  $deadline=(Get-Date).AddMinutes(2)
+ $resultPath=Join-Path $updateFolder 'Monitor/result.json'
  while((Get-Date) -lt $deadline){
-  $logPath=Join-Path $updateFolder 'instalacion.log'
-  if((Test-Path $logPath) -and (Get-Content $logPath -Raw).Contains('Installation process succeeded.')){break}
+  if(Test-Path $resultPath){break}
   if(Test-Path (Join-Path $updateFolder 'Monitor/error')){throw 'Monitor reported an installation failure.'}
   Start-Sleep -Seconds 1
  }
- if(-not(Test-Path $logPath) -or -not(Get-Content $logPath -Raw).Contains('Installation process succeeded.')){throw 'Monitored installer did not finish successfully.'}
+ if(-not(Test-Path $resultPath)){throw 'Monitored installer did not finish successfully.'}
+ $result=Get-Content $resultPath -Raw|ConvertFrom-Json
+ if(-not $result.success -or $result.exitCode -ne 0){throw 'Monitored installer reported a failure.'}
+ $logPath=Join-Path $updateFolder 'instalacion.log'
+ if(-not(Test-Path $logPath) -or -not(Get-Content $logPath -Raw).Contains('Installation process succeeded.')){throw 'Successful monitor did not match installation log.'}
+ $reopenedClient=Join-Path $install 'Cliente/Viteka.Desktop.exe'
+ $deadline=(Get-Date).AddSeconds(20)
+ while((Get-Date) -lt $deadline -and -not(Get-Process|Where-Object {$_.Path -eq $reopenedClient})){Start-Sleep -Seconds 1}
+ if(-not(Get-Process|Where-Object {$_.Path -eq $reopenedClient})){throw 'The installed application did not reopen after the monitored update.'}
  foreach($path in @($monitor,(Join-Path $install 'Cliente/Viteka.Desktop.exe'))){Get-Process|Where-Object {$_.Path -eq $path}|Stop-Process -Force}
  Run -Exe $server -Arguments @('--access-health',('"'+(Join-Path $install 'Cliente/access-server.json')+'"'))
  if((Get-FileHash (Join-Path $review 'Private/review-device.dat') -Algorithm SHA256).Hash -ne $idHash){throw 'Review upgrade changed its device identity.'}
