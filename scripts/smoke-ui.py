@@ -79,6 +79,20 @@ class AuthorityFixture:
    if not admin:deny()
    if cmd=='pharmacy.save':self.pharmacy=copy.deepcopy(d)
    return dict(profile=copy.deepcopy(self.pharmacy),provinces=[dict(code='29',name='Málaga'),dict(code='28',name='Madrid')])
+  if cmd in ('activity.record','tenencia.print','audit.settings'):return dict(saved=True,months=12)
+  if cmd=='audit.query':
+   if not admin:deny()
+   return dict(rows=[dict(id=1,at='2026-10-31T10:00:00Z',userId=self.current['id'],userName=self.current['name'],utility='tenencia-obligatoria',action='tenencia.query',result='ok',note='83 grupos')],next=None)
+  if cmd.startswith('catalog.data.'):
+   if not superadmin:deny()
+   if cmd=='catalog.data.state':return dict(province='29',masterVersion='Fixture de pruebas',localVersion='Personalizada-'+str(self.catalog_version) if self.catalog_custom else 'Fixture de pruebas',legacy=False,conflicts=[],history=[],hasTrust=False,canPrepare=False)
+  if cmd.startswith('declaration.'):
+
+   if not admin and 'tenencia-obligatoria' not in self.current['utilityIds']:deny()
+   version='Personalizada-'+str(self.catalog_version) if self.catalog_custom else 'Fixture de pruebas'
+   if cmd=='declaration.save':
+    assert d['listVersion']==version;self.declarations=copy.deepcopy(d['selections']);return dict(saved=True)
+   return dict(listVersion=version,groups=[dict(id=g['id'],name=g['name'],minimum=g['minimum'],codes=[a['code'] for a in g['articles']]+(['699998'] if g['id']=='a' else []),descriptions={a['code']:a['description'] for a in g['articles']}) for g in self.groups()],selections=getattr(self,'declarations',{}),reviewRequired=False)
   if cmd in ('file.save','file.pdf'):
    assert re.fullmatch(r'[\w\-. ]{1,80}\.(csv|xlsx|pdf)',d['name']),d['name'];self.saved.append(copy.deepcopy(d));return dict(saved=True,file=d['name'])
   if cmd.startswith('tenencia.catalog.'):
@@ -154,12 +168,12 @@ with sync_playwright() as p:
   try:return dict(id=msg['id'],ok=True,result=fixture.invoke(msg))
   except ValueError as e:return dict(id=msg['id'],ok=False,error=str(e))
  context.expose_binding('fixtureNative',native_call)
- context.add_init_script('''window.chrome=window.chrome||{};let listener;window.chrome.webview={addEventListener:(type,fn)=>listener=fn,postMessage:msg=>{window.fixtureNative(msg).then(response=>{if(msg.command==='window.zoom'&&response.ok)document.documentElement.style.zoom=String(response.result.percent/100);listener({data:response});});}};''')
+ context.add_init_script('''window.chrome=window.chrome||{};let listener;window.fixtureEmit=data=>listener({data});window.chrome.webview={addEventListener:(type,fn)=>listener=fn,postMessage:msg=>{window.fixtureNative(msg).then(response=>{if(msg.command==='window.zoom'&&response.ok)document.documentElement.style.zoom=String(response.result.percent/100);listener({data:response});});}};''')
  page=context.new_page();errors=[];page.on('pageerror',lambda e:errors.append(str(e)));page.on('console',lambda e:errors.append(e.text) if e.type=='error' else None)
  page.route('**/favicon.ico',lambda route:route.fulfill(status=204));page.goto(url)
  page.get_by_role('heading',name='Iniciar sesión',exact=True).wait_for()
  assert page.get_by_role('navigation').count()==0
- assert page.get_by_role('heading',name='Conexión a NixFarma').count()==0
+ assert page.get_by_role('heading',name='Conexión a Nixfarma').count()==0
  page.screenshot(path=str(artifacts/'angular-login.png'),full_page=True)
  def login(name,password,new_password=None):
   page.get_by_label('Usuario',exact=True).fill(name);page.get_by_label('Contraseña',exact=True).fill(password);page.get_by_role('button',name='Entrar',exact=True).click()
@@ -187,13 +201,18 @@ with sync_playwright() as p:
  assert page.get_by_label('Apariencia',exact=True).count()==0
  logout=page.get_by_role('button',name='Cerrar sesión',exact=True);brand=page.get_by_role('button',name='Web Viteka',exact=True);assert logout.bounding_box()['y']>page.get_by_role('navigation').bounding_box()['y']+page.get_by_role('navigation').bounding_box()['height'];assert logout.bounding_box()['y']+logout.bounding_box()['height']+12<=brand.bounding_box()['y'];assert page.locator('.logout-button v-icon svg').count()==1
  assert page.get_by_role('navigation').get_by_role('button',name='Actualizaciones',exact=True).count()==0
+ # Real download progress and indeterminate verification are distinct presentation states.
+ page.evaluate("()=>window.fixtureEmit({type:'update-phase',phase:'downloading',percent:37})")
+ progress=page.get_by_role('dialog',name='Progreso de actualización',exact=True);progress.get_by_text('37 %',exact=True).wait_for();expect(progress.locator('progress')).to_have_attribute('value','37')
+ page.evaluate("()=>window.fixtureEmit({type:'update-phase',phase:'verifying'})");progress.get_by_text('Verificando integridad',exact=True).wait_for();assert progress.locator('progress').get_attribute('value') is None
+ page.evaluate("()=>window.fixtureEmit({type:'update-phase',phase:'failed'})");progress.get_by_role('button',name='Cerrar',exact=True).click();progress.wait_for(state='hidden')
  page.screenshot(path=str(artifacts/'angular-desktop.png'),full_page=True)
  page.keyboard.down('Control');page.mouse.wheel(0,-120);page.keyboard.up('Control');page.wait_for_function("() => document.documentElement.style.zoom==='1.1'")
  page.keyboard.press('Control+0');page.wait_for_function("() => document.documentElement.style.zoom==='1'")
  page.get_by_role('button',name='Cerrar menú lateral',exact=True).click();page.wait_for_function("() => Math.round(document.querySelector('aside').getBoundingClientRect().width)===76")
  page.reload();page.get_by_role('button',name='Abrir menú lateral',exact=True).wait_for();page.locator('.layout[data-ready=true]').wait_for();page.wait_for_timeout(150);assert page.get_by_role('dialog',name='Actualización disponible',exact=True).count()==0;page.get_by_role('button',name='Abrir menú lateral',exact=True).click()
  go('Mi cuenta');appearance('dark');page.wait_for_function("() => document.documentElement.dataset.theme==='dark'")
- page.reload();page.wait_for_function("() => document.documentElement.dataset.theme==='dark'")
+ page.reload();page.wait_for_function("() => document.documentElement.dataset.theme==='dark'");page.get_by_role('heading',name='Portal de soporte',exact=True).wait_for()
  page.get_by_role('navigation').get_by_role('button',name='Inicio',exact=True).click();page.get_by_role('button',name='Cerrar menú lateral',exact=True).click();page.wait_for_function("() => Math.round(document.querySelector('aside').getBoundingClientRect().width)===76")
  assert page.locator('.logout-button').bounding_box()['width']<=60
  assert page.locator('.brand-bottom .isologo').evaluate('el=>getComputedStyle(el).filter')=='brightness(0) invert(1)'
@@ -202,13 +221,13 @@ with sync_playwright() as p:
  assert page.get_by_role('button',name='Buscar actualizaciones',exact=True).count()==0
  assert page.get_by_label('Apariencia',exact=True).count()==0
  assert page.locator('input[type=password]').count()==0
- page.locator('.setting-row').filter(has=page.get_by_text('Conexión a NixFarma',exact=True)).click()
+ page.locator('.setting-row').filter(has=page.get_by_text('Conexión a Nixfarma',exact=True)).click()
  page.get_by_role('button',name='Configurar conexión',exact=True).click();page.get_by_text('Conexión guardada. Pulsa Probar conexión para verificarla.',exact=True).wait_for()
  page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Conexión verificada: prueba de solo lectura correcta.',exact=True).wait_for()
  fixture.schema_fail=True;page.get_by_role('button',name='Comprobar tablas de tenencia',exact=True).click();page.get_by_text('Comprobación de tablas: Oracle no reconoce una columna. Diagnóstico: column · SQLSTATE 42000 · ORA-00904',exact=True).wait_for();expect(page.locator('.connection-result.verified')).to_have_count(0);assert page.get_by_text('Conexión verificada: prueba de solo lectura correcta.',exact=True).count()==0
  page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Conexión verificada: prueba de solo lectura correcta.',exact=True).wait_for();assert page.get_by_text('Comprobación de tablas: Oracle no reconoce una columna. Diagnóstico: column · SQLSTATE 42000 · ORA-00904',exact=True).count()==0
  fixture.probe_fail=True;page.get_by_role('button',name='Probar conexión',exact=True).click();page.get_by_text('Diagnóstico: 28000 · ORA-01017',exact=True).wait_for();expect(page.locator('.connection-result.verified')).to_have_count(0)
- page.keyboard.press('Escape');go('Auditoría');page.get_by_role('heading',name='Todavía no hay registros de auditoría',exact=True).wait_for();assert page.get_by_role('navigation').get_by_role('button',name='Auditoría',exact=True).count()==0;go('Configuración');page.screenshot(path=str(artifacts/'angular-settings.png'),full_page=True);go('Actualizaciones');page.get_by_role('button',name='Buscar actualizaciones',exact=True).click();page.get_by_text('Versión 0.13.0 disponible.',exact=True).wait_for()
+ page.keyboard.press('Escape');go('Auditoría');page.get_by_role('heading',name='Auditoría de la farmacia',exact=True).wait_for();assert page.get_by_role('navigation').get_by_role('button',name='Auditoría',exact=True).count()==0;go('Configuración');page.screenshot(path=str(artifacts/'angular-settings.png'),full_page=True);go('Actualizaciones');page.get_by_role('button',name='Buscar actualizaciones',exact=True).click();page.get_by_text('Versión 0.13.0 disponible.',exact=True).wait_for()
  assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).get_attribute('aria-current')=='page'
  page.get_by_role('button',name='Actualizar ahora',exact=True).click();page.get_by_text('Instalación cancelada. Puedes seguir usando esta versión.',exact=True).wait_for()
  page.get_by_role('button',name='Historial de actualizaciones',exact=True).click();page.get_by_role('dialog',name='Historial de actualizaciones',exact=True).wait_for();page.get_by_text('Versión ejecutada 0.12.0',exact=True).wait_for()
@@ -231,7 +250,7 @@ with sync_playwright() as p:
  meds=page.get_by_role('region',name='Medicamentos del grupo',exact=True)
  sortstock=meds.get_by_role('columnheader',name=re.compile('Existencias')).get_by_role('button');sortstock.click();expect(page.locator('.drug-stock')).to_have_text(['0','0','2','10']);sortstock.click();expect(page.locator('.drug-stock')).to_have_text(['10','2','0','0']);assert page.locator('.drug-stock',has_text='Pendiente').count()==0
  meds.get_by_role('columnheader',name=re.compile('Medicamento')).get_by_role('button').click();expect(page.locator('.article-select')).to_have_text(['A','B','C','Z'])
- page.get_by_text('Sin ficha de existencias en NixFarma: cuenta como 0.',exact=True).wait_for();assert page.get_by_text('Pendiente no significa cero',exact=False).count()==0
+ page.get_by_text('Sin ficha de existencias en Nixfarma: cuenta como 0.',exact=True).wait_for();assert page.get_by_text('Pendiente no significa cero',exact=False).count()==0
  groups=page.get_by_role('region',name='Grupos de tenencia',exact=True);groups.get_by_role('columnheader',name=re.compile('Mín.')).get_by_role('button').click();expect(page.locator('.groups-table tbody tr td:nth-child(3)')).to_have_text(['1','1','3']);assert page.get_by_role('button',name='Seleccionar grupo Grupo ficticio A',exact=True).get_attribute('aria-pressed')=='true';fixture.sort_cases=False
  page.get_by_role('button',name='Consultar existencias',exact=True).click();page.get_by_role('button',name='Ver detalle de Grupo ficticio A',exact=True).wait_for();expect(page.locator('.tenencia-summary')).to_contain_text('2 de 3 correctos')
  chip=page.locator('.tenencia-summary button.summary-chip').nth(1);chip.click();expect(page.get_by_label('Estado',exact=True)).to_have_value('shortfall');chip.click();expect(page.get_by_label('Estado',exact=True)).to_have_value('all')
@@ -247,15 +266,19 @@ with sync_playwright() as p:
  page.screenshot(path=str(artifacts/'angular-tenencia-expiry.png'),full_page=True)
  # Exportaciones: Excel con logo, CSV y PDF a través del puente nativo.
  import base64,zipfile,io
- def export(kind):
-  page.locator('details.export-menu summary').click();page.get_by_role('menuitem',name=re.compile('^'+kind)).click();page.wait_for_function('n=>true',arg=0);page.wait_for_timeout(300);return fixture.saved[-1]
- page.locator('details.export-menu summary').click();page.screenshot(path=str(artifacts/'angular-tenencia-export.png'),full_page=True);page.keyboard.press('Escape');page.locator('details.export-menu summary').click()
+ def export(kind,complete=False):
+  page.locator('details.export-menu summary').click();page.get_by_role('menuitem',name=re.compile('^'+kind)).click()
+  modal=page.get_by_role('dialog',name='Preparar exportación',exact=True);modal.wait_for()
+  modal.get_by_label('Modalidad de exportación',exact=True).select_option('complete' if complete else 'shortfalls')
+  if complete:
+   modal.get_by_label('Grupo para declaración',exact=True).select_option('a');modal.locator('input[type=checkbox]').first.check()
+  page.screenshot(path=str(artifacts/('angular-report-complete.png' if complete else 'angular-report-shortfalls.png')),full_page=True)
+  modal.get_by_role('button',name='Generar archivo',exact=True).click();modal.wait_for(state='hidden');page.wait_for_timeout(300);return fixture.saved[-1]
  x=export('Excel');assert x['name'].startswith('tenencia-faltas-') and x['name'].endswith('.xlsx'),x['name']
- book=zipfile.ZipFile(io.BytesIO(base64.b64decode(x['base64'])));names=book.namelist();assert 'xl/media/image1.png' in names and 'xl/worksheets/sheet2.xml' in names,names;sheet=book.read('xl/worksheets/sheet1.xml').decode();assert 'Unidades que faltan'.lower() in sheet.lower() and 'Grupo ficticio A' in sheet and '<v>2</v>' in sheet,sheet[:400];assert 'Grupo ficticio B' not in sheet
- try:
-  import openpyxl;wb=openpyxl.load_workbook(io.BytesIO(base64.b64decode(x['base64'])));assert wb.sheetnames==['Faltas','Todos los grupos'],wb.sheetnames;assert wb['Faltas']['A8'].value=='Código' and wb['Faltas']['E9'].value==2
- except ImportError:pass
- c=export('CSV');csv=base64.b64decode(c['base64']).decode('utf-8');assert csv.startswith('\ufeffCódigo;Grupo;Mínimo;Existencias;Faltan;CN;Medicamento;Existencias CN;Caducidad'),csv[:120];assert c['name'].endswith('.csv') and '650001' in csv and '12/2026' in csv
+ book=zipfile.ZipFile(io.BytesIO(base64.b64decode(x['base64'])));names=book.namelist();assert 'xl/media/image1.png' in names,names;sheet=book.read('xl/worksheets/sheet1.xml').decode();assert 'Grupo ficticio A' in sheet and 'Grupo ficticio B' not in sheet and 'Última compra' in sheet
+ c=export('CSV');csv=base64.b64decode(c['base64']).decode('utf-8');assert 'Última compra descendente' in csv or 'última compra descendente' in csv;assert '650001' in csv and '2026-09-01' in csv and 'Grupo ficticio B' not in csv
+ before=copy.deepcopy(fixture.groups());c=export('CSV',True);csv=base64.b64decode(c['base64']).decode('utf-8');assert '699998' in csv and 'Grupo ficticio B' in csv and ';Sí' in csv and ';No' in csv;assert fixture.groups()==before
+ assert fixture.declarations['a']
  f=export('PDF');assert f['name'].startswith('tenencia-faltas-') and f['name'].endswith('.pdf') and 'base64' not in f
  page.emulate_media(media='print');page.screenshot(path=str(artifacts/'angular-tenencia-print.png'),full_page=True);assert page.locator('.tenencia-print img[src="logotipo.png"]').count()==1;expect(page.locator('.tenencia-print .group-line .missing').first).to_have_text('2');page.emulate_media(media='screen')
  # Grupos con más de 10 artículos: los de existencias y las 8 compras/ventas más recientes; «Ver todos».
@@ -263,13 +286,13 @@ with sync_playwright() as p:
  expect(meds.locator('tbody tr')).to_have_count(10);assert 'Medicamento D00' in meds.inner_text() and 'Medicamento D11' not in meds.inner_text() and 'Medicamento D09' not in meds.inner_text() and 'Medicamento D02' in meds.inner_text();expect(meds.locator('.expiry[data-expiry=expired]')).to_have_count(1)
  meds.get_by_role('button',name='Ver todos (13)',exact=True).click();expect(meds.locator('tbody tr')).to_have_count(13);meds.get_by_role('button',name='Ver solo los más recientes',exact=True).click();expect(meds.locator('tbody tr')).to_have_count(10);page.screenshot(path=str(artifacts/'angular-tenencia-top10.png'),full_page=True);fixture.big_group=False
  # Edición del listado (solo superadministrador).
- page.get_by_role('button',name='Editar listado',exact=False).click();page.get_by_role('region',name='Edición del listado',exact=True).wait_for();expect(page.locator('.editor-groups tbody tr')).to_have_count(3)
+ page.get_by_role('button',name='Editar listado',exact=False).click();page.get_by_role('button',name='Versiones y distribución',exact=True).click();page.get_by_role('heading',name='Distribución y versiones del listado',exact=True).wait_for();expect(page.get_by_role('button',name='Importar actualización firmada',exact=True)).to_be_disabled();page.get_by_role('button',name='Versiones y distribución',exact=True).click();page.get_by_role('region',name='Edición del listado',exact=True).wait_for();expect(page.locator('.editor-groups tbody tr')).to_have_count(3)
  page.get_by_role('button',name='Añadir grupo',exact=True).click();dlg=page.get_by_role('dialog',name='Nuevo grupo',exact=True);dlg.get_by_label('Código',exact=True).fill('X01');dlg.get_by_label('Grupo',exact=True).fill('Grupo nuevo de prueba');dlg.get_by_label('Mínimo',exact=True).fill('2');dlg.get_by_role('button',name='Guardar',exact=True).click();dlg.wait_for(state='hidden')
  expect(page.locator('.editor-groups tbody tr')).to_have_count(4);expect(page.locator('.editor-groups tr.chosen')).to_contain_text('Grupo nuevo de prueba')
- ed=page.get_by_role('region',name='Artículos del grupo',exact=True);ed.get_by_role('button',name='Por descripción',exact=True).click();ed.get_by_label('Descripción',exact=True).fill('adrenalina');ed.get_by_role('button',name='Buscar en NixFarma',exact=True).click();expect(ed.locator('.results tbody tr')).to_have_count(2);page.screenshot(path=str(artifacts/'angular-tenencia-editor.png'),full_page=True)
+ ed=page.get_by_role('region',name='Artículos del grupo',exact=True);ed.get_by_role('button',name='Por descripción',exact=True).click();ed.get_by_label('Descripción',exact=True).fill('adrenalina');ed.get_by_role('button',name='Buscar en Nixfarma',exact=True).click();expect(ed.locator('.results tbody tr')).to_have_count(2);page.screenshot(path=str(artifacts/'angular-tenencia-editor.png'),full_page=True)
  ed.get_by_role('button',name='Añadir al grupo',exact=True).click();expect(ed.locator('.articles tbody tr')).to_have_count(2);assert fixture.catalog[1]['codes']==['660001','660002'] or any(g['codes']==['660001','660002'] for g in fixture.catalog)
- ed.get_by_role('button',name='Por agrupación homogénea',exact=True).click();ed.get_by_label('Código de agrupación homogénea',exact=True).fill('AH0001');ed.get_by_role('button',name='Buscar en NixFarma',exact=True).click();ed.get_by_text('Ya en el grupo',exact=True).first.wait_for()
- ed.get_by_role('button',name='Por código nacional',exact=True).click();ed.get_by_label('Códigos nacionales',exact=True).fill('660003, 699999');ed.get_by_role('button',name='Buscar en NixFarma',exact=True).click();ed.get_by_text('No dado de alta en NixFarma',exact=True).wait_for();ed.get_by_role('button',name='Añadir al grupo',exact=True).click();expect(ed.locator('.articles tbody tr')).to_have_count(3)
+ ed.get_by_role('button',name='Por agrupación homogénea',exact=True).click();ed.get_by_label('Código de agrupación homogénea',exact=True).fill('AH0001');ed.get_by_role('button',name='Buscar en Nixfarma',exact=True).click();ed.get_by_text('Ya en el grupo',exact=True).first.wait_for()
+ ed.get_by_role('button',name='Por código nacional',exact=True).click();ed.get_by_label('Códigos nacionales',exact=True).fill('660003, 699999');ed.get_by_role('button',name='Buscar en Nixfarma',exact=True).click();ed.get_by_text('No dado de alta en Nixfarma',exact=True).wait_for();ed.get_by_role('button',name='Añadir al grupo',exact=True).click();expect(ed.locator('.articles tbody tr')).to_have_count(3)
  ed.get_by_role('button',name='Quitar 660002',exact=True).click();expect(ed.locator('.articles tbody tr')).to_have_count(2)
  page.get_by_role('button',name='Editar grupo Grupo nuevo de prueba',exact=True).click();dlg=page.get_by_role('dialog',name='Editar grupo',exact=True);dlg.get_by_label('Mínimo',exact=True).fill('6');dlg.get_by_label('Nota',exact=True).fill('Nota de prueba');dlg.get_by_role('button',name='Guardar',exact=True).click();dlg.wait_for(state='hidden');ed.get_by_text(re.compile('Mínimo 6')).wait_for()
  page.get_by_role('button',name='Importar códigos',exact=True).click();imp=page.get_by_role('dialog',name='Importar códigos',exact=True);imp.get_by_label('Filas a importar',exact=True).fill('X01;650003\nZ99;Grupo importado;3;650004;ARTÍCULO IMPORTADO\nlinea mala');imp.get_by_role('button',name='Importar',exact=True).click();imp.get_by_text('2 códigos añadidos en 2 grupos · 1 grupos nuevos · 1 líneas no reconocidas.',exact=True).wait_for();imp.get_by_role('button',name='Cerrar',exact=True).last.click()
@@ -288,7 +311,20 @@ with sync_playwright() as p:
  home=page.get_by_role('region',name='Acceso rápido a consultas',exact=True);home.get_by_role('button',name='Favorito',exact=True).click();short=page.get_by_role('navigation').get_by_role('button',name='Acceso directo Tenencia obligatoria',exact=True);short.wait_for();expect(short.locator('.nav-count')).to_have_text('1');page.screenshot(path=str(artifacts/'angular-home-tenencia.png'),full_page=True)
  short.click();page.get_by_role('heading',name='Tenencia obligatoria',exact=True).wait_for();assert short.get_attribute('aria-current')=='page'
  page.get_by_role('navigation').get_by_role('button',name='Inicio',exact=True).click();home.get_by_role('button',name='Favorito',exact=True).click();short.wait_for(state='detached');home.get_by_role('button',name='Abrir Tenencia obligatoria',exact=True).click();page.get_by_role('heading',name='Tenencia obligatoria',exact=True).wait_for()
- go('Aplicaciones');page.get_by_role('button',name='Favorito',exact=True).first.click();go('Favoritos');page.locator('button.resource',has_text='Tenencia obligatoria').wait_for();page.get_by_role('button',name='Favorito',exact=True).first.click();page.get_by_role('heading',name='Aún no tienes favoritos',exact=True).wait_for()
+ go('Aplicaciones')
+ for theme in ('light','dark'):
+  page.evaluate('(t)=>document.documentElement.dataset.theme=t',theme)
+  for width in (920,1366):
+   page.set_viewport_size({'width':width,'height':820})
+   for collapsed in (False,True):
+    toggle='Cerrar menú lateral' if collapsed else 'Abrir menú lateral'
+    if page.get_by_role('button',name=toggle,exact=True).count():page.get_by_role('button',name=toggle,exact=True).click()
+    page.wait_for_timeout(150)
+    star=page.locator('.utility-card .favorite-toggle').first.bounding_box();arrow=page.locator('.utility-card .resource > v-icon').first.bounding_box();opening=page.locator('.utility-card .resource').first.bounding_box()
+    assert star and arrow and opening and star['x']>=opening['x']+opening['width'],(star,arrow,opening)
+    assert star['x']>=arrow['x']+arrow['width'],(star,arrow)
+ page.set_viewport_size({'width':1240,'height':820});page.get_by_role('button',name='Abrir menú lateral',exact=True).click()
+ page.get_by_role('button',name='Favorito',exact=True).first.click();page.get_by_role('heading',name='Aplicaciones',exact=True).wait_for();go('Favoritos');page.locator('button.resource',has_text='Tenencia obligatoria').wait_for();page.get_by_role('button',name='Favorito',exact=True).first.click();page.get_by_role('heading',name='Aún no tienes favoritos',exact=True).wait_for()
  fixture.use_excel=True;go('Aplicaciones');page.locator('button.resource',has_text='Tenencia obligatoria').click();expect(page.locator('.group-button')).to_have_count(83)
  expect(page.locator('.page-head')).to_have_count(0);expect(page.locator('footer')).to_have_count(0)
  for size in [{'width':1366,'height':768},{'width':1920,'height':1080}]:
@@ -304,22 +340,26 @@ with sync_playwright() as p:
  go('Usuarios');page.get_by_role('button',name='Crear usuario',exact=True).click();editor=page.get_by_role('dialog',name='Editar cuenta y permisos',exact=True)
  editor.get_by_label('Nombre de usuario',exact=True).fill('Personal');editor.get_by_label('Contraseña inicial',exact=True).fill('FixtureStaffPass1');editor.get_by_label('Repetir contraseña inicial',exact=True).fill('FixtureStaffPass1');editor.get_by_label('Aplicación de prueba A',exact=True).check();editor.get_by_role('button',name='Guardar cuenta',exact=True).click();editor.wait_for(state='hidden');page.get_by_role('button',name='Editar Personal',exact=True).wait_for()
  page.screenshot(path=str(artifacts/'angular-users.png'),full_page=True)
- # Configuración → Utilidades: habilitar utilidades por usuario.
- page.get_by_role('group',name='Secciones de configuración',exact=True).get_by_role('button',name='Utilidades',exact=True).click();page.get_by_role('heading',name='Utilidades por usuario',exact=True).wait_for()
- box=page.get_by_label('Tenencia obligatoria para usuario',exact=True);expect(box).not_to_be_checked();expect(page.get_by_label('Tenencia obligatoria para F. titular',exact=True)).to_be_disabled();box.check();page.get_by_text('Utilidad habilitada para usuario.',exact=True).wait_for();assert 'tenencia-obligatoria' in fixture.accounts[2]['utilityIds'];page.screenshot(path=str(artifacts/'angular-grants.png'),full_page=True)
- box.uncheck();page.get_by_text('Utilidad retirada a usuario.',exact=True).wait_for();assert fixture.accounts[2]['utilityIds']==[]
+ # Explicit user selection and Save: checkbox changes do not mutate permissions until confirmed.
+ page.get_by_role('group',name='Secciones de configuración',exact=True).get_by_role('button',name='Acceso a aplicaciones',exact=True).click();page.get_by_role('heading',name='Acceso a aplicaciones',exact=True).wait_for()
+ page.get_by_label('Usuario para permisos',exact=True).select_option(fixture.accounts[2]['id'])
+ box=page.get_by_label('Tenencia obligatoria para usuario',exact=True);expect(box).not_to_be_checked();box.check();assert fixture.accounts[2]['utilityIds']==[]
+ page.get_by_role('button',name='Guardar permisos',exact=True).click();page.get_by_text('Acceso a aplicaciones guardado para usuario. Se han cerrado sus sesiones anteriores.',exact=True).wait_for();assert 'tenencia-obligatoria' in fixture.accounts[2]['utilityIds']
+ page.get_by_label('Usuario para permisos',exact=True).select_option(fixture.accounts[1]['id']);expect(page.get_by_label('Tenencia obligatoria para F. titular',exact=True)).to_be_disabled()
+ page.get_by_label('Usuario para permisos',exact=True).select_option(fixture.accounts[2]['id']);page.get_by_label('Tenencia obligatoria para usuario',exact=True).uncheck();page.get_by_role('button',name='Guardar permisos',exact=True).click();page.wait_for_timeout(150);assert fixture.accounts[2]['utilityIds']==[];page.screenshot(path=str(artifacts/'angular-grants.png'),full_page=True)
+ go('Auditoría');page.get_by_role('heading',name='Auditoría de la farmacia',exact=True).wait_for();page.get_by_text('83 grupos',exact=True).wait_for();page.get_by_label('Resultado',exact=True).select_option('ok');page.get_by_role('button',name='Filtrar',exact=True).click()
  go('Mi cuenta');appearance('light')
  page.get_by_role('button',name='Cerrar sesión',exact=True).click();page.get_by_role('heading',name='Iniciar sesión',exact=True).wait_for()
  login('F. titular','1234','FixtureAdminPass1')
  assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).count()==1
- go('Configuración');assert page.locator('.setting-row').filter(has=page.get_by_text('Conexión a NixFarma',exact=True)).count()==0
+ go('Configuración');assert page.locator('.setting-row').filter(has=page.get_by_text('Conexión a Nixfarma',exact=True)).count()==0
  go('Usuarios');assert page.get_by_role('button',name='Editar Viteka',exact=True).count()==0
  page.get_by_role('button',name='Crear usuario',exact=True).click();editor=page.get_by_role('dialog',name='Editar cuenta y permisos',exact=True);editor.wait_for();expect(editor.get_by_label('Rol',exact=True).locator('option')).to_have_count(1);page.keyboard.press('Escape')
  page.get_by_role('button',name='Cerrar sesión',exact=True).click();page.get_by_role('heading',name='Iniciar sesión',exact=True).wait_for()
  login('usuario','0000','FixtureUserPass1')
  assert page.get_by_role('navigation').get_by_role('button',name='Usuarios',exact=True).count()==0
  assert page.get_by_role('navigation').get_by_role('button',name='Configuración',exact=True).count()==1
- go('Configuración');assert page.locator('.setting-row').filter(has=page.get_by_text('Conexión a NixFarma',exact=True)).count()==0
+ go('Configuración');assert page.locator('.setting-row').filter(has=page.get_by_text('Conexión a Nixfarma',exact=True)).count()==0
  assert page.locator('.setting-row').filter(has=page.get_by_text('Auditoría',exact=True)).count()==0
  go('Aplicaciones');page.get_by_role('heading',name='No hay aplicaciones disponibles para tu cuenta',exact=True).wait_for()
  fixture.current['utilityIds']=['tenencia-obligatoria'];page.reload();go('Aplicaciones');page.locator('button.resource',has_text='Tenencia obligatoria').click();page.get_by_role('heading',name='Tenencia obligatoria',exact=True).wait_for()

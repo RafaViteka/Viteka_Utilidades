@@ -1,7 +1,7 @@
 VITEKA UTILIDADES 0.13.1 - CANAL DE PRUEBAS
 
 INSTALACION
-Instalar o actualizar en el servidor de NixFarma, sobre la version anterior.
+Instalar o actualizar en el servidor de Nixfarma, sobre la version anterior.
 No hace falta desinstalar. El paquete incluye .NET; WebView2 se prepara si falta.
 El instalador registra VitekaUtilidadesAccess como servicio de Windows bajo
 LocalService y prepara su identidad HTTPS. No se modifica el DSN ni Oracle.
@@ -30,7 +30,7 @@ Primera utilidad: Tenencia obligatoria. Configurar Datos de la farmacia y provin
 La lista de Malaga incorpora83 grupos del Excel aportado. Se buscan coincidencias
 por ATC; las restricciones de via/dosis/tamano y codigos sanitarios se revisan
 por separado. No se acreditan por sumar presentaciones incorrectas. Viteka puede Comprobar tablas de tenencia
-dentro de Conexion a NixFarma. Ver las notas de version.
+dentro de Conexion a Nixfarma. Ver las notas de version.
 
 PUESTOS
 Distribuir Cliente completo con access-server.json y access-root.cer en un

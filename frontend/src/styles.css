@@ -1695,22 +1695,24 @@ kbd {
 
 /* ——— Aplicaciones y favoritos ——— */
 .utility-card {
-  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 6px;
+  align-items: stretch;
 }
 .utility-card .resource {
   width: 100%;
-  padding-right: 64px;
+  padding-right: 14px;
 }
 .favorite-toggle {
-  position: absolute;
-  top: 50%;
-  right: 44px;
-  transform: translateY(-50%);
-  border: 0;
-  background: none;
-  padding: 6px;
-  border-radius: 8px;
+  position: static;
+  transform: none;
+  border: 1px solid var(--line);
+  background: var(--card);
+  padding: 10px;
+  border-radius: 12px;
   color: var(--muted);
+  min-height: 44px;
 }
 .favorite-toggle:hover {
   background: var(--surface);
@@ -1851,4 +1853,39 @@ html[data-theme='dark'] .primary:hover:not(:disabled) {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
+
+/* Shared fields in the new settings and report flows. */
+.grants > label,
+.report-dialog > label,
+viteka-catalog-distribution label {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+.grants select,
+.report-dialog select,
+viteka-catalog-distribution input,
+.audit-filters input,
+.audit-filters select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 42px;
+  max-width: 100%;
+}
+.grants input[type='checkbox'],
+.declaration-candidates input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: var(--green);
+}
+.dialog progress {
+  width: 100%;
+  accent-color: var(--green);
+  margin: 12px 0;
 }

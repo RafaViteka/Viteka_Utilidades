@@ -59,7 +59,7 @@ internal sealed class OracleService(string directory)
             try
             {
                 if (!OperatingSystem.IsWindows()) return new Viteka.Contracts.TenenciaResponse("driver", "Se requiere Windows.", province);
-                var profile = Read(); if (profile is null) return new("not_configured", "Configura primero la conexión a NixFarma.", province);
+                var profile = Read(); if (profile is null) return new("not_configured", "Configura primero la conexión a Nixfarma.", province);
                 var builder = new System.Data.Odbc.OdbcConnectionStringBuilder { Dsn = profile.Dsn }; builder["UID"] = profile.User; builder["PWD"] = profile.Password;
                 using var connection = new System.Data.Odbc.OdbcConnection(builder.ConnectionString);
                 return Viteka.Core.TenenciaStockQuery.ReadOnly(connection, tx =>
@@ -97,7 +97,7 @@ internal sealed class OracleService(string directory)
             try
             {
                 if (!OperatingSystem.IsWindows()) return new Viteka.Contracts.ArticleSearchResult("driver", "Se requiere Windows.", []);
-                var profile = Read(); if (profile is null) return new("not_configured", "Configura primero la conexión a NixFarma.", []);
+                var profile = Read(); if (profile is null) return new("not_configured", "Configura primero la conexión a Nixfarma.", []);
                 var builder = new System.Data.Odbc.OdbcConnectionStringBuilder { Dsn = profile.Dsn }; builder["UID"] = profile.User; builder["PWD"] = profile.Password;
                 using var connection = new System.Data.Odbc.OdbcConnection(builder.ConnectionString);
                 return Viteka.Core.TenenciaStockQuery.ReadOnly(connection, tx => Viteka.Core.TenenciaArticleFinder.Search(connection, tx, Viteka.Core.TenenciaStockQuery.Inspect(connection, tx, nativeNixFarma: true), mode, text, field, deadline.Token));

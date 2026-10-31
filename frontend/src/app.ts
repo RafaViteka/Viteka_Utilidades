@@ -11,6 +11,7 @@ import {
   NixFarmaState,
   NixFarmaResponse,
 } from './bridge';
+import { AuditComponent } from './settings/audit';
 import { IconComponent } from './icon';
 import { PharmacySettingsComponent } from './settings/pharmacy';
 import { TenenciaComponent } from './apps/tenencia/tenencia';
@@ -32,7 +33,7 @@ const SETTINGS_PAGES: Page[] = ['Configuración', 'Mi cuenta', 'Usuarios', 'Util
 @Component({
   selector: 'viteka-app',
   standalone: true,
-  imports: [IconComponent, FormsModule, PharmacySettingsComponent, TenenciaComponent],
+  imports: [IconComponent, FormsModule, PharmacySettingsComponent, TenenciaComponent, AuditComponent],
   templateUrl: './app.html',
 })
 export class AppComponent {
@@ -74,7 +75,7 @@ export class AppComponent {
     ...(this.user()?.canManageUsers
       ? [
           { label: 'Usuarios', page: 'Usuarios' as Page },
-          { label: 'Utilidades', page: 'Utilidades' as Page },
+          { label: 'Acceso a aplicaciones', page: 'Utilidades' as Page },
           { label: 'Auditoría', page: 'Auditoría' as Page },
         ]
       : []),
@@ -145,7 +146,7 @@ export class AppComponent {
     });
     if (u.canConfigure)
       list.push({
-        label: 'Conexión a NixFarma',
+        label: 'Conexión a Nixfarma',
         hint: 'Solo Viteka',
         icon: 'leaf',
         run: () => {
@@ -360,15 +361,24 @@ export class AppComponent {
       if (sessionStorage.getItem(this.promptKey(state.version)) === '1') return;
       this.updatePrompt.set(true);
     });
-    effect(() => {
-      // Recuerda la última pantalla por usuario para volver a ella al abrir.
-      const u = this.user(),
-        page = this.page(),
-        utility = this.selectedUtility();
-      if (u && this.ready()) this.store('last.' + u.id, { page, utility });
-    });
     this.tenenciaSummary.set(this.read<TenenciaSummary>('tenencia.summary'));
     void this.initialize();
+  }
+  readonly phaseLabels: Record<string, string> = {
+    preparing: 'Preparando actualización',
+    downloading: 'Descargando paquete',
+    verifying: 'Verificando integridad',
+    handoff: 'Preparando instalación y permiso de Windows',
+    installing: 'Instalando; Viteka volverá a abrirse en Inicio',
+    cancelled: 'Actualización cancelada',
+    failed: 'No se pudo completar la actualización',
+  };
+  async cancelUpdate() {
+    try {
+      await this.bridge.call('update.cancel');
+    } catch (e) {
+      this.error.set(this.message(e));
+    }
   }
   private promptKey(version: string) {
     return 'viteka.update-prompt.' + this.user()?.id + '.' + version;
@@ -524,12 +534,8 @@ export class AppComponent {
     if (this.user()?.canConfigure) await this.loadNixFarma();
     const id = this.user()?.id;
     this.favorites.set(this.read<string[]>('favorites.' + id) ?? []);
-    const last = this.read<{ page: Page; utility: string | null }>('last.' + id);
-    if (this.openFavorites() && this.user()?.role !== 'User') this.page.set('Favoritos');
-    else if (last && this.canGo(last.page)) {
-      this.go(last.page);
-      if (last.utility) this.openUtility(last.utility);
-    }
+    this.selectedUtility.set(null);
+    this.page.set('Inicio');
     this.ready.set(true);
   }
   async login() {
@@ -686,10 +692,19 @@ export class AppComponent {
   hasGrant(target: UserView, id: string) {
     return target.role !== 'User' || target.utilityIds.includes(id);
   }
-  /** Habilita o retira una utilidad a una cuenta desde Configuración → Utilidades. */
-  async grant(target: UserView, id: string, enabled: boolean) {
-    if (!this.canEdit(target) || target.role !== 'User' || this.busy()) return;
-    const utilityIds = enabled ? [...new Set([...target.utilityIds, id])] : target.utilityIds.filter((x) => x !== id);
+  readonly grantUserId = signal('');
+  readonly grantIds = signal<string[]>([]);
+  readonly grantTarget = computed(() => this.users().find((u) => u.id === this.grantUserId()) ?? null);
+  selectGrantUser(id: string) {
+    this.grantUserId.set(id);
+    this.grantIds.set([...(this.users().find((u) => u.id === id)?.utilityIds ?? [])]);
+  }
+  draftGrant(id: string, enabled: boolean) {
+    this.grantIds.update((ids) => (enabled ? [...new Set([...ids, id])] : ids.filter((x) => x !== id)));
+  }
+  async saveGrants() {
+    const target = this.grantTarget();
+    if (!target || !this.canEdit(target) || target.role !== 'User' || this.busy()) return;
     this.busy.set(true);
     this.error.set('');
     try {
@@ -698,13 +713,12 @@ export class AppComponent {
         name: target.name,
         role: target.role,
         active: target.active,
-        utilityIds,
+        utilityIds: this.grantIds(),
       });
       this.user.set(r.user);
       await this.loadUsers();
-      this.notify(
-        enabled ? 'Utilidad habilitada para ' + target.name + '.' : 'Utilidad retirada a ' + target.name + '.',
-      );
+      this.selectGrantUser(target.id);
+      this.notify('Acceso a aplicaciones guardado para ' + target.name + '. Se han cerrado sus sesiones anteriores.');
     } catch (e) {
       this.error.set(this.message(e));
     } finally {

@@ -16,6 +16,7 @@ public static class TenenciaArticleFinder
     {
         text = (text ?? "").Trim();
         if (schema.ArticleTable is not ("ARTICULOS" or "APPUL.AB_ARTICULOS")) throw new InvalidDataException("Tabla de artículos no válida.");
+        if(mode.StartsWith("therapeutic.",StringComparison.Ordinal))return TherapeuticFinder.Search(connection,tx,schema,mode,text,field,ct);
         switch (mode)
         {
             case "code":
@@ -26,7 +27,7 @@ public static class TenenciaArticleFinder
                     var found = TenenciaStockQuery.Read(connection, tx, schema, codes, ct);
                     var articles = codes.Select(c => found[c]).ToArray();
                     var missing = articles.Count(a => a.Issue == "not_found");
-                    return new("ok", articles.Length + " códigos" + (missing > 0 ? " · " + missing + " no están dados de alta en NixFarma" : ""), articles);
+                    return new("ok", articles.Length + " códigos" + (missing > 0 ? " · " + missing + " no están dados de alta en Nixfarma" : ""), articles);
                 }
             case "description":
                 {
@@ -37,7 +38,7 @@ public static class TenenciaArticleFinder
                 }
             case "homogeneous":
                 {
-                    if (field is null || !schema.Homogeneous.Contains("\"" + field + "\"")) return new("unavailable", "No se ha identificado en NixFarma la columna de agrupación homogénea. Viteka debe revisarla en Comprobar tablas.", []);
+                    if (field is null || !schema.Homogeneous.Contains("\"" + field + "\"")) return new("unavailable", "No se ha identificado en Nixfarma la columna de agrupación homogénea. Viteka debe revisarla en Comprobar tablas.", []);
                     if (text.Length is < 1 or > 40 || text.Any(char.IsControl)) return new("empty", "Escribe el código de la agrupación homogénea.", []);
                     var column = "\"" + field + "\"";
                     return Find(connection, tx, schema, $"UPPER(TRIM({column})) = ?", [text.ToUpperInvariant()], "agrupación homogénea " + text, column, ct);

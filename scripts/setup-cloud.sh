@@ -13,6 +13,7 @@ fi
 cd /workspace/Viteka_Utilidades
 export npm_config_cache=/workspace/.cache/npm
 (cd frontend && npm ci --no-audit --no-fund && npm run build)
+node scripts/check-report.mts
 python scripts/copy-ui.py
 python scripts/build-tenencia-catalog.py --check
 dotnet restore Viteka.Utilidades.slnx --locked-mode

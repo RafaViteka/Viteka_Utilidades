@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { DesktopBridge } from '../../bridge';
 import { IconComponent } from '../../icon';
 import { TenenciaEditorComponent } from './tenencia-editor';
+import { purchaseCandidates, csvCell } from './tenencia-report';
 import { buildXlsx, Cell, loadLogo, Sheet, toBase64 } from './xlsx';
 type GroupSort = 'classification' | 'name' | 'minimum' | 'status';
 type ArticleSort = 'code' | 'description' | 'stock';
@@ -18,6 +19,8 @@ interface Article {
 export interface TenenciaFields {
   expiry: boolean;
   movements: boolean;
+  purchase?: boolean;
+  purchaseColumn?: string;
   homogeneous: string[];
 }
 export type ExpiryState = 'ok' | 'soon' | 'expired' | 'none';
@@ -203,158 +206,214 @@ export class TenenciaComponent implements OnInit {
       s: state === 'ok' ? 'ok' : state === 'soon' ? 'soon' : state === 'expired' ? 'expired' : 'none',
     };
   }
-  /** CSV para Excel (separador «;» y BOM), ordenado por unidades que faltan. */
-  exportCsv() {
-    return this.run(async () => {
-      const cell = (v: unknown) => {
-        const text = v === null || v === undefined ? '' : String(v);
-        return /[;"\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
-      };
-      const lines: unknown[][] = [
-        ['Código', 'Grupo', 'Mínimo', 'Existencias', 'Faltan', 'CN', 'Medicamento', 'Existencias CN', 'Caducidad'],
-      ];
-      for (const r of this.shortfallsByMissing()) {
-        const base = [r.classification ?? '', r.name, r.minimum, r.stock ?? 0, r.missing ?? 0];
-        const articles = this.visibleArticles(r);
-        if (!articles.length) lines.push([...base, '', '', '', '']);
-        for (const a of articles)
-          lines.push([...base, a.code, a.description, a.stock ?? 0, this.expiryState(a) ? this.expiryText(a) : '']);
-      }
-      const csv = '\ufeff' + lines.map((l) => l.map(cell).join(';')).join('\r\n');
-      await this.save(`tenencia-faltas-${this.fileDay()}.csv`, new TextEncoder().encode(csv));
-    });
+  readonly reportOpen = signal(false);
+  readonly reportMode = signal<'complete' | 'shortfalls'>('shortfalls');
+  readonly reportKind = signal<'xlsx' | 'csv' | 'pdf' | 'print'>('xlsx');
+  readonly declarationGroups = signal<
+    {
+      id: string;
+      name: string;
+      minimum: number;
+      codes: string[];
+      descriptions?: Record<string, string>;
+      atcPrefix?: string;
+      classificationCode?: string;
+    }[]
+  >([]);
+  readonly declarationPicks = signal<Record<string, string[]>>({});
+  readonly declarationGroupId = signal('');
+  readonly declarationReview = signal(false);
+  readonly reportRows = computed(() =>
+    this.reportMode() === 'shortfalls'
+      ? this.shortfallsByMissing()
+      : this.rows().map((row) => {
+          const group = this.declarationGroups().find((g) => g.id === row.id);
+          return group
+            ? {
+                ...row,
+                articles: group.codes.map(
+                  (code) =>
+                    row.articles.find((a) => a.code === code) ?? {
+                      code,
+                      description: group.descriptions?.[code] ?? 'CN ' + code,
+                      stock: 0,
+                    },
+                ),
+              }
+            : row;
+        }),
+  );
+  readonly declarationRow = computed(
+    () => this.reportRows().find((r) => r.id === this.declarationGroupId()) ?? this.reportRows()[0],
+  );
+  reportArticles(row: Row) {
+    return this.reportMode() === 'shortfalls' ? purchaseCandidates(row.articles) : row.articles;
   }
-  /** Libro de Excel con el logo de Viteka: faltas detalladas y resumen de todos los grupos. */
-  exportExcel() {
-    return this.run(async () => {
-      const logo = await loadLogo(48);
-      const r = this.result();
-      const head: Cell[][] = [
-        [],
-        [],
-        [],
-        [{ v: 'Tenencia obligatoria · Informe de faltas', s: 'title' }],
-        [
-          {
-            v: `${r?.provinceName || 'Provincia ' + r?.province} · Última consulta ${this.stamp(r?.checkedAt)} · Listado ${r?.listVersion ?? ''}`,
-            s: 'muted',
-          },
-        ],
-        [
-          {
-            v: `${this.rows().length} grupos · ${this.covered()} correctos · ${this.shortfalls()} con falta · ${this.number(this.totalMissing())} unidades que faltan`,
-            s: 'muted',
-          },
-        ],
-        [],
-      ];
-      const detail: Cell[][] = [...head];
-      const header = [
-        'Código',
+  reportTitle() {
+    return this.reportMode() === 'shortfalls'
+      ? 'Tenencia obligatoria · Solo faltas'
+      : 'Tenencia obligatoria · Listado completo para declaración';
+  }
+  reportCriteria() {
+    return this.reportMode() === 'shortfalls'
+      ? 'Máximo 10 artículos por grupo; última compra descendente. Sin fecha de compra al final, ordenados por CN. No se utilizan ventas.'
+      : 'Todos los grupos y candidatos; selección de declaración independiente del catálogo. No acredita automáticamente cumplimiento normativo.';
+  }
+  chosenForDeclaration(row: Row, a: Article) {
+    return (this.declarationPicks()[row.id] ?? []).includes(a.code);
+  }
+  toggleDeclaration(row: Row, a: Article, on: boolean) {
+    this.declarationPicks.update((p) => ({
+      ...p,
+      [row.id]: on ? [...new Set([...(p[row.id] ?? []), a.code])] : (p[row.id] ?? []).filter((c) => c !== a.code),
+    }));
+  }
+  async openReport(kind: 'xlsx' | 'csv' | 'pdf' | 'print') {
+    this.closeMenus();
+    this.reportKind.set(kind);
+    this.error.set('');
+    try {
+      const d = await this.bridge.call<{
+        listVersion: string;
+        groups: {
+          id: string;
+          name: string;
+          minimum: number;
+          codes: string[];
+          descriptions?: Record<string, string>;
+          atcPrefix?: string;
+          classificationCode?: string;
+        }[];
+        selections: Record<string, string[]>;
+        reviewRequired: boolean;
+      }>('declaration.state');
+      if (d.listVersion !== this.result()?.listVersion)
+        throw new Error('El listado cambió. Actualiza la consulta antes de exportar.');
+      this.declarationGroups.set(d.groups);
+      this.declarationPicks.set(d.selections);
+      this.declarationReview.set(d.reviewRequired);
+      this.reportOpen.set(true);
+    } catch (e) {
+      this.error.set(this.message(e));
+    }
+  }
+  private reportLines(): unknown[][] {
+    const lines: unknown[][] = [
+      [
+        'Código grupo',
         'Grupo',
         'Mínimo',
-        'Existencias',
+        'Existencias grupo',
         'Faltan',
         'CN',
         'Medicamento',
-        'Exist. CN',
-        'Caducidad',
-      ];
-      detail.push(header.map((v) => ({ v, s: 'header' as const })));
-      const merges = ['A4:I4', 'A5:I5', 'A6:I6'];
-      for (const row of this.shortfallsByMissing()) {
-        detail.push([
-          { v: row.classification ?? '', s: 'group' },
-          { v: row.name, s: 'group' },
-          { v: row.minimum, s: 'groupCenter' },
-          { v: row.stock ?? 0, s: 'groupCenter' },
-          { v: row.missing ?? 0, s: 'missing' },
-          { v: '', s: 'group' },
-          {
-            v:
-              row.articles.length > this.visibleArticles(row).length
-                ? `${this.visibleArticles(row).length} de ${row.articles.length} artículos (los de existencias y movimientos más recientes)`
-                : `${row.articles.length} artículos`,
-            s: 'group',
-          },
-          { v: '', s: 'group' },
-          { v: '', s: 'group' },
+        'Existencias CN',
+        'Última compra',
+        'Seleccionado para declaración',
+      ],
+    ];
+    for (const r of this.reportRows()) {
+      const articles = this.reportArticles(r),
+        base = [r.classification ?? '', r.name, r.minimum, r.stock ?? 0, r.missing ?? 0];
+      if (!articles.length) lines.push([...base, '', '', '', '', '']);
+      for (const a of articles)
+        lines.push([
+          ...base,
+          a.code,
+          a.description,
+          a.stock ?? 0,
+          a.lastPurchase ?? 'Sin fecha de compra',
+          this.reportMode() === 'complete' ? (this.chosenForDeclaration(r, a) ? 'Sí' : 'No') : '',
         ]);
-        for (const a of this.visibleArticles(row))
-          detail.push([
-            '',
-            '',
-            '',
-            '',
-            '',
-            { v: a.code, s: 'center' },
-            { v: a.description, s: 'wrap' },
-            { v: a.stock ?? 0, s: 'center' },
-            this.expiryCell(a),
-          ]);
+    }
+    return lines;
+  }
+  async generateReport() {
+    if (!this.hasStock() || this.exporting()) return;
+    return this.run(async () => {
+      if (this.reportMode() === 'complete')
+        await this.bridge.call('declaration.save', {
+          listVersion: this.result()?.listVersion,
+          selections: this.declarationPicks(),
+        });
+      this.reportOpen.set(false);
+      const kind = this.reportKind(),
+        name = 'tenencia-' + (this.reportMode() === 'shortfalls' ? 'faltas' : 'declaracion') + '-' + this.fileDay();
+      if (kind === 'csv') {
+        const text =
+          '\ufeff' +
+          [
+            [this.reportTitle()],
+            [this.reportCriteria()],
+            ['Consulta', this.result()?.checkedAt, 'Listado', this.result()?.listVersion],
+            ...this.reportLines(),
+          ]
+            .map((l) => l.map(csvCell).join(';'))
+            .join('\r\n');
+        await this.save(name + '.csv', new TextEncoder().encode(text));
+      } else if (kind === 'xlsx') {
+        const logo = await loadLogo(48);
+        const lines = this.reportLines();
+        const rows: Cell[][] = [
+          [],
+          [],
+          [],
+          [{ v: this.reportTitle(), s: 'title' }],
+          [{ v: this.reportCriteria(), s: 'wrap' }],
+          [
+            {
+              v: 'Consulta ' + this.stamp(this.result()?.checkedAt) + ' · Listado ' + this.result()?.listVersion,
+              s: 'muted',
+            },
+          ],
+          [],
+          lines[0].map((v) => ({ v: String(v), s: 'header' })),
+          ...lines
+            .slice(1)
+            .map((r) => r.map((v) => ({ v: typeof v === 'number' ? v : String(v ?? ''), s: 'wrap' as const }))),
+        ];
+        await this.save(
+          name + '.xlsx',
+          buildXlsx(
+            [
+              {
+                name: this.reportMode() === 'shortfalls' ? 'Faltas' : 'Declaración',
+                widths: [12, 44, 9, 13, 9, 10, 50, 12, 16, 18],
+                rows,
+                merges: ['A4:J4', 'A5:J5', 'A6:J6'],
+                freeze: 8,
+                image: logo ?? undefined,
+              },
+            ],
+            this.reportTitle(),
+          ),
+        );
+      } else {
+        // Allow Angular to draw the selected report before WebView2 captures it.
+        document.body.classList.add('printing-tenencia');
+        await new Promise<void>((resolve) => requestAnimationFrame(() => requestAnimationFrame(() => resolve())));
+        try {
+          if (kind === 'pdf') {
+            const r = await this.bridge.call<{ saved: boolean; file?: string }>('file.pdf', { name: name + '.pdf' });
+            if (r.saved) this.toast.emit('PDF guardado.');
+          } else await this.bridge.call('tenencia.print');
+        } finally {
+          document.body.classList.remove('printing-tenencia');
+        }
       }
-      if (!this.shortfalls()) detail.push([{ v: 'Sin faltas en la última consulta.', s: 'ok' }]);
-      const all: Cell[][] = [...head];
-      all.push(
-        ['Código', 'Grupo', 'Mínimo', 'Existencias', 'Faltan', 'Estado'].map((v) => ({ v, s: 'header' as const })),
-      );
-      const ordered = [
-        ...this.shortfallsByMissing(),
-        ...this.rows()
-          .filter((x) => x.status !== 'shortfall')
-          .sort((a, b) => this.collator.compare(a.name, b.name)),
-      ];
-      for (const row of ordered)
-        all.push([
-          row.classification ?? '',
-          { v: row.name, s: 'wrap' },
-          { v: row.minimum, s: 'center' },
-          { v: row.stock ?? 0, s: 'center' },
-          { v: row.missing ?? 0, s: row.status === 'shortfall' ? 'missing' : 'center' },
-          {
-            v: this.label(row.status),
-            s: row.status === 'shortfall' ? 'missing' : row.status === 'covered' ? 'ok' : 'center',
-          },
-        ]);
-      const sheets: Sheet[] = [
-        {
-          name: 'Faltas',
-          widths: [11, 42, 9, 11, 9, 10, 48, 10, 12],
-          rows: detail,
-          merges,
-          freeze: 8,
-          image: logo ?? undefined,
-        },
-        {
-          name: 'Todos los grupos',
-          widths: [11, 52, 9, 11, 9, 12],
-          rows: all,
-          merges: ['A4:F4', 'A5:F5', 'A6:F6'],
-          freeze: 8,
-          filter: `A8:F${all.length}`,
-          image: logo ?? undefined,
-        },
-      ];
-      await this.save(`tenencia-faltas-${this.fileDay()}.xlsx`, buildXlsx(sheets, 'Tenencia obligatoria · faltas'));
     });
   }
-  /** PDF del informe imprimible (con logo); fuera de la aplicación Windows, abre la impresión. */
+  exportCsv() {
+    return this.openReport('csv');
+  }
+  exportExcel() {
+    return this.openReport('xlsx');
+  }
   exportPdf() {
-    return this.run(async () => {
-      document.body.classList.add('printing-tenencia');
-      try {
-        const r = await this.bridge.call<{ saved: boolean; file?: string }>('file.pdf', {
-          name: `tenencia-faltas-${this.fileDay()}.pdf`,
-        });
-        if (r.saved) this.toast.emit('Guardado: ' + (r.file || 'PDF'));
-      } finally {
-        document.body.classList.remove('printing-tenencia');
-      }
-    });
+    return this.openReport('pdf');
   }
   print() {
-    this.closeMenus();
-    window.print();
+    return this.openReport('print');
   }
   /** Caducidad solo para artículos con existencias: verde > 6 meses, amarillo ≤ 6 meses, rojo caducado, gris sin fecha. */
   expiryState(a: Article): ExpiryState | null {
@@ -617,11 +676,11 @@ export class TenenciaComponent implements OnInit {
       case 'not_checked':
         return 'Existencias sin consultar.';
       case 'not_found':
-        return 'No dado de alta en NixFarma: cuenta como 0.';
+        return 'No dado de alta en Nixfarma: cuenta como 0.';
       case 'stock_not_found':
-        return 'Sin ficha de existencias en NixFarma: cuenta como 0.';
+        return 'Sin ficha de existencias en Nixfarma: cuenta como 0.';
       case 'stock_null':
-        return 'Existencias vacías en NixFarma: cuenta como 0.';
+        return 'Existencias vacías en Nixfarma: cuenta como 0.';
       case 'summed_stock':
         return 'Varias fichas de existencias: se muestra la suma.';
       case 'duplicate_article':

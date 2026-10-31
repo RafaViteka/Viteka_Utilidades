@@ -42,7 +42,8 @@ public partial class MainWindow : Window
             access ??= new AccessServiceClient();
             nixfarma ??= new NixFarmaConnectionController(this, store.DirectoryPath, Access);
             updates ??= new DesktopUpdates(store.DirectoryPath, () => Access.RequireUserAsync(), Post, () => Access.IsLocalServer,
-                () => Access.SaveResume(store.DirectoryPath), () => AccessServiceClient.DiscardResume(store.DirectoryPath));
+                () => Access.SaveResume(store.DirectoryPath), () => AccessServiceClient.DiscardResume(store.DirectoryPath),
+                async (action,version)=>{await Access.UtilityAsync("activity.record",JsonSerializer.SerializeToElement(new{action,version,operationId=Guid.NewGuid().ToString()}));});
             if (!App.SmokeTest && AccessServiceClient.HasResume(store.DirectoryPath))
             {
                 // Reapertura tras una actualización: se recupera la sesión sin volver a pedir la contraseña.
@@ -51,6 +52,7 @@ public partial class MainWindow : Window
                 {
                     if (!await Access.TryResumeAsync(store.DirectoryPath, lifetime.Token))
                         LoadingMessage.Text = "Preparando tu espacio de trabajo…";
+                    else await Access.UtilityAsync("activity.record",JsonSerializer.SerializeToElement(new{action="update.running",version=typeof(MainWindow).Assembly.GetName().Version?.ToString(3),operationId=Guid.NewGuid().ToString()}));
                 }
                 catch (OperationCanceledException) { return; }
                 if (closing) return;
@@ -216,7 +218,7 @@ public partial class MainWindow : Window
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Pantalla al iniciar').click()");
             await WaitForScript("document.querySelector('[role=dialog] input[type=checkbox]') !== null");
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('input[type=checkbox]').click();[...document.querySelectorAll('[role=dialog] button')].find(b=>b.textContent.trim()==='Guardar cambios').click()"); await WaitForPreference(true);
-            Browser.CoreWebView2.Reload(); await WaitForScript("document.querySelector('h1')?.textContent === 'Favoritos'");
+            Browser.CoreWebView2.Reload(); await WaitForScript("document.querySelector('h1')?.textContent === 'Inicio'");
             await OpenAccountSmoke();
             await Browser.CoreWebView2.ExecuteScriptAsync("[...document.querySelectorAll('.setting-row')].find(b=>b.querySelector('strong')?.textContent==='Pantalla al iniciar').click()");
             await WaitForScript("document.querySelector('input[type=checkbox]')?.checked === true");
@@ -235,6 +237,8 @@ public partial class MainWindow : Window
             {
                 try { await Access.UtilityAsync(action); throw new InvalidOperationException("Service accepted a forbidden utility action."); } catch (AccessDeniedException) { }
             }
+            await DeniedSmoke("audit.query",new{});
+            await DeniedSmoke("catalog.data.state",new{});
             await DeniedSmoke("users.create", new { name = "forbidden", role = "SuperAdministrator", password = "SmokeForbiddenPassword1", utilityIds = Array.Empty<string>() });
             stage = "administrator-guards";
             await Browser.CoreWebView2.ExecuteScriptAsync("document.querySelector('[aria-label=\"Cerrar sesión\"]').click()");
@@ -316,6 +320,9 @@ public partial class MainWindow : Window
                 if (command.StartsWith("pharmacy.", StringComparison.Ordinal) && !AccessPolicy.CanManageUsers(actor) || (command == "tenencia.schema" || command.StartsWith("tenencia.catalog.", StringComparison.Ordinal)) && !AccessPolicy.CanConfigure(actor) || command is "tenencia.state" or "tenencia.query" && !AccessPolicy.CanUse(actor, Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items)) throw new AccessDeniedException();
                 Reply(id, await Access.UtilityAsync(command, root.TryGetProperty("payload", out var payload) ? payload : null)); return;
             }
+            if(command?.StartsWith("catalog.data.",StringComparison.Ordinal)==true || command is "audit.settings" or "audit.query" or "activity.record" or "declaration.state" or "declaration.save"){
+                Reply(id,await Access.UtilityAsync(command!,root.TryGetProperty("payload",out var extra)?extra:null));return;
+            }
             switch (command)
             {
                 case "nixfarma.status":
@@ -374,14 +381,32 @@ public partial class MainWindow : Window
                         Reply(id, new { opened = true });
                     }
                     break;
+                case "catalog.package.open":
+                    if(actor is null||!AccessPolicy.CanConfigure(actor))throw new AccessDeniedException();
+                    var packageUrl=root.GetProperty("payload").GetProperty("url").GetString()??"";
+                    if(!Uri.TryCreate(packageUrl,UriKind.Absolute,out var packageUri)||packageUri.Scheme!="https"||packageUri.Host!="github.com"||!packageUri.AbsolutePath.StartsWith("/RafaViteka/Viteka_Utilidades/releases/download/",StringComparison.Ordinal)||!packageUri.AbsolutePath.EndsWith(".vcat",StringComparison.Ordinal))throw new ArgumentException("Origen de listado no permitido.");
+                    using(Process.Start(new ProcessStartInfo(packageUrl){UseShellExecute=true})){} Reply(id,new{opened=true});break;
+                case "catalog.file.read":
+                    if(actor is null||!AccessPolicy.CanConfigure(actor))throw new AccessDeniedException();
+                    var openCatalog=new Microsoft.Win32.OpenFileDialog{Filter="Listado firmado Viteka (*.vcat)|*.vcat",Multiselect=false};
+                    if(openCatalog.ShowDialog(this)!=true){Reply(id,new{package=(object?)null});break;}
+                    if(new FileInfo(openCatalog.FileName).Length>6*1024*1024)throw new ArgumentException("Paquete demasiado grande.");
+                    var catalogJson=JsonDocument.Parse(await File.ReadAllBytesAsync(openCatalog.FileName));
+                    using(catalogJson){Reply(id,new{package=catalogJson.RootElement.Clone()});}break;
+                case "tenencia.print":
+                    if(actor is null||!AccessPolicy.CanUse(actor,Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items))throw new AccessDeniedException();
+                    await Access.UtilityAsync("activity.record",JsonSerializer.SerializeToElement(new{action="print.requested",operationId=id}));
+                    Browser.CoreWebView2.ShowPrintUI(); Reply(id,new{requested=true});break;
                 case "file.save":
                 case "file.pdf":
                     {
+                        if(actor is null || !AccessPolicy.CanUse(actor,Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items))throw new AccessDeniedException();
                         // Exportaciones (Excel, CSV y PDF): el usuario elige dónde guardarlas; las descargas del navegador siguen bloqueadas.
                         var payload = root.GetProperty("payload");
                         var name = payload.GetProperty("name").GetString() ?? "";
                         var pdf = command == "file.pdf";
-                        if (!System.Text.RegularExpressions.Regex.IsMatch(name, pdf ? @"^[\w\-. ]{1,80}\.pdf$" : @"^[\w\-. ]{1,80}\.(csv|xlsx)$")) { Reply(id, error: "Nombre de archivo no válido."); break; }
+                        var catalogFile=name.EndsWith(".vcat",StringComparison.Ordinal);if(catalogFile&&!AccessPolicy.CanConfigure(actor))throw new AccessDeniedException();
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(name, pdf ? @"^[\w\-. ]{1,80}\.pdf$" : @"^[\w\-. ]{1,80}\.(csv|xlsx|vcat)$")) { Reply(id, error: "Nombre de archivo no válido."); break; }
                         var extension = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
                         byte[]? bytes = null;
                         if (!pdf)
@@ -396,10 +421,11 @@ public partial class MainWindow : Window
                             DefaultExt = "." + extension,
                             AddExtension = true,
                             OverwritePrompt = true,
-                            Filter = extension switch { "xlsx" => "Libro de Excel (*.xlsx)|*.xlsx", "csv" => "CSV para Excel (*.csv)|*.csv", _ => "Documento PDF (*.pdf)|*.pdf" },
+                            Filter = extension switch { "vcat"=>"Listado firmado (*.vcat)|*.vcat", "xlsx" => "Libro de Excel (*.xlsx)|*.xlsx", "csv" => "CSV para Excel (*.csv)|*.csv", _ => "Documento PDF (*.pdf)|*.pdf" },
                             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                         };
                         if (dialog.ShowDialog(this) != true) { Reply(id, new { saved = false }); break; }
+                        if(!AccessPolicy.CanUse(await Access.RequireUserAsync(),Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items))throw new AccessDeniedException();
                         if (pdf)
                         {
                             var settings = Browser.CoreWebView2.Environment.CreatePrintSettings();
@@ -409,6 +435,8 @@ public partial class MainWindow : Window
                             if (!ok) { Reply(id, error: "No se pudo crear el PDF."); break; }
                         }
                         else await File.WriteAllBytesAsync(dialog.FileName, bytes!);
+                        if(!AccessPolicy.CanUse(await Access.RequireUserAsync(),Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items))throw new AccessDeniedException();
+                        if(!catalogFile)await Access.UtilityAsync("activity.record",JsonSerializer.SerializeToElement(new{action="export."+extension+".saved",operationId=id}));
                         Reply(id, new { saved = true, file = Path.GetFileName(dialog.FileName) });
                         break;
                     }
@@ -421,6 +449,7 @@ public partial class MainWindow : Window
                 case "update.state":
                 case "update.history":
                 case "update.check":
+                case "update.cancel":
                 case "update.install":
                 case "update.publication":
                     if (command == "update.install" && nixfarma?.IsBusy == true) { Reply(id, error: "Espera a que termine la prueba de conexión antes de actualizar."); break; }

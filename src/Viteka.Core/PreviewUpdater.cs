@@ -94,7 +94,7 @@ public sealed class PreviewUpdater(HttpClient http)
         return items.OrderByDescending(x => Version.Parse(x.Version)).ToArray();
     }
 
-    public async Task<VerifiedInstaller> DownloadAsync(PreviewUpdate update, string directory, IProgress<int>? progress = null, CancellationToken ct = default)
+    public async Task<VerifiedInstaller> DownloadAsync(PreviewUpdate update, string directory, IProgress<int>? progress = null, CancellationToken ct = default, Action? verifying = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromMinutes(10));
@@ -146,6 +146,7 @@ public sealed class PreviewUpdater(HttpClient http)
                 if (total != update.Size) throw new InvalidDataException("Descarga incompleta.");
                 file.Flush(true);
             }
+            verifying?.Invoke();
             // Reopen read-only and retain a guard against modification until the installer is launched.
             var guard = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             try

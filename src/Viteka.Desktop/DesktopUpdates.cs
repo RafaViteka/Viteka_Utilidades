@@ -15,16 +15,20 @@ internal sealed class DesktopUpdates : IDisposable
     private readonly Func<bool> isLocalServer;
     private readonly Action saveSession;
     private readonly Action discardSession;
+    private readonly Func<string,string?,Task> audit;
     private readonly HttpClient readHttp = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(20) };
     private readonly HttpClient downloadHttp = new(new HttpClientHandler { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromMinutes(10) };
     private readonly string directory;
     private readonly Version version = typeof(MainWindow).Assembly.GetName().Version!;
     internal bool IsBusy { get; private set; }
+    private CancellationTokenSource? downloadCancellation;
+    private bool cancellable;
+    private void Phase(string phase,int? percent=null)=>post(new{type="update-phase",phase,percent});
     internal DesktopUpdates(string directory, Func<Task<AccessUserView>> currentUser, Action<object> post, Func<bool> isLocalServer,
-        Action saveSession, Action discardSession)
+        Action saveSession, Action discardSession, Func<string,string?,Task> audit)
     {
         this.directory = directory; this.currentUser = currentUser; this.post = post; this.isLocalServer = isLocalServer;
-        this.saveSession = saveSession; this.discardSession = discardSession;
+        this.saveSession = saveSession; this.discardSession = discardSession; this.audit=audit;
         journal = new UpdateJournal(directory);
         journal.RecordRunningVersion(version);
     }
@@ -80,35 +84,43 @@ internal sealed class DesktopUpdates : IDisposable
                 if (offered is null) return new { opened = false };
                 using (Process.Start(new ProcessStartInfo(offered.ReleasePage.AbsoluteUri) { UseShellExecute = true })) { }
                 return new { opened = true };
+            case "update.cancel":
+                if(cancellable)downloadCancellation?.Cancel();return new{cancelled=cancellable};
             case "update.install":
+            {
                 if (!AccessPolicy.CanInstallUpdates(actor)) throw new AccessDeniedException();
                 if (!isLocalServer()) throw new AccessDeniedException("Ejecuta esta actualización desde el servidor de la farmacia. Los puestos utilizan su instalación compartida.");
                 if (IsBusy) return new { cancelled = true };
+                using var downloadGate=new Semaphore(1,1,"Global\\VitekaUtilidadesDownload");
+                using var installGate=new Semaphore(1,1,"Global\\VitekaUtilidadesInstall");
+                if(!downloadGate.WaitOne(0))throw new InvalidOperationException("Ya hay una descarga de actualización en curso.");
+                if(!installGate.WaitOne(0)){downloadGate.Release();throw new InvalidOperationException("Ya hay una instalación en curso.");}installGate.Release();
                 IsBusy = true;
+                downloadCancellation=CancellationTokenSource.CreateLinkedTokenSource(ct);ct=downloadCancellation.Token;cancellable=true;
+                Phase("preparing");
                 try
                 {
                     // Fetch a fresh, verified offer; do not trust a persisted filename/digest.
                     var update = await new PreviewUpdater(readHttp).FindAsync(version, ct) ?? throw new InvalidOperationException("No hay una versión posterior verificable.");
-                    var progress = new Progress<int>(percent => post(new { type = "update-progress", percent }));
-                    using var installer = await new PreviewUpdater(downloadHttp).DownloadAsync(update, Path.Combine(directory, "Updates"), progress, ct);
+                    var progress = new Progress<int>(percent => Phase("downloading",percent));
+                    using var installer = await new PreviewUpdater(downloadHttp).DownloadAsync(update, Path.Combine(directory, "Updates"), progress, ct, ()=>Phase("verifying"));
                     if (!AccessPolicy.CanInstallUpdates(await currentUser())) throw new AccessDeniedException();
                     // Instalación desatendida: sin asistente ni preguntas. Windows solo pide su confirmación de permisos (UAC).
                     // El instalador vuelve a abrir Viteka al terminar (/RELAUNCH=1) y la sesión se recupera sin pedir contraseña.
                     saveSession();
                     var log = Path.Combine(Path.GetDirectoryName(installer.Path)!, "instalacion.log");
-                    Process process;
-                    try
-                    {
-                        process = Process.Start(new ProcessStartInfo(installer.Path, SilentArguments(log)) { UseShellExecute = true, Verb = "runas" })
-                            ?? throw new InvalidOperationException();
-                    }
+                    cancellable=false;Phase("handoff");
+                    try { await UpdateCompanion.PrepareAsync(installer.Path,update.Sha256,update.Size,log,update.Version.ToString(3),ct); }
                     catch { discardSession(); throw; }
-                    process.Dispose();
+                    await audit("update.started",update.Version.ToString(3));
                     post(new { type = "update-installing" });
                     try { journal.RecordInstallerStarted(update.Version); } catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
                     Application.Current.Shutdown(); return new { started = true };
                 }
-                finally { IsBusy = false; }
+                catch(OperationCanceledException){Phase("cancelled");return new{cancelled=true};}
+                catch {Phase("failed");try{await audit("update.failed",null);}catch(HttpRequestException){}throw;}
+                finally { IsBusy = false;cancellable=false;downloadCancellation.Dispose();downloadCancellation=null;downloadGate.Release(); }
+            }
             default: throw new InvalidOperationException();
         }
     }

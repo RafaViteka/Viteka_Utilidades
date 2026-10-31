@@ -46,7 +46,7 @@ La CA y los datos protegidos están ligados al servidor; su traslado a otra máq
 
 ## Organización de Configuración
 
-Configuración aparece para todos. Auditoría sustituye al apartado Actividad y se encuentra aquí para titular/Viteka; todavía no hay registro de operaciones implementado, ni se muestran eventos ficticios. Dentro, Mi cuenta reúne filas de contraseña, apariencia y pantalla inicial (esta última para roles privilegiados); cada ajuste abre un diálogo con Guardar/Cancelar. Usuarios solo aparece para titular y Viteka, con un icono de grupo distinto al de la cuenta personal. La conexión a NixFarma solo aparece para Viteka y se abre en diálogo. Entrar en Configuración no concede acceso a los ajustes técnicos: sus permisos en el servicio permanecen intactos.
+Configuración aparece para todos. Auditoría sustituye al apartado Actividad y se encuentra aquí para titular/Viteka; todavía no hay registro de operaciones implementado, ni se muestran eventos ficticios. Dentro, Mi cuenta reúne filas de contraseña, apariencia y pantalla inicial (esta última para roles privilegiados); cada ajuste abre un diálogo con Guardar/Cancelar. Usuarios solo aparece para titular y Viteka, con un icono de grupo distinto al de la cuenta personal. La conexión a Nixfarma solo aparece para Viteka y se abre en diálogo. Entrar en Configuración no concede acceso a los ajustes técnicos: sus permisos en el servicio permanecen intactos.
 
 ## Actualizaciones e historial
 

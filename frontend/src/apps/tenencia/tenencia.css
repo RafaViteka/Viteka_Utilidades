@@ -891,3 +891,23 @@ td.center .row-state {
     font-size: 8.5px;
   }
 }
+
+.report-dialog {
+  width: min(900px, 95vw);
+  max-height: 90vh;
+  overflow: auto;
+}
+.declaration-candidates {
+  max-height: 40vh;
+  overflow: auto;
+  margin: 16px 0;
+}
+.declaration-candidates label {
+  display: flex;
+  gap: 10px;
+  padding: 8px;
+  border-bottom: 1px solid var(--line);
+}
+.report-dialog select {
+  max-width: 100%;
+}

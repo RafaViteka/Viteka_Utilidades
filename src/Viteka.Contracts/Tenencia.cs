@@ -18,7 +18,8 @@ public sealed record StockArticle(string Code, string Description, decimal? Stoc
     public DateOnly? LastSale { get; init; }
 }
 /// <summary>Datos opcionales de la ficha que esta instalación de NixFarma permite leer.</summary>
-public sealed record TenenciaFields(bool Expiry, bool Movements, string[] Homogeneous);
-public sealed record ArticleSearchResult(string Code, string Message, StockArticle[] Articles, bool Truncated = false) { public string? Group { get; init; } }
+public sealed record TenenciaFields(bool Expiry, bool Movements, string[] Homogeneous) { public bool Purchase {get;init;} public string? PurchaseColumn {get;init;} }
+public sealed record TherapeuticClassification(string Code,string Description,string Class,string Type,int? Level,string Parent,string Source);
+public sealed record ArticleSearchResult(string Code, string Message, StockArticle[] Articles, bool Truncated = false) { public string? Group { get; init; } public TherapeuticClassification[]? Classifications { get; init; } }
 public sealed record TenenciaRow(string Id, string Name, int Minimum, decimal? Stock, decimal? Missing, string Status, StockArticle[] Articles) { public bool RequiresReview { get; init; } public string? Classification { get; init; } public string? SelectionNote { get; init; } public int? SourceRow { get; init; } }
 public sealed record TenenciaResponse(string Code, string Message, string Province, string? ListVersion = null, string? Source = null, DateTimeOffset? CheckedAt = null, TenenciaRow[]? Rows = null) { public string? ProvinceName { get; init; } public TenenciaFields? Fields { get; init; } public bool Cached { get; init; } public bool Customized { get; init; } }

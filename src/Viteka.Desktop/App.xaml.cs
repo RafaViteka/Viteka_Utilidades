@@ -7,6 +7,7 @@ public partial class App : Application
     internal static bool SmokeTest { get; private set; }
     protected override void OnStartup(StartupEventArgs e)
     {
+        if(e.Args is ["--watch-update",var manifest]) { StartupUri=null; UpdateCompanion.Run(manifest); return; }
         SmokeTest = e.Args.Contains("--smoke-ui");
         if (e.Args.Contains("--check-webview-runtime"))
         {

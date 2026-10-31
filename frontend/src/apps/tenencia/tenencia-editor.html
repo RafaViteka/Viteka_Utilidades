@@ -1,3 +1,7 @@
+<button class="text-button" (click)="distributionOpen.set(!distributionOpen())">Versiones y distribución</button>
+@if (distributionOpen()) {
+  <viteka-catalog-distribution (changed)="distributionChanged()" />
+}
 <section class="editor-bar" aria-label="Edición del listado">
   <div class="editor-title">
     <v-icon name="edit" />
@@ -191,7 +195,7 @@
               />
             } @else {
               <p class="hint">
-                No se ha detectado en NixFarma la columna de agrupación homogénea. Revisa Configuración → Comprobar
+                No se ha detectado en Nixfarma la columna de agrupación homogénea. Revisa Configuración → Comprobar
                 tablas de tenencia.
               </p>
             }
@@ -201,9 +205,34 @@
             type="submit"
             [disabled]="searching() || !searchText().trim() || (mode() === 'homogeneous' && !homogeneous().length)"
           >
-            <v-icon name="search" />{{ searching() ? 'Buscando…' : 'Buscar en NixFarma' }}
+            <v-icon name="search" />{{ searching() ? 'Buscando…' : 'Buscar en Nixfarma' }}
           </button>
         </form>
+        <button class="text-button" (click)="setMode('therapeutic.groups')">Por grupo terapéutico / ATC</button>
+        @if (mode() === 'therapeutic.groups') {
+          <label
+            >Código o descripción terapéutica<input
+              aria-label="Buscar clasificación terapéutica"
+              [ngModel]="searchText()"
+              (ngModelChange)="searchText.set($event)" /></label
+          ><button (click)="search()" [disabled]="searching()">Comprobar fuente y buscar grupos</button>
+        }
+        @if (therapeuticChoice(); as g) {
+          <p>
+            {{ g.code }} · {{ g.description }} · Nivel {{ g.level ?? 'sin informar' }} · Clase {{ g.class }} · Tipo
+            {{ g.type }} · {{ g.source }}
+          </p>
+          <label
+            ><input type="checkbox" [ngModel]="descendants()" (ngModelChange)="descendants.set($event)" />Incluir
+            niveles descendientes</label
+          ><button (click)="search()" [disabled]="searching()">Consultar artículos del grupo</button>
+        }
+        @for (g of classifications(); track $index) {
+          <button class="setting-row" (click)="chooseClassification(g)">
+            {{ g.code }} · {{ g.description }} · Nivel {{ g.level ?? 'sin informar' }} · Padre
+            {{ g.parent || 'raíz' }} · {{ g.type }} / {{ g.class }}
+          </button>
+        }
         @if (searchMessage()) {
           <p class="search-message" role="status">{{ searchMessage() }}</p>
         }
@@ -221,7 +250,7 @@
                     />
                   </th>
                   <th scope="col">CN</th>
-                  <th scope="col">Descripción en NixFarma</th>
+                  <th scope="col">Descripción en Nixfarma</th>
                   <th scope="col" class="center">Exist.</th>
                 </tr>
               </thead>
@@ -239,7 +268,7 @@
                     </td>
                     <td class="mono">{{ a.code }}</td>
                     <td>
-                      {{ a.issue === 'not_found' ? 'No dado de alta en NixFarma' : a.description }}
+                      {{ a.issue === 'not_found' ? 'No dado de alta en Nixfarma' : a.description }}
                       @if (g.codes.includes(a.code)) {
                         <small class="tag">Ya en el grupo</small>
                       }
