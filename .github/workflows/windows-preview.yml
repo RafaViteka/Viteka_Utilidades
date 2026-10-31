@@ -12,6 +12,11 @@ on:
         description: Validate without packaging or publishing a release
         type: boolean
         default: false
+      review_device_id:
+        description: Optional exact test PC ID; publishes only its isolated review after all Windows checks pass
+        type: string
+        required: false
+        default: ''
 concurrency:
   group: windows-preview-${{ github.ref }}
   cancel-in-progress: true
@@ -222,3 +227,24 @@ jobs:
           path: artifacts/installer/VitekaUtilidades-Test-Setup-*.exe
           if-no-files-found: error
           retention-days: 14
+
+  publish-pc-review:
+    needs: [package, isolated-pc-review]
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/feature/post-017-improvements' && !inputs.validate_only && inputs.review_device_id != '' }}
+    runs-on: windows-2022
+    timeout-minutes: 5
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: Viteka-PC-Pruebas-instalador
+          path: review-installer
+      - name: Publish only the requested PC review
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_DEVICE_ID: ${{ inputs.review_device_id }}
+        run: ./scripts/publish-pc-review.ps1 -DeviceId $env:REVIEW_DEVICE_ID -InstallerDirectory review-installer

@@ -34,7 +34,11 @@ El activo esperado es `VitekaUtilidades-Test-Setup-0.18.1-win-x64.exe`, con el d
 
 Esto controla qué ofrece el actualizador. Un activo de un repositorio público sigue siendo descargable manualmente: restringir también la descarga o imponer licencias comerciales requeriría distribución autenticada. La primera instalación no puede llegar de manera automática y exclusiva a una 0.17 que todavía no conoce este mecanismo.
 
-Este desarrollo no publica etiquetas ni Releases. Primero se instala el paquete de arranque y se obtiene el ID real; cualquier publicación posterior debe estar autorizada y dirigida a ese ID. No usar etiquetas generales `v...-preview...` para estas revisiones.
+La compilación habitual no publica etiquetas ni Releases. Primero se instala el paquete de arranque y se obtiene el ID real; cualquier publicación posterior debe estar autorizada y dirigida a ese ID. No usar etiquetas generales `v...-preview...` para estas revisiones.
+
+Para publicar una revisión autorizada, incrementar la versión de la rama y ejecutar manualmente **Windows preview installer** en `feature/post-017-improvements` con `validate_only: false` y `review_device_id` igual al ID recibido. El campo vacío solo valida y genera artefactos. El job `publish-pc-review` espera el éxito de ambos jobs Windows, descarga únicamente el instalador de pruebas de esa misma ejecución, comprueba producto/versión, crea un borrador dirigido al ID y verifica el SHA256 y tamaño devueltos por GitHub antes de publicarlo como prerelease y sin marcarlo como última versión. Nunca reemplaza una publicación existente ni crea una etiqueta normal. No es necesario fusionar main.
+
+La revisión 0.18.1 permite probar este ciclo desde el instalador de arranque 0.18.0; no incorpora funciones nuevas. En el PC destinatario, usar **Configuración → Actualizaciones → Buscar actualizaciones** y elegir cuándo instalar. Una revisión se ofrece únicamente si su versión es posterior a la instalada.
 
 ## Compilación y comprobaciones
 

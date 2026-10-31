@@ -1,0 +1,78 @@
+[CmdletBinding()]
+param(
+    [Parameter(Mandatory)][ValidatePattern('^[a-f0-9]{32}$')][string]$DeviceId,
+    [Parameter(Mandatory)][string]$InstallerDirectory
+)
+$ErrorActionPreference = 'Stop'
+Set-StrictMode -Version Latest
+
+# This script publishes only an already tested, isolated installer. The workflow
+# requires both Windows validation jobs before downloading its own run's artifact.
+if ($env:GITHUB_EVENT_NAME -ne 'workflow_dispatch' -or
+    $env:GITHUB_REF -ne 'refs/heads/feature/post-017-improvements' -or
+    $env:GITHUB_REPOSITORY -ne 'RafaViteka/Viteka_Utilidades' -or
+    $env:GITHUB_SHA -cnotmatch '^[a-f0-9]{40}$' -or
+    $DeviceId -cnotmatch '^[a-f0-9]{32}$') {
+    throw 'Review publication requires the explicit test-branch workflow and an exact PC ID.'
+}
+$root = Split-Path $PSScriptRoot -Parent
+$version = ([xml](Get-Content (Join-Path $root 'Directory.Build.props') -Raw)).SelectSingleNode('/Project/PropertyGroup/Version').InnerText
+if ($version -cnotmatch '^(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})$') { throw 'Invalid review version.' }
+$tag = "review-v$version-pc-$DeviceId"
+$name = "VitekaUtilidades-Test-Setup-$version-win-x64.exe"
+$files = @(Get-ChildItem $InstallerDirectory -File -Recurse)
+if ($files.Count -ne 1 -or $files[0].Name -cne $name) { throw 'Expected exactly the isolated installer for this version.' }
+$file = $files[0]
+$metadata = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($file.FullName)
+$productVersion = [Version]::new($metadata.ProductMajorPart, $metadata.ProductMinorPart, $metadata.ProductBuildPart, $metadata.ProductPrivatePart)
+if ($metadata.ProductName.TrimEnd([char[]]@(32, 0)) -cne 'Viteka Utilidades - Pruebas' -or
+    $productVersion -ne [Version]"$version.0") {
+    throw 'The artifact is not the expected isolated review product/version.'
+}
+$hash = (Get-FileHash -Algorithm SHA256 $file.FullName).Hash.ToLowerInvariant()
+
+# Never replace an existing release/asset: an installed version is immutable.
+& gh release view $tag --repo $env:GITHUB_REPOSITORY *> $null
+if ($LASTEXITCODE -eq 0) { throw 'This PC review already exists; use a new version.' }
+& gh api "repos/$($env:GITHUB_REPOSITORY)/git/ref/tags/$tag" *> $null
+if ($LASTEXITCODE -eq 0) { throw 'This PC review tag already exists; use a new version.' }
+$notes = @"
+Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
+
+Permite comprobar el ciclo de búsqueda, descarga e instalación desde Configuración → Actualizaciones. No añade funciones nuevas respecto al instalador de arranque 0.18.0. Conserva el ID, las cuentas y los datos propios de pruebas; la edición habitual utiliza otro servicio y otras carpetas.
+
+La publicación exige las pruebas Windows de ambas ediciones y de convivencia del mismo commit. No acredita conexión a Oracle en la farmacia. Las ediciones normales y los demás identificadores de pruebas omiten esta etiqueta.
+
+SHA256: $hash
+"@
+$notesPath = Join-Path $InstallerDirectory 'release-notes.txt'
+Set-Content -LiteralPath $notesPath -Value $notes -Encoding utf8
+& gh release create $tag --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --draft --prerelease --latest=false --title "Viteka Utilidades - Pruebas $version" --notes-file $notesPath
+if ($LASTEXITCODE -ne 0) { throw 'Could not create the isolated draft release.' }
+& gh release upload $tag $file.FullName --repo $env:GITHUB_REPOSITORY
+if ($LASTEXITCODE -ne 0) { throw 'Could not upload the isolated installer; release remains a draft.' }
+$json = & gh api "repos/$($env:GITHUB_REPOSITORY)/releases/tags/$tag"
+if ($LASTEXITCODE -ne 0) { throw 'Could not verify the draft release.' }
+$release = ($json -join "`n") | ConvertFrom-Json
+$assets = @($release.assets)
+$url = "https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$tag/$name"
+if (-not $release.draft -or -not $release.prerelease -or $release.tag_name -cne $tag -or
+    $release.target_commitish -cne $env:GITHUB_SHA -or $assets.Count -ne 1 -or
+    $assets[0].name -cne $name -or $assets[0].browser_download_url -cne $url -or
+    $assets[0].size -ne $file.Length -or $assets[0].digest -cne "sha256:$hash") {
+    throw 'Draft/installer verification failed; release remains a draft.'
+}
+# Some GitHub release flows defer creating the tag until publication. Create it
+# explicitly if still absent, then verify it points at the tested commit.
+$json = & gh api "repos/$($env:GITHUB_REPOSITORY)/git/ref/tags/$tag" 2>$null
+if ($LASTEXITCODE -ne 0) {
+    & gh api --method POST "repos/$($env:GITHUB_REPOSITORY)/git/refs" -f "ref=refs/tags/$tag" -f "sha=$($env:GITHUB_SHA)" *> $null
+    if ($LASTEXITCODE -ne 0) { throw 'Could not create the isolated review tag.' }
+    $json = & gh api "repos/$($env:GITHUB_REPOSITORY)/git/ref/tags/$tag"
+    if ($LASTEXITCODE -ne 0) { throw 'Could not verify the review tag.' }
+}
+$ref = ($json -join "`n") | ConvertFrom-Json
+if ($ref.object.type -cne 'commit' -or $ref.object.sha -cne $env:GITHUB_SHA) { throw 'Review tag does not point to the tested commit.' }
+& gh release edit $tag --repo $env:GITHUB_REPOSITORY --draft=false --prerelease --latest=false
+if ($LASTEXITCODE -ne 0) { throw 'Could not publish the verified PC review.' }
+Write-Output "Published only the isolated review: $url"
