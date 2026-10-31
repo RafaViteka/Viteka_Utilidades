@@ -22,7 +22,9 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import re
-          text=re.sub(r'\x1b\[[0-9;]*m','',Path('native.log').read_text())[-2500:]
+          raw=re.sub(r'\x1b\[[0-9;]*m','',Path('native.log').read_text())
+          lines=[line for line in raw.splitlines() if re.search(r'fatal|unhandled|exception|error|failed|hostpolicy|runtime|framework|monitorText',line,re.I)]
+          text='\n'.join(lines)[-9000:]
           text=text.replace('%','%25').replace('\r','%0D').replace('\n','%0A')
           print('::notice::'+text)
           PY

@@ -86,6 +86,8 @@ try{
  $failure=$_
  Get-Content (Join-Path $directory '*.log') -Tail 12 -ErrorAction SilentlyContinue
  Get-Content (Join-Path $directory 'handoff-report.json') -ErrorAction SilentlyContinue
+ $events=Get-WinEvent -FilterHashtable @{LogName='Application';StartTime=(Get-Date).AddMinutes(-4)} -ErrorAction SilentlyContinue|Where-Object {$_.ProviderName -in @('.NET Runtime','Application Error') -and $_.Message.Contains('Viteka.Desktop') }|Select-Object -First 2
+ $events.Message
  if($env:VITEKA_UI_SMOKE_REPORT -and (Test-Path $env:VITEKA_UI_SMOKE_REPORT)){Get-Content $env:VITEKA_UI_SMOKE_REPORT}
  Write-Output ('Review failure: '+$failure.Exception.Message)
  throw $failure
