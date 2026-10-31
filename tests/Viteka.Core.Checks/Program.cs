@@ -210,6 +210,14 @@ try
         Require(new PreviewUpdater(http).FindAsync(new Version(0,17,0)).GetAwaiter().GetResult() is null);
         Require(new PreviewUpdater(http,other).GetHistoryAsync().GetAwaiter().GetResult().Length==0);
     });
+    Check("Review installer identity accepts Inno padding but never another product",()=>{
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas"));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas                         "));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas\0\0"));
+        Require(!ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Vista previa local"));
+        Require(!ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas modified"));
+        Require(!ProductProfile.IsReviewInstallerProduct(null));
+    });
     Check("Review identity persists and corrupted identity is never replaced",()=>{
         var directory=Path.Combine(root,"review-identity");var identity=new ReviewIdentity(directory,b=>b,b=>b);var id=identity.LoadOrCreate();
         Require(ReviewIdentity.Valid(id)&&new ReviewIdentity(directory,b=>b,b=>b).LoadOrCreate()==id);

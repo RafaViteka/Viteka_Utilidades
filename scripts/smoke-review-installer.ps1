@@ -33,7 +33,7 @@ try{
  New-ItemProperty $normalKey -Name DisplayName -Value 'Viteka normal coexistence fixture'|Out-Null
  Run -Exe $setup -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$install+'"'),('/LOG="'+(Join-Path $directory 'review-install.log')+'"'))
  $info=(Get-Item $setup).VersionInfo
- if($info.ProductName -ne 'Viteka Utilidades - Pruebas'){throw ('Wrong installer product identity: product=['+$info.ProductName+'] description=['+$info.FileDescription+'] file=['+$setup+']')}
+ if($info.ProductName.TrimEnd([char[]]@(32,0)) -ne 'Viteka Utilidades - Pruebas'){throw ('Wrong installer product identity: product=['+$info.ProductName+'] description=['+$info.FileDescription+'] file=['+$setup+']')}
  if(-not(Test-Path $reviewKey) -or (Get-ItemProperty $normalKey).DisplayName -ne 'Viteka normal coexistence fixture'){throw 'Review installer changed normal registration.'}
  $metadata=Get-Content (Join-Path $install 'Cliente/access-server.json') -Raw|ConvertFrom-Json
  if($metadata.ServerUrl -ne 'https://localhost:7448/'){throw 'Review installer did not use its local test endpoint.'}
