@@ -71,9 +71,15 @@ if ($null -eq $release) {
 }
 $assets = @($release.assets)
 $url = "https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$tag/$name"
+$draftUrl = $url
+# Until publication GitHub gives draft assets an untagged-* URL. It must still
+# belong to this exact repository and the draft's own temporary tag.
+if ($release.html_url -cmatch '^https://github\.com/RafaViteka/Viteka_Utilidades/releases/tag/(untagged-[a-f0-9]+)$') {
+    $draftUrl = "https://github.com/$($env:GITHUB_REPOSITORY)/releases/download/$($Matches[1])/$name"
+}
 if (-not $release.draft -or -not $release.prerelease -or $release.tag_name -cne $tag -or
     $release.target_commitish -cne $sourceCommit -or $assets.Count -ne 1 -or
-    $assets[0].name -cne $name -or $assets[0].browser_download_url -cne $url -or
+    $assets[0].name -cne $name -or $assets[0].browser_download_url -cnotin @($url, $draftUrl) -or
     $assets[0].size -ne $file.Length -or $assets[0].digest -cne "sha256:$hash") {
     throw 'Draft/installer verification failed; release remains a draft.'
 }
@@ -90,4 +96,13 @@ $ref = ($json -join "`n") | ConvertFrom-Json
 if ($ref.object.type -cne 'commit' -or $ref.object.sha -cne $sourceCommit) { throw 'Review tag does not point to the tested commit.' }
 & gh release edit $tag --repo $env:GITHUB_REPOSITORY --draft=false --prerelease --latest=false
 if ($LASTEXITCODE -ne 0) { throw 'Could not publish the verified PC review.' }
+$json = & gh api "repos/$($env:GITHUB_REPOSITORY)/releases/$($release.id)"
+if ($LASTEXITCODE -ne 0) { throw 'Could not verify the published review.' }
+$published = ($json -join "`n") | ConvertFrom-Json
+$publishedAssets = @($published.assets)
+if ($published.draft -or -not $published.prerelease -or $published.tag_name -cne $tag -or
+    $publishedAssets.Count -ne 1 -or $publishedAssets[0].browser_download_url -cne $url -or
+    $publishedAssets[0].size -ne $file.Length -or $publishedAssets[0].digest -cne "sha256:$hash") {
+    throw 'Published review verification failed.'
+}
 Write-Output "Published only the isolated review: $url"
