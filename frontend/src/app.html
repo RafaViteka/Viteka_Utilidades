@@ -6,6 +6,9 @@
       <img class="auth-brand" src="logotipo.png" alt="Viteka" />
       <div class="eyebrow">UTILIDADES PARA TU FARMACIA</div>
       <h1>Iniciar sesión</h1>
+      @if (reviewMode()) {
+        <p class="chip">PC de pruebas · Instalación independiente</p>
+      }
       <p>Accede con tu cuenta de Viteka Utilidades.</p>
       <form (ngSubmit)="login()" class="account-form">
         <label
@@ -492,6 +495,15 @@
           }
           @if (page() === 'Auditoría' && user()?.canManageUsers) {
             <viteka-audit />
+          }
+          @if (inSettings() && reviewMode()) {
+            <section class="settings" aria-label="Identidad del PC de pruebas">
+              <h2>PC de pruebas</h2>
+              <p>Esta instalación utiliza su propio servicio local y canal de revisión.</p>
+              <label
+                >ID de este PC <code>{{ reviewDeviceId() }}</code></label
+              ><button class="text-button" (click)="copyReviewId()">Copiar identificador</button>
+            </section>
           }
           @if (page() === 'Usuarios' && user()?.canManageUsers) {
             <section class="settings">

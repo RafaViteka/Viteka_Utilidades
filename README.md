@@ -4,6 +4,10 @@ Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NE
 
 > Cambios posteriores a 0.17, migración, distribución y límites: [mejoras 0.18](docs/mejoras-018.md). Rama de desarrollo; no publicada.
 
+## PC de pruebas independiente
+
+[Instalación de pruebas y actualizaciones por ID de PC](docs/pc-pruebas.md). El instalador de revisión aislada no sustituye al normal ni usa su servicio o datos. Primera instalación manual; después se obtiene el ID para dirigir futuras revisiones.
+
 ## Accesos y administración
 
 Cuentas y permisos centralizados en el servicio Windows de la farmacia, con HTTPS y confianza privada fijada en el cliente. Usuario: Inicio y aplicaciones autorizadas; titular: todas las aplicaciones y gestión de usuarios normales; Viteka: superadministración y configuración técnica. Configuración agrupa Mi cuenta (filas con ventanas de edición), Actualizaciones, Auditoría, Usuarios para titulares/Viteka y conexión técnica solo para Viteka. Contraseñas nuevas desde 3 caracteres.
@@ -36,7 +40,7 @@ bash scripts/setup-cloud.sh
 python scripts/smoke-ui.py
 ```
 
-El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 85 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 87 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
 
 Para editar la interfaz en navegador:
 

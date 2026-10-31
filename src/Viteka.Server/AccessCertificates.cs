@@ -47,7 +47,7 @@ internal static class AccessCertificates
                 leaf.Dispose(); leaf = LoadProtected(leafPath, true);
             }
             AtomicWrite(Path.Combine(publicDirectory, "access-root.cer"), root.Export(X509ContentType.Cert));
-            var metadata = new AccessBootstrap(1, $"https://{Environment.MachineName}:{port}/", Convert.ToHexString(SHA256.HashData(root.RawData)));
+            var metadata = new AccessBootstrap(1, $"https://{(ProductProfile.IsReview?"localhost":Environment.MachineName)}:{port}/", Convert.ToHexString(SHA256.HashData(root.RawData)));
             AtomicWrite(Path.Combine(publicDirectory, "access-server.json"), JsonSerializer.SerializeToUtf8Bytes(metadata));
             return leaf;
         }

@@ -41,7 +41,7 @@ internal static class UpdateCompanion
         var window=new Window{Title="Actualización de Viteka",Width=520,Height=250,ResizeMode=ResizeMode.NoResize,WindowStartupLocation=WindowStartupLocation.CenterScreen,Background=new SolidColorBrush(Color.FromRgb(250,246,236)),Content=panel};
         bool active=true;window.Closing+=(_,e)=>{if(active)e.Cancel=true;};close.Click+=(_,_)=>window.Close();
         window.Loaded+=async(_,_)=>{
-            UpdateHandoff? handoff=null;using var installGate=new Semaphore(1,1,"Global\\VitekaUtilidadesInstall");var locked=false;
+            UpdateHandoff? handoff=null;using var installGate=new Semaphore(1,1,"Global\\"+Viteka.Core.ProductProfile.ShellAppId+"Install");var locked=false;
             try{
                 var full=Path.GetFullPath(manifest);if(Path.GetDirectoryName(full)!=Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory)||new FileInfo(full).Length>8192)throw new InvalidDataException();
                 handoff=JsonSerializer.Deserialize<UpdateHandoff>(await File.ReadAllTextAsync(full))??throw new InvalidDataException();
@@ -51,7 +51,7 @@ internal static class UpdateCompanion
                 using(var file=new FileStream(handoff.Installer,FileMode.Open,FileAccess.Read,FileShare.Read)){
                     if(file.Length!=handoff.Size||Convert.ToHexString(await SHA256.HashDataAsync(file)).ToLowerInvariant()!=handoff.Sha256.ToLowerInvariant())throw new InvalidDataException("La verificación del paquete no coincide.");
                     text.Text="Esperando el permiso de Windows. La instalación continuará sin asistente.";
-                    // Launch paused installer until the original application acknowledges its own shutdown.
+                    // Windows approves the installer; the original client then closes while this copy monitors it.
                     var start=new ProcessStartInfo(handoff.Installer,DesktopUpdates.SilentArguments(handoff.Log)){UseShellExecute=true,Verb="runas"};
                     using var installer=Process.Start(start)??throw new IOException("No se pudo iniciar el instalador.");
                     await File.WriteAllTextAsync(handoff.ReadyFile,"ready");

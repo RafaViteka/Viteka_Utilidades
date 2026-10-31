@@ -41,6 +41,16 @@ export class AppComponent {
   readonly user = this.bridge.user;
   readonly page = signal<Page>('Inicio');
   readonly version = signal('');
+  readonly reviewMode = signal(false);
+  readonly reviewDeviceId = signal('');
+  async copyReviewId() {
+    try {
+      await this.bridge.call('review.copyId');
+      this.notify('Identificador del PC copiado.');
+    } catch (e) {
+      this.error.set(this.message(e));
+    }
+  }
   readonly loading = signal(true);
   readonly error = signal('');
   readonly busy = signal(false);
@@ -507,6 +517,8 @@ export class AppComponent {
     try {
       const s = await this.bridge.call<AppState>('app.state');
       this.version.set(s.version);
+      this.reviewMode.set(s.reviewMode ?? false);
+      this.reviewDeviceId.set(s.reviewDeviceId ?? '');
       this.theme.set(s.theme || 'auto');
       this.collapsed.set(s.sidebarCollapsed ?? false);
       this.openFavorites.set(s.openFavorites);

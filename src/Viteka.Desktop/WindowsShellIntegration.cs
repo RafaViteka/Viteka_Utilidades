@@ -10,7 +10,7 @@ namespace Viteka.Desktop;
 // Use the work area of the window's actual monitor, in physical pixels, not the primary screen.
 internal sealed class WindowsShellIntegration : IDisposable
 {
-    internal const string AppId = "Viteka.Utilidades";
+    internal const string AppId = Viteka.Core.ProductProfile.ShellAppId;
     private readonly Window window;
     private HwndSource? source;
     private IntPtr largeIcon, smallIcon;

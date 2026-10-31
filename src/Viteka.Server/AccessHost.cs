@@ -13,7 +13,7 @@ namespace Viteka.Server;
 
 internal static class AccessHost
 {
-    internal const string ServiceName = "VitekaUtilidadesAccess";
+    internal const string ServiceName = ProductProfile.ServiceName;
     private sealed record DeclarationDraft(string ListVersion, Dictionary<string,string[]> Selections);
     private sealed record Session(AccessSessionAgent Agent, DateTimeOffset Expires);
     internal static async Task RunAsync(string[] args)
@@ -35,12 +35,13 @@ internal static class AccessHost
             return;
         }
         var service = args is ["--access-service"];
-        var stateRoot = service ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Viteka", "UtilidadesAccess")
+        var stateRoot = service ? Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Viteka", ProductProfile.StateFolder)
             : args.Length is 2 or 3 && args[0] == "--access-console" ? Path.GetFullPath(args[1]) : throw new ArgumentException("Modo de acceso no válido.");
-        var port = !service && args.Length == 3 ? int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : 7447;
+        var port = !service && args.Length == 3 ? int.Parse(args[2], System.Globalization.CultureInfo.InvariantCulture) : ProductProfile.AccessPort;
         if (port is < 1024 or > 65535) throw new ArgumentOutOfRangeException(nameof(port));
         var privateRoot = Path.Combine(stateRoot, "Private"); var publicRoot = Path.Combine(stateRoot, "Public");
         using var certificate = AccessCertificates.LoadOrCreate(privateRoot, publicRoot, port);
+        var reviewId=ProductProfile.IsReview?new ReviewIdentity(privateRoot,Protect,Unprotect).LoadOrCreate():null;
         var authority = new AccessDirectory(privateRoot, UtilityCatalog.Items,
             Protect, Unprotect);
         authority.InitializeDefaults();
@@ -74,7 +75,7 @@ internal static class AccessHost
         builder.WebHost.ConfigureKestrel(options =>
         {
             options.Limits.MaxRequestBodySize = 32768;
-            if (service) options.ListenAnyIP(port, listen => listen.UseHttps(https => { https.ServerCertificate = certificate; https.SslProtocols = protocols; }));
+            if (service && !ProductProfile.IsReview) options.ListenAnyIP(port, listen => listen.UseHttps(https => { https.ServerCertificate = certificate; https.SslProtocols = protocols; }));
             else options.ListenLocalhost(port, listen => listen.UseHttps(https => { https.ServerCertificate = certificate; https.SslProtocols = protocols; }));
         });
         builder.Services.AddRateLimiter(options =>
@@ -141,6 +142,11 @@ internal static class AccessHost
             var who = session.Agent.RequireUser(true); context.Items["audit-actor"] = new AuditActor(who.Id,who.Name); return session.Agent;
         }
         app.MapGet("/access/health", () => Results.Ok(new { status = "ok", version = typeof(AccessHost).Assembly.GetName().Version?.ToString(3) }));
+        app.MapPost("/access/review/identity",(HttpContext context)=>{
+            var address=context.Connection.RemoteIpAddress;
+            if(!ProductProfile.IsReview||address is null||!IPAddress.IsLoopback(address.IsIPv4MappedToIPv6?address.MapToIPv4():address))throw new AccessDeniedException();
+            return Results.Ok(new{id=reviewId,scope="pc-test",channel="review"});
+        });
         app.MapPost("/access/login", async (HttpContext context, JsonElement request) =>
         {
             foreach (var item in sessions.Where(item => item.Value.Expires <= DateTimeOffset.UtcNow)) sessions.TryRemove(item.Key, out _);

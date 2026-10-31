@@ -137,6 +137,7 @@ internal sealed class AccessServiceClient : IDisposable
         var path = command switch
         {
             _ when command.StartsWith("catalog.data.",StringComparison.Ordinal) && command[13..] is "state" or "prepare" or "preview" or "apply" or "rollback" or "resolve" or "check" => "access/catalog-data/"+command[13..],
+            "review.identity"=>"access/review/identity",
             "audit.settings"=>"access/audit/settings",
             "audit.query" => "access/audit/query",
             "activity.record" => "access/activity",

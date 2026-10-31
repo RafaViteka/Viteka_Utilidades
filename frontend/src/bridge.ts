@@ -32,6 +32,8 @@ export interface UserView {
   canInstallUpdates: boolean;
 }
 export interface AppState {
+  reviewMode?: boolean;
+  reviewDeviceId?: string;
   version: string;
   openFavorites: boolean;
   sidebarCollapsed?: boolean;

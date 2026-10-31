@@ -28,6 +28,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
+        if(ProductProfile.IsReview){Title="Viteka Utilidades · Pruebas";ProductCaption.Text="Utilidades · Pruebas";}
         shell = new WindowsShellIntegration(this);
         StateChanged += (_, _) => MaximizeButton.Content = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
         // Install the monitor work-area hook before maximizing; keep restore/minimize controls available.
@@ -43,7 +44,7 @@ public partial class MainWindow : Window
             nixfarma ??= new NixFarmaConnectionController(this, store.DirectoryPath, Access);
             updates ??= new DesktopUpdates(store.DirectoryPath, () => Access.RequireUserAsync(), Post, () => Access.IsLocalServer,
                 () => Access.SaveResume(store.DirectoryPath), () => AccessServiceClient.DiscardResume(store.DirectoryPath),
-                async (action,version)=>{await Access.UtilityAsync("activity.record",JsonSerializer.SerializeToElement(new{action,version,operationId=Guid.NewGuid().ToString()}));});
+                async (action,version)=>{await Access.UtilityAsync("activity.record",JsonSerializer.SerializeToElement(new{action,version,operationId=Guid.NewGuid().ToString()}));}, async()=> (await Access.UtilityAsync("review.identity")).GetProperty("id").GetString()!);
             if (!App.SmokeTest && AccessServiceClient.HasResume(store.DirectoryPath))
             {
                 // Reapertura tras una actualización: se recupera la sesión sin volver a pedir la contraseña.
@@ -149,6 +150,10 @@ public partial class MainWindow : Window
         try
         {
             if (WindowState != WindowState.Maximized || !shell.WithinWorkArea()) throw new InvalidOperationException(shell.Diagnostics());
+            if(ProductProfile.IsReview){
+                if(!Title.Contains("Pruebas",StringComparison.Ordinal))throw new InvalidOperationException("Review window must identify itself.");
+                var identity=await Access.UtilityAsync("review.identity");if(!ReviewIdentity.Valid(identity.GetProperty("id").GetString()))throw new InvalidOperationException("Review PC identity is missing.");
+            }
             stage = "login";
             await LoginSmoke("Viteka", "jupiter", "SmokeSuperPassword1");
             var superId = (await Access.RequireUserAsync()).Id;
@@ -338,7 +343,8 @@ public partial class MainWindow : Window
                     break;
                 case "app.state":
                     var state = Preferences.Load();
-                    Reply(id, new { version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3), openFavorites = state.OpenFavoritesOnStart, sidebarCollapsed = state.SidebarCollapsed, theme = state.Theme, zoomPercent = (int)Math.Round(Browser.ZoomFactor * 100) });
+                    string? reviewId=null;if(ProductProfile.IsReview){reviewId=(await Access.UtilityAsync("review.identity")).GetProperty("id").GetString();}
+                    Reply(id, new { reviewMode=ProductProfile.IsReview,reviewDeviceId=reviewId,version = typeof(MainWindow).Assembly.GetName().Version?.ToString(3), openFavorites = state.OpenFavoritesOnStart, sidebarCollapsed = state.SidebarCollapsed, theme = state.Theme, zoomPercent = (int)Math.Round(Browser.ZoomFactor * 100) });
                     break;
                 case "settings.start":
                     var enabled = root.GetProperty("payload").GetProperty("enabled").GetBoolean();
@@ -443,6 +449,9 @@ public partial class MainWindow : Window
                         Reply(id, new { saved = true, file = Path.GetFileName(dialog.FileName) });
                         break;
                     }
+                case "review.copyId":
+                    if(!ProductProfile.IsReview)throw new AccessDeniedException();
+                    Clipboard.SetText((await Access.UtilityAsync("review.identity")).GetProperty("id").GetString()!);Reply(id,new{copied=true});break;
                 case "clipboard.copy":
                     var email = PortalResources.Email(root.GetProperty("payload").GetProperty("id").GetString() ?? "");
                     if (email is null) { Reply(id, error: "Correo no disponible."); break; }

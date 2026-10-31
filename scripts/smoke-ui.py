@@ -12,7 +12,7 @@ url=f'http://127.0.0.1:{server.server_port}'
 class AuthorityFixture:
  def __init__(self):
   self.accounts=[dict(id=f'{i:032x}',name=name,role=role,active=True,mustChangePassword=True,utilityIds=[],password=password) for i,(name,role,password) in enumerate([('Viteka','SuperAdministrator','jupiter'),('F. titular','Administrator','1234'),('usuario','User','0000')],1)]
-  self.current=None;self.calls=[];self.prefs={};self.nix=dict(configured=False,saved=False,dsn='NIXFARMA',user='',dsnAvailable=True);self.probe_fail=False;self.schema_fail=False;self.pharmacy=None;self.tenencia_ready=False;self.stock_error=False;self.tenencia_queries=0;self.many_groups=False;self.transport_error=False;self.use_excel=False;self.sort_cases=False;self.big_group=False;self.last={};self.saved=[];self.catalog=None;self.catalog_version=0;self.catalog_custom=False
+  self.review=False;self.current=None;self.calls=[];self.prefs={};self.nix=dict(configured=False,saved=False,dsn='NIXFARMA',user='',dsnAvailable=True);self.probe_fail=False;self.schema_fail=False;self.pharmacy=None;self.tenencia_ready=False;self.stock_error=False;self.tenencia_queries=0;self.many_groups=False;self.transport_error=False;self.use_excel=False;self.sort_cases=False;self.big_group=False;self.last={};self.saved=[];self.catalog=None;self.catalog_version=0;self.catalog_custom=False
  def view(self,u):
   if u is None:return None
   ready=not u['mustChangePassword'];admin=u['role'] in ('Administrator','SuperAdministrator')
@@ -56,7 +56,7 @@ class AuthorityFixture:
    if not self.current or self.current['password']!=d['currentPassword']:raise ValueError('La contraseña actual no es correcta.')
    self.current.update(password=d['newPassword'],mustChangePassword=False);return self.state()
   pref=self.prefs.setdefault(self.current['id'] if self.current else 'anonymous',dict(openFavorites=False,sidebarCollapsed=False,theme='auto',zoomPercent=100))
-  if cmd=='app.state':return dict(version='0.12.0',**pref)
+  if cmd=='app.state':return dict(version='0.12.0',reviewMode=self.review,reviewDeviceId='a'*32 if self.review else None,**pref)
   if cmd=='window.appearance':return {}
   if cmd=='window.zoom':pref['zoomPercent']=d['percent'];return dict(percent=d['percent'])
   if not self.current or self.current['mustChangePassword']:deny()
@@ -156,6 +156,9 @@ class AuthorityFixture:
     return dict(cancelled=True)
    if cmd=='update.publication':return dict(opened=True)
    if cmd=='update.history':return dict(local=[dict(kind='version_started',version='0.12.0',at='2026-10-28T10:00:00Z')],published=[dict(title='Viteka 0.12.0',version='0.12.0',notes='<script>window.historyScriptRan=true</script>',publishedAt='2026-10-28T10:00:00Z')])
+  if cmd=='review.copyId':
+   if not self.review:deny()
+   return dict(copied=True)
   if cmd=='resource.open':return dict(opened=d['id']!='anydesk')
   if cmd=='clipboard.copy':return {}
   raise ValueError('Acción no disponible.')
@@ -372,6 +375,10 @@ with sync_playwright() as p:
  page.screenshot(path=str(artifacts/'angular-account-rows.png'),full_page=True)
  page.locator('.setting-row').filter(has=page.get_by_text('Cambiar mi contraseña',exact=True)).click();page.screenshot(path=str(artifacts/'angular-password-dialog.png'),full_page=True);page.keyboard.press('Escape')
  page.set_viewport_size({'width':820,'height':600});assert page.evaluate('document.documentElement.scrollWidth<=innerWidth')
+ # Independent test-PC identity is visible, copyable, and absent in the normal profile.
+ page.keyboard.press('Escape');fixture.review=True;page.reload();page.get_by_role('heading',name='Portal de soporte',exact=True).wait_for();go('Configuración')
+ page.get_by_role('heading',name='PC de pruebas',exact=True).wait_for();page.get_by_text('a'*32,exact=True).wait_for();page.get_by_role('button',name='Copiar identificador',exact=True).click();page.get_by_text('Identificador del PC copiado.',exact=True).wait_for();page.screenshot(path=str(artifacts/'angular-pc-review.png'),full_page=True)
+ fixture.review=False;page.reload();page.get_by_role('heading',name='Portal de soporte',exact=True).wait_for();go('Configuración');assert page.get_by_role('heading',name='PC de pruebas',exact=True).count()==0
  assert not errors,errors
  browser.close()
 server.shutdown()

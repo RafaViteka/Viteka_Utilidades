@@ -200,6 +200,25 @@ try
         : new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(installerBody) }));
     var updater = new PreviewUpdater(updateHttp);
     PreviewUpdate? offer = null;
+    Check("Review updates are offered only to the exact test PC and never to the normal channel",()=>{
+        var id=new string('a',32);var other=new string('b',32);var tag="review-v0.19.0-pc-"+id;
+        var name="VitekaUtilidades-Test-Setup-0.19.0-win-x64.exe";
+        var releases=new[]{new{tag_name=tag,draft=false,prerelease=true,assets=new[]{new{name,browser_download_url="https://github.com/RafaViteka/Viteka_Utilidades/releases/download/"+tag+"/"+name,digest="sha256:"+new string('a',64),size=100}}}};
+        using var http=new HttpClient(new ReleaseStub(JsonSerializer.Serialize(releases),System.Net.HttpStatusCode.OK));
+        Require(new PreviewUpdater(http,id).FindAsync(new Version(0,18,0)).GetAwaiter().GetResult()?.Version==new Version(0,19,0));
+        Require(new PreviewUpdater(http,other).FindAsync(new Version(0,18,0)).GetAwaiter().GetResult() is null);
+        Require(new PreviewUpdater(http).FindAsync(new Version(0,17,0)).GetAwaiter().GetResult() is null);
+        Require(new PreviewUpdater(http,other).GetHistoryAsync().GetAwaiter().GetResult().Length==0);
+    });
+    Check("Review identity persists and corrupted identity is never replaced",()=>{
+        var directory=Path.Combine(root,"review-identity");var identity=new ReviewIdentity(directory,b=>b,b=>b);var id=identity.LoadOrCreate();
+        Require(ReviewIdentity.Valid(id)&&new ReviewIdentity(directory,b=>b,b=>b).LoadOrCreate()==id);
+        File.WriteAllText(Path.Combine(directory,"review-device.dat"),"damaged");
+        try{identity.LoadOrCreate();throw new Exception("Corruption reset the identity");}catch(JsonException){}
+        Require(File.ReadAllText(Path.Combine(directory,"review-device.dat"))=="damaged");
+        Require(ProductProfile.ServiceName==(ProductProfile.IsReview?"VitekaUtilidadesReviewAccess":"VitekaUtilidadesAccess"));
+        Require(ProductProfile.AccessPort==(ProductProfile.IsReview?7448:7447));
+    });
     Check("Preview channel offers later verified installer", () =>
     {
         offer = updater.FindAsync(new Version(0, 5, 0)).GetAwaiter().GetResult();
