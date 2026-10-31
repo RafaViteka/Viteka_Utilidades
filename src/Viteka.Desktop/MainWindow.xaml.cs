@@ -224,7 +224,7 @@ public partial class MainWindow : Window
             // Seed a legacy preference; the new UI deliberately no longer offers this option.
             Preferences.SetOpenFavorites(true);Preferences.SetTheme("dark");
             Browser.CoreWebView2.Reload();
-            await WaitForScript("document.querySelector('h1')?.textContent === 'Inicio' && document.documentElement.dataset.theme === 'dark'");
+            await WaitForScript("document.querySelector('.priority-grid') !== null && [...document.querySelectorAll('nav button')].some(b=>b.textContent.trim()==='Inicio' && b.getAttribute('aria-current')==='page') && document.documentElement.dataset.theme === 'dark'");
             if(!Preferences.Load().OpenFavoritesOnStart||Preferences.Load().Theme!="dark")throw new InvalidOperationException("Startup must retain preferences while opening Inicio.");
             Preferences.SetOpenFavorites(false);
             await WaitForScript("document.querySelector('.priority-grid') !== null");
