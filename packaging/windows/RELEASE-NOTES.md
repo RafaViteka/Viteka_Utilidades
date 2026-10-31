@@ -1,10 +1,13 @@
-Tenencia con caducidades, exportación con logo y listado editable.
+Desarrollo posterior a 0.17 · pendiente de validación Windows y publicación autorizada.
 
-- Iconos y números centrados en las tablas de Tenencia.
-- Viteka guarda la última consulta en el servidor e indica su fecha y hora; al entrar se ve sin volver a consultar NixFarma.
-- Exportar a Excel, CSV o PDF con el logo de Viteka: resumen de grupos, correctos, con falta y unidades que faltan, ordenado por faltas. Los archivos se guardan con la ventana «Guardar como».
-- Caducidad de la ficha junto a cada artículo con existencias: verde con más de 6 meses, amarillo si caduca en 6 meses o menos, rojo si está caducado y gris sin fecha.
-- En grupos con más de 10 artículos se muestran los que tienen existencias y los de compra o venta más reciente hasta completar 10, con «Ver todos». Nunca se oculta un artículo con existencias.
-- Superadministrador: «Editar listado» para añadir, editar o borrar grupos (código, mínimo, nombre y nota) y añadir artículos por código nacional, por descripción o por agrupación homogénea. Importación y exportación masiva de códigos en Excel o CSV y opción de restaurar el listado original.
-- Inicio pasa a ser una página de información con «Acceso rápido a consultas»; la estrella añade la utilidad como acceso directo en la barra lateral.
-- Configuración → Utilidades: administradores y superadministrador habilitan las utilidades de cada usuario.
+- Entrada siempre en Inicio y tarjetas con apertura y favoritos separados.
+- Acceso a aplicaciones por usuario con revisión y Guardar.
+- Listados versionados en SQLite, conflictos, recuperación y paquetes incrementales firmados.
+- Herramienta maestra integrada, habilitada por clave editorial separada.
+- Auditoría central, filtros, paginación y conservación configurable.
+- Exportación completa con selección para declaración o solo faltas con hasta diez artículos por compra reciente.
+- Progreso por fases y monitor nativo de instalación; conserva UAC.
+- Búsqueda terapéutica condicionada a metadatos y enlace verificado en cada servidor.
+- Nombre visible Nixfarma, conservando DSN e identificadores.
+
+La primera migración conserva las fuentes existentes y señala listados personalizados heredados para revisión. No se han publicado paquetes de datos ni configurado claves de confianza en farmacias. No se han realizado pruebas contra Oracle real. Consultar docs/mejoras-018.md antes de distribuir.

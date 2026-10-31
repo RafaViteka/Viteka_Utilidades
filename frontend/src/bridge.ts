@@ -6,6 +6,7 @@ interface NativeMessage {
   error?: string;
   type?: string;
   percent?: number;
+  phase?: string;
   state?: UpdateState;
 }
 interface NativeView {
@@ -31,6 +32,8 @@ export interface UserView {
   canInstallUpdates: boolean;
 }
 export interface AppState {
+  reviewMode?: boolean;
+  reviewDeviceId?: string;
   version: string;
   openFavorites: boolean;
   sidebarCollapsed?: boolean;
@@ -80,6 +83,7 @@ export class DesktopBridge {
   readonly native = !!window.chrome?.webview;
   readonly zoom = signal(100);
   readonly progress = signal<number | null>(null);
+  readonly updatePhase = signal('');
   /** El instalador silencioso se ha lanzado; Viteka se cerrará y volverá a abrirse con la sesión iniciada. */
   readonly installing = signal(false);
   readonly user = signal<UserView | null>(null);
@@ -103,7 +107,13 @@ export class DesktopBridge {
         this.zoom.set(d.percent);
         return;
       }
+      if (d.type === 'update-phase' && d.phase) {
+        this.updatePhase.set(d.phase);
+        this.progress.set(d.percent ?? null);
+        return;
+      }
       if (d.type === 'update-installing') {
+        this.updatePhase.set('installing');
         this.installing.set(true);
         return;
       }

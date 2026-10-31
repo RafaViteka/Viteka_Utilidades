@@ -2,13 +2,13 @@
 
 ## Decisiones confirmadas
 
-- Aplicación de escritorio para reunir utilidades para la farmacia conectadas a NixFarma.
+- Aplicación de escritorio para reunir utilidades para la farmacia conectadas a Nixfarma.
 - Diseño B: navegación lateral y acceso mediante tarjetas.
 - Identidad de Viteka: logotipo aportado, isotipo junto a «Utilidades» en la barra superior y paleta de la newsletter.
-- Organización visual familiar para usuarios de NixFarma 10.
+- Organización visual familiar para usuarios de Nixfarma 10.
 - Compatibilidad requerida: Windows 10, Windows 11 y Windows Server 2022/2025.
 - Archivos de aplicación alojados en una carpeta compartida del servidor; ejecución desde los puestos clientes.
-- Acceso inicial a NixFarma de solo lectura; cualquier escritura se decidirá por utilidad.
+- Acceso inicial a Nixfarma de solo lectura; cualquier escritura se decidirá por utilidad.
 - Primero se define la plataforma; las utilidades concretas se desarrollarán después.
 
 ## Estructura propuesta
@@ -27,7 +27,7 @@ La configuración de conexiones será independiente de las utilidades. Una conex
 
 1. Interfaz: navegación, búsqueda, formularios y estados de carga/error.
 2. Aplicación: ejecuta cada utilidad y comprueba requisitos y permisos.
-3. Conector NixFarma: centraliza conexiones, consultas parametrizadas, tiempos de espera y errores. No incluye reglas visuales.
+3. Conector Nixfarma: centraliza conexiones, consultas parametrizadas, tiempos de espera y errores. No incluye reglas visuales.
 4. Configuración local: preferencias y referencias a credenciales guardadas mediante el mecanismo seguro que se elija para el sistema operativo.
 5. Registro de operaciones: estados y diagnósticos sanitizados.
 
@@ -39,11 +39,11 @@ No se presupone un esquema de base de datos ni se implementan escrituras sin def
 - Motor identificado: Oracle mediante ODBC. Pendientes la versión del servidor y la disponibilidad del controlador/DSN en cada puesto.
 - Credenciales de base de datos con permisos de solo lectura; definir cómo se aprovisionan sin incluirlas en el paquete compartido.
 - Usuarios, permisos, distribución y actualizaciones.
-- Tecnología de escritorio, tras comprobar compatibilidad con el controlador de NixFarma.
+- Tecnología de escritorio, tras comprobar compatibilidad con el controlador de Nixfarma.
 
 ## Prototipo actual
 
-`prototipo/index.html` es un HTML autónomo con logotipos integrados. Se abre directamente en el navegador, sin instalación ni conexión a internet. Es una maqueta; los módulos, datos y estados de actividad son ejemplos. No conecta con NixFarma ni guarda credenciales.
+`prototipo/index.html` es un HTML autónomo con logotipos integrados. Se abre directamente en el navegador, sin instalación ni conexión a internet. Es una maqueta; los módulos, datos y estados de actividad son ejemplos. No conecta con Nixfarma ni guarda credenciales.
 
 ## Entorno de desarrollo
 
@@ -58,7 +58,7 @@ La instalación central almacena el paquete en una ruta UNC, por ejemplo `\\SERV
 - Compartido: ejecutables, recursos y versión de la aplicación. Usuarios ordinarios con lectura y ejecución; escritura restringida a mantenimiento.
 - Local por usuario: preferencias, favoritos y registros bajo `%LOCALAPPDATA%\Viteka\Utilidades`, sin escribirlos junto al ejecutable ni compartirlos accidentalmente entre usuarios.
 - Credenciales: mecanismo protegido por usuario o arquitectura de servicio si se acuerda posteriormente; no guardar contraseñas en texto plano en el recurso compartido.
-- Conexión: en el modelo de ejecución directa, cada puesto necesita resolver y alcanzar el servidor NixFarma y disponer del controlador compatible cuando sea necesario. Instalar el programa en el servidor no instala el controlador en los clientes.
+- Conexión: en el modelo de ejecución directa, cada puesto necesita resolver y alcanzar el servidor Nixfarma y disponer del controlador compatible cuando sea necesario. Instalar el programa en el servidor no instala el controlador en los clientes.
 - Actualizaciones: contemplar ejecutables bloqueados mientras haya puestos abiertos; definir un procedimiento de cierre o carpetas de versiones antes de automatizar cambios.
 
 ### Validación necesaria en Windows
@@ -75,7 +75,7 @@ Estas comprobaciones están pendientes; no pueden acreditarse con la maqueta HTM
 
 La captura del administrador ODBC muestra DSN de sistema llamados `NIXFARMA`, tanto de 32 como de 64 bits. Los nombres de controlador mostrados son `Oracle en ORAHOME11CLI32` y `Oracle en ORAHOME11`. La ventana de configuración indica servicio TNS `NIXFARMA`. Estos nombres no prueban la versión del servidor Oracle ni que la conexión esté actualmente operativa. No se ha ejecutado una prueba de conexión.
 
-La casilla `Read-Only Connection` aparece desmarcada. No modificar a ciegas el DSN de NixFarma usado por otras aplicaciones. La protección principal debe ser una cuenta con permisos mínimos de lectura; el conector añadirá restricciones para no exponer operaciones de escritura. No se reutilizarán credenciales sin verificar sus permisos.
+La casilla `Read-Only Connection` aparece desmarcada. No modificar a ciegas el DSN de Nixfarma usado por otras aplicaciones. La protección principal debe ser una cuenta con permisos mínimos de lectura; el conector añadirá restricciones para no exponer operaciones de escritura. No se reutilizarán credenciales sin verificar sus permisos.
 
 ### Dirección técnica propuesta
 
@@ -114,7 +114,7 @@ El usuario indica que el disco del servidor está compartido y se accede con cre
 
 Para no bloquear el diseño por la presencia de un dominio, se propone una autorización de puestos independiente:
 
-1. El administrador instala el servicio y configura el acceso de solo lectura a NixFarma en el servidor.
+1. El administrador instala el servicio y configura el acceso de solo lectura a Nixfarma en el servidor.
 2. El cliente se abre desde la carpeta compartida. Si no está autorizado, muestra una pantalla de vinculación.
 3. El administrador autoriza el puesto mediante un procedimiento de alta de un solo uso, con caducidad y límite de intentos.
 4. La autorización local se protege mediante mecanismos de Windows y no se guarda en la carpeta compartida. El alcance por usuario/equipo se fijará al implementar el almacenamiento seguro.
@@ -164,13 +164,13 @@ Host integrado con Windows Service Control Manager mediante --service, estado se
 
 ## Prioridad vigente: MVP visual vacío (0.5.0)
 
-Por indicación del usuario, antes de crear aplicaciones o vínculos a NixFarma se cerrará el MVP visual. El catálogo público está vacío; no hay tarjetas de stock/caducidades/compras ni actividad ficticia. La interfaz oculta los formularios de vinculación y conexión y deja la configuración de base de datos para una fase posterior. Se conserva el código backend existente sin ampliarlo.
+Por indicación del usuario, antes de crear aplicaciones o vínculos a Nixfarma se cerrará el MVP visual. El catálogo público está vacío; no hay tarjetas de stock/caducidades/compras ni actividad ficticia. La interfaz oculta los formularios de vinculación y conexión y deja la configuración de base de datos para una fase posterior. Se conserva el código backend existente sin ampliarlo.
 
 Se rehacen los estilos nativos de WPF para acercarlos al diseño B: barra propia con isotipo, navegación oscura con selección lima, controles redondeados, fondos marfil y estados vacíos. El HTML de referencia se actualiza al mismo contenido vacío. Se conservan los archivos locales anteriores; los favoritos/historial de utilidades retiradas no reaparecen en el MVP. No iniciar trabajos de conexión o utilidades hasta revisar el MVP con el usuario.
 
 ## Decisión vigente: Angular + WebView2 (0.7.0)
 
-Migración de la interfaz autorizada por el usuario. El MVP se representa en frontend/ mediante Angular 22 y CSS. La ventana WPF se conserva solo como anfitrión WebView2 y barra nativa; ya no renderiza las pantallas de utilidades. Preferencias y actualización permanecen en .NET detrás de un puente de mensajes con acciones limitadas. Ver docs/mvp.md. No ampliar NixFarma ni las utilidades antes de revisar el MVP.
+Migración de la interfaz autorizada por el usuario. El MVP se representa en frontend/ mediante Angular 22 y CSS. La ventana WPF se conserva solo como anfitrión WebView2 y barra nativa; ya no renderiza las pantallas de utilidades. Preferencias y actualización permanecen en .NET detrás de un puente de mensajes con acciones limitadas. Ver docs/mvp.md. No ampliar Nixfarma ni las utilidades antes de revisar el MVP.
 
 ## Centro de accesos editorial (0.8.0)
 

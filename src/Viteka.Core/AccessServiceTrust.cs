@@ -26,6 +26,7 @@ public sealed class AccessServiceTrust : IDisposable
         // Local bootstrap remains on loopback, even when the public hostname resolves to a LAN address.
         Server = uri.Host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)
             ? new UriBuilder(uri) { Host = "localhost" }.Uri : uri;
+        if(ProductProfile.IsReview && (!Server.IsLoopback || Server.Port!=ProductProfile.AccessPort))throw new InvalidDataException("La edición de pruebas solo conecta con su servicio local de pruebas.");
         var policy = new X509ChainPolicy
         {
             TrustMode = X509ChainTrustMode.CustomRootTrust,

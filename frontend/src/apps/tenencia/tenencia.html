@@ -34,17 +34,13 @@
         </summary>
         <div class="export-options" role="menu">
           <button role="menuitem" (click)="exportExcel()" [disabled]="exporting()">
-            <v-icon name="sheet" /><span
-              ><strong>Excel</strong><small>Faltas con logo y todos los grupos</small></span
-            ></button
+            <v-icon name="sheet" /><span><strong>Excel</strong></span></button
           ><button role="menuitem" (click)="exportCsv()" [disabled]="exporting()">
-            <v-icon name="sheet" /><span
-              ><strong>CSV</strong><small>Faltas, una fila por medicamento</small></span
-            ></button
+            <v-icon name="sheet" /><span><strong>CSV</strong></span></button
           ><button role="menuitem" (click)="exportPdf()" [disabled]="exporting()">
-            <v-icon name="file" /><span><strong>PDF</strong><small>Informe de faltas con logo</small></span></button
+            <v-icon name="file" /><span><strong>PDF</strong></span></button
           ><button role="menuitem" (click)="print()">
-            <v-icon name="printer" /><span><strong>Imprimir</strong><small>Mismo informe en papel</small></span>
+            <v-icon name="printer" /><span><strong>Imprimir</strong></span>
           </button>
         </div>
       </details>
@@ -340,7 +336,7 @@
           <p class="selection-note">{{ row.selectionNote }}</p>
         } @else {
           <p class="reference-help">
-            Nombres iniciales abreviados. La descripción completa y las existencias se leen de NixFarma al consultar.
+            Nombres iniciales abreviados. La descripción completa y las existencias se leen de Nixfarma al consultar.
           </p>
         }
       }
@@ -463,7 +459,7 @@
     <header class="print-head">
       <img src="logotipo.png" alt="Viteka" />
       <div>
-        <h1>Tenencia obligatoria · informe de faltas</h1>
+        <h1>{{ reportTitle() }}</h1>
         <p>
           {{ result()?.provinceName || 'Provincia ' + result()?.province }} · Última consulta {{ checkedTime() }} ·
           Listado {{ result()?.listVersion }}
@@ -495,7 +491,7 @@
           <th class="c">Caducidad</th>
         </tr>
       </thead>
-      @for (r of shortfallsByMissing(); track r.id) {
+      @for (r of reportRows(); track r.id) {
         <tbody class="print-group">
           <tr class="group-line">
             <td>{{ r.classification || '—' }}</td>
@@ -505,10 +501,16 @@
             <td class="c missing">{{ number(r.missing) }}</td>
             <td></td>
           </tr>
-          @for (a of visibleArticles(r); track a.code) {
+          @for (a of reportArticles(r); track a.code) {
             <tr class="article-line">
               <td>{{ a.code }}</td>
-              <td>{{ a.description }}</td>
+              <td>
+                {{ a.description }}
+                @if (reportMode() === 'complete') {
+                  <strong> · {{ chosenForDeclaration(r, a) ? 'Seleccionado' : 'No seleccionado' }}</strong>
+                }
+                <small> · Última compra: {{ movementDate(a.lastPurchase) }}</small>
+              </td>
               <td></td>
               <td class="c">{{ number(a.stock ?? 0) }}</td>
               <td></td>
@@ -516,15 +518,6 @@
                 @if (showExpiry() && expiryState(a); as e) {
                   <span class="expiry" [attr.data-expiry]="e">{{ expiryText(a) }}</span>
                 }
-              </td>
-            </tr>
-          }
-          @if (r.articles.length > visibleArticles(r).length) {
-            <tr class="article-line">
-              <td></td>
-              <td colspan="5" class="more">
-                {{ r.articles.length - visibleArticles(r).length }} artículos más sin existencias ni movimientos
-                recientes
               </td>
             </tr>
           }
@@ -537,9 +530,81 @@
         </tbody>
       }
     </table>
+    <p>{{ reportCriteria() }}</p>
     <footer>
       Viteka Utilidades · {{ checkedTime() }} · Caducidad: verde más de 6 meses, amarillo 6 meses o menos, rojo
       caducado, gris sin fecha.
     </footer>
   </section>
+}
+
+@if (reportOpen()) {
+  <div class="modal-overlay">
+    <section class="dialog report-dialog" role="dialog" aria-modal="true" aria-label="Preparar exportación">
+      <div class="dialog-top">
+        <h2>Preparar {{ reportKind() === 'print' ? 'impresión' : reportKind().toUpperCase() }}</h2>
+        <button aria-label="Cerrar exportación" (click)="reportOpen.set(false)"><v-icon name="close" /></button>
+      </div>
+      <label
+        >Modalidad<select
+          aria-label="Modalidad de exportación"
+          [ngModel]="reportMode()"
+          (ngModelChange)="reportMode.set($event)"
+        >
+          <option value="shortfalls">Solo faltas</option>
+          <option value="complete">Listado completo para declarar tenencia</option>
+        </select></label
+      >
+      <p>{{ reportCriteria() }}</p>
+      <p>{{ reportRows().length }} grupos · Consulta: {{ checkedTime() }} · Listado: {{ result()?.listVersion }}</p>
+      @if (reportMode() === 'complete') {
+        @if (declarationReview()) {
+          <p role="status">El listado cambió desde el último borrador. Revisa las selecciones conservadas.</p>
+        }
+        <label
+          >Grupo<select
+            aria-label="Grupo para declaración"
+            [ngModel]="declarationGroupId()"
+            (ngModelChange)="declarationGroupId.set($event)"
+          >
+            @for (r of reportRows(); track r.id) {
+              <option [value]="r.id">
+                {{ r.classification }} · {{ r.name }} ({{ declarationPicks()[r.id]?.length ?? 0 }} seleccionados)
+              </option>
+            }
+          </select></label
+        >
+        @if (declarationRow(); as row) {
+          <div class="declaration-candidates">
+            @for (a of row.articles; track a.code) {
+              <label
+                ><input
+                  type="checkbox"
+                  [checked]="chosenForDeclaration(row, a)"
+                  (change)="toggleDeclaration(row, a, $any($event.target).checked)"
+                />{{ a.code }} · {{ a.description }} · {{ number(a.stock) }} uds.</label
+              >
+            }
+          </div>
+        }
+      } @else {
+        @if (!result()?.fields?.purchase) {
+          <p role="status">
+            No se ha identificado una columna inequívoca de última compra. Los candidatos se ordenarán por CN.
+          </p>
+        } @else {
+          <p>Última compra: {{ result()?.fields?.purchaseColumn }}</p>
+        }
+        <p>
+          Los artículos sin fecha de compra completan las plazas disponibles. Si no hay fechas, se ordenan por CN; nunca
+          por venta.
+        </p>
+      }
+      <div class="actions">
+        <button class="primary" (click)="generateReport()" [disabled]="exporting()">
+          {{ reportKind() === 'print' ? 'Imprimir' : 'Generar archivo' }}</button
+        ><button class="text-button" (click)="reportOpen.set(false)">Cancelar</button>
+      </div>
+    </section>
+  </div>
 }

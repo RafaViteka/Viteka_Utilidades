@@ -12,7 +12,7 @@ namespace Viteka.Server;
 internal static class AccessServiceManagement
 {
     private static readonly string[] Trusted = ["S-1-5-18", "S-1-5-32-544", "S-1-5-19"];
-    private static string StateRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Viteka", "UtilidadesAccess");
+    private static string StateRoot => Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData), "Viteka", ProductProfile.StateFolder);
     internal static async Task RunAsync(string action, string? clientDirectory)
     {
         var existing = ServiceController.GetServices().FirstOrDefault(s => s.ServiceName == AccessHost.ServiceName);
@@ -40,7 +40,7 @@ internal static class AccessServiceManagement
             new DirectoryInfo(AppContext.BaseDirectory).SetAccessControl(permissions);
             var binary = "\"" + server + "\" --access-service";
             Console.WriteLine("Registrando servicio.");
-            if (existing is null) Sc("create", AccessHost.ServiceName, "binPath=", binary, "start=", "auto", "obj=", "NT AUTHORITY\\LocalService", "DisplayName=", "Viteka Utilidades - Acceso de usuarios");
+            if (existing is null) Sc("create", AccessHost.ServiceName, "binPath=", binary, "start=", "auto", "obj=", "NT AUTHORITY\\LocalService", "DisplayName=", ProductProfile.IsReview?"Viteka Utilidades - Pruebas (solo este PC)":"Viteka Utilidades - Acceso de usuarios");
             else Sc("config", AccessHost.ServiceName, "binPath=", binary, "start=", "auto", "obj=", "NT AUTHORITY\\LocalService");
             Sc("failure", AccessHost.ServiceName, "reset=", "86400", "actions=", "restart/60000/restart/60000/restart/60000");
             using var service = new ServiceController(AccessHost.ServiceName);
@@ -112,12 +112,12 @@ internal static class AccessServiceManagement
         object? created = null;
         try
         {
-            try { policy.Rules.Remove("VitekaUtilidadesAccess-LAN"); } catch (COMException) { }
-            if (!enabled) return;
+            try { policy.Rules.Remove(ProductProfile.ServiceName+"-LAN"); } catch (COMException) { }
+            if (!enabled || ProductProfile.IsReview) return;
             var ruleType = Type.GetTypeFromProgID("HNetCfg.FWRule") ?? throw new InvalidOperationException();
             dynamic rule = Activator.CreateInstance(ruleType) ?? throw new InvalidOperationException(); created = rule;
-            rule.Name = "VitekaUtilidadesAccess-LAN"; rule.Description = "Usuarios de Viteka por HTTPS en la red local de la farmacia.";
-            rule.Protocol = 6; rule.LocalPorts = "7447"; rule.Direction = 1; rule.Action = 1; rule.Profiles = 3;
+            rule.Name = ProductProfile.ServiceName+"-LAN"; rule.Description = "Usuarios de Viteka por HTTPS en la red local de la farmacia.";
+            rule.Protocol = 6; rule.LocalPorts = ProductProfile.AccessPort.ToString(); rule.Direction = 1; rule.Action = 1; rule.Profiles = 3;
             rule.RemoteAddresses = "LocalSubnet"; rule.Enabled = true; policy.Rules.Add(rule);
         }
         finally { if (created is not null) Marshal.FinalReleaseComObject(created); Marshal.FinalReleaseComObject((object)policy); }

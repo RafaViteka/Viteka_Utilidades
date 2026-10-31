@@ -13,10 +13,20 @@ public sealed class VerifiedInstaller(string path, FileStream guard) : IDisposab
 }
 
 // Development channel only. GitHub attests the digest over HTTPS; this is not an Authenticode signature.
-public sealed class PreviewUpdater(HttpClient http)
+public sealed class PreviewUpdater(HttpClient http, string? reviewDeviceId = null)
 {
     private const long MaximumSize = 300L * 1024 * 1024;
     private const string Repo = GitHubReleaseChecker.Repository;
+    private bool TryVersion(string? tag,out Version version)
+    {
+        version=new Version(0,0,0);if(tag is null)return false;
+        if(reviewDeviceId is not null){
+            if(!ReviewIdentity.Valid(reviewDeviceId))throw new ArgumentException("Identificador de pruebas no válido.");
+            var match=Regex.Match(tag,@"^review-v([0-9]{1,9}\.[0-9]{1,9}\.[0-9]{1,9})-pc-([a-f0-9]{32})$",RegexOptions.NonBacktracking);
+            return match.Success && match.Groups[2].Value==reviewDeviceId && Version.TryParse(match.Groups[1].Value,out version!);
+        }
+        return Regex.IsMatch(tag,@"^v(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})(-preview\.[1-9][0-9]{0,5})?$",RegexOptions.NonBacktracking) && Version.TryParse(tag[1..].Split('-')[0],out version!);
+    }
     public async Task<PreviewUpdate?> FindAsync(Version installed, CancellationToken ct = default)
     {
         using var request = new HttpRequestMessage(HttpMethod.Get, $"https://api.github.com/repos/{Repo}/releases?per_page=30");
@@ -41,11 +51,11 @@ public sealed class PreviewUpdater(HttpClient http)
         {
             if (release.ValueKind != JsonValueKind.Object || !release.TryGetProperty("draft", out var draft) || draft.ValueKind != JsonValueKind.False) continue;
             var tag = Text(release, "tag_name");
-            if (tag is null || !Regex.IsMatch(tag, @"^v(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})(-preview\.[1-9][0-9]{0,5})?$", RegexOptions.NonBacktracking)) continue;
-            if (!Version.TryParse(tag[1..].Split('-')[0], out var version) || version <= current || best is not null && version <= best.Version) continue;
-            var preview = tag.Contains("-preview.", StringComparison.Ordinal);
-            var name = $"VitekaUtilidades-Setup-{version.ToString(3)}-win-x64{(preview ? "-preview" : "")}.exe";
-            var url = $"https://github.com/{Repo}/releases/download/{Uri.EscapeDataString(tag)}/{name}";
+            if (!TryVersion(tag, out var version)) continue;
+            if (version <= current || best is not null && version <= best.Version) continue;
+            var preview = tag!.Contains("-preview.", StringComparison.Ordinal);
+            var name = reviewDeviceId is not null ? $"VitekaUtilidades-Test-Setup-{version.ToString(3)}-win-x64.exe" : $"VitekaUtilidades-Setup-{version.ToString(3)}-win-x64{(preview ? "-preview" : "")}.exe";
+            var url = $"https://github.com/{Repo}/releases/download/{Uri.EscapeDataString(tag!)}/{name}";
             if (!release.TryGetProperty("assets", out var assets) || assets.ValueKind != JsonValueKind.Array) continue;
             foreach (var asset in assets.EnumerateArray())
             {
@@ -53,7 +63,7 @@ public sealed class PreviewUpdater(HttpClient http)
                 var digest = Text(asset, "digest");
                 if (digest is null || !Regex.IsMatch(digest, "^sha256:[a-fA-F0-9]{64}$", RegexOptions.NonBacktracking) ||
                     !asset.TryGetProperty("size", out var size) || size.ValueKind != JsonValueKind.Number || !size.TryGetInt64(out var length) || length is < 2 or > MaximumSize) continue;
-                best = new(version, new Uri(url), digest[7..], length, new Uri($"https://github.com/{Repo}/releases/tag/{Uri.EscapeDataString(tag)}"));
+                best = new(version, new Uri(url), digest[7..], length, new Uri($"https://github.com/{Repo}/releases/tag/{Uri.EscapeDataString(tag!)}"));
                 break;
             }
         }
@@ -83,18 +93,18 @@ public sealed class PreviewUpdater(HttpClient http)
         {
             if (release.ValueKind != JsonValueKind.Object || !release.TryGetProperty("draft", out var draft) || draft.ValueKind != JsonValueKind.False) continue;
             var tag = Text(release, "tag_name");
-            if (tag is null || !Regex.IsMatch(tag, @"^v(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})\.(0|[1-9][0-9]{0,8})(-preview\.[1-9][0-9]{0,5})?$", RegexOptions.NonBacktracking)) continue;
-            if (!Version.TryParse(tag[1..].Split('-')[0], out var version)) continue;
+            if (!TryVersion(tag, out var version)) continue;
+
             var notes = Text(release, "body") ?? "Sin notas de publicación.";
-            var title = Text(release, "name") ?? tag;
+            var title = Text(release, "name") ?? tag!;
             var published = DateTimeOffset.TryParse(Text(release, "published_at"), System.Globalization.CultureInfo.InvariantCulture, System.Globalization.DateTimeStyles.RoundtripKind, out var at) ? (DateTimeOffset?)at : null;
             items.Add(new(version.ToString(3), title[..Math.Min(title.Length, 300)], notes[..Math.Min(notes.Length, 8000)], published,
-                $"https://github.com/{Repo}/releases/tag/{Uri.EscapeDataString(tag)}"));
+                $"https://github.com/{Repo}/releases/tag/{Uri.EscapeDataString(tag!)}"));
         }
         return items.OrderByDescending(x => Version.Parse(x.Version)).ToArray();
     }
 
-    public async Task<VerifiedInstaller> DownloadAsync(PreviewUpdate update, string directory, IProgress<int>? progress = null, CancellationToken ct = default)
+    public async Task<VerifiedInstaller> DownloadAsync(PreviewUpdate update, string directory, IProgress<int>? progress = null, CancellationToken ct = default, Action? verifying = null)
     {
         using var timeout = CancellationTokenSource.CreateLinkedTokenSource(ct);
         timeout.CancelAfter(TimeSpan.FromMinutes(10));
@@ -146,6 +156,7 @@ public sealed class PreviewUpdater(HttpClient http)
                 if (total != update.Size) throw new InvalidDataException("Descarga incompleta.");
                 file.Flush(true);
             }
+            verifying?.Invoke();
             // Reopen read-only and retain a guard against modification until the installer is launched.
             var guard = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.Read);
             try

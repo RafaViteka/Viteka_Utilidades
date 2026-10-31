@@ -6,21 +6,25 @@ namespace Viteka.Core;
 
 /// <summary>
 /// Listado de tenencia editable por Viteka (superadministrador). Las modificaciones se guardan en el servidor como
-/// una copia completa de la lista provincial; la lista empaquetada se conserva para poder restaurarla.
+/// una revisión transaccional de base/vista local; se conservan las fuentes JSON para migración.
 /// También guarda la última consulta de existencias para mostrarla al volver a abrir Tenencia.
 /// </summary>
 public sealed class TenenciaCatalogStore(string directory, string packagedDirectory)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly Lock gate = new();
+    public PharmacyDatabase Database { get; } = new(directory);
+    public CatalogRevisions Revisions => new(Database);
     private string CustomPath(string province) => Path.Combine(directory, "tenencia-" + province + ".json");
     private string LastPath(string province) => Path.Combine(directory, "tenencia-ultima-" + province + ".json");
 
-    public bool IsCustomized(string province) => File.Exists(CustomPath(province));
+    public bool IsCustomized(string province) { var s = Revisions.Read(province); return s is null ? File.Exists(CustomPath(province)) : s.Legacy || !System.Text.Json.Nodes.JsonNode.DeepEquals(JsonSerializer.SerializeToNode(s.Base.Groups,Json),JsonSerializer.SerializeToNode(s.Effective.Groups,Json)); }
 
     public TenenciaList? Load(string province)
     {
         if (!SpanishProvinces.Items.ContainsKey(province)) throw new ArgumentException("Provincia no válida.");
+        if (Revisions.Read(province) is {} current) return current.Effective;
+        var packaged = TenenciaRules.Load(packagedDirectory, province);
         var custom = CustomPath(province);
         if (File.Exists(custom))
         {
@@ -28,18 +32,22 @@ public sealed class TenenciaCatalogStore(string directory, string packagedDirect
             var list = JsonSerializer.Deserialize<TenenciaList>(File.ReadAllBytes(custom), Json) ?? throw new InvalidDataException();
             TenenciaRules.Validate(list);
             if (list.Province != province) throw new InvalidDataException("La lista no corresponde a la provincia.");
-            return list;
+            if (packaged is not null) return Revisions.Ensure(packaged, list).Effective;
+            return Revisions.Ensure(list, list).Effective;
         }
-        return TenenciaRules.Load(packagedDirectory, province);
+        return packaged is null ? null : Revisions.Ensure(packaged).Effective;
     }
 
     /// <summary>Aplica una operación de edición y devuelve la lista resultante.</summary>
-    public TenenciaList Apply(string province, string action, JsonElement data)
+    public TenenciaList Apply(string province, string action, JsonElement data, AuditActor? actor = null)
     {
         lock (gate)
         {
-            if (action == "reset") { File.Delete(CustomPath(province)); File.Delete(LastPath(province)); return Load(province) ?? throw new InvalidDataException("No hay lista empaquetada para esta provincia."); }
             var list = Load(province) ?? NewList(province);
+            var expected = data.TryGetProperty("expectedVersion",out var v) ? v.GetString() : list.Version;
+            if (expected != list.Version) throw new ArgumentException("El listado cambió en otro puesto. Recarga antes de guardar.");
+            actor ??= new("system","Sistema");
+            if (action == "reset") return Revisions.Reset(province,list.Version,actor);
             var groups = list.Groups.ToList();
             TenenciaGroup Find(string id) => groups.FirstOrDefault(g => g.Id == id) ?? throw new KeyNotFoundException();
             string Text(string name, int max, bool required = true)
@@ -111,11 +119,12 @@ public sealed class TenenciaCatalogStore(string directory, string packagedDirect
             }
             var now = DateTime.Now;
             var source = list.Source.Contains("Editada en Viteka", StringComparison.Ordinal) ? list.Source : (list.Source.Length > 440 ? list.Source[..440] : list.Source) + " · Editada en Viteka.";
-            var edited = list with { Version = "Personalizada-" + now.ToString("yyyy-MM-dd-HHmmss", CultureInfo.InvariantCulture), Source = source, ReviewedOn = DateOnly.FromDateTime(DateTime.UtcNow), Groups = groups.ToArray() };
+            var edited = list with { Version = CatalogRevisions.NewVersion(), Source = source, ReviewedOn = DateOnly.FromDateTime(DateTime.UtcNow), Groups = groups.ToArray() };
             try { TenenciaRules.Validate(edited); }
             catch (InvalidDataException error) { throw new ArgumentException(error.Message, error); }
-            Write(CustomPath(province), JsonSerializer.SerializeToUtf8Bytes(edited, Json));
-            return edited;
+            var first=Revisions.Read(province) is null;
+            if (first) Revisions.Ensure(edited);
+            return Revisions.SaveLocal(edited, first?edited.Version:list.Version, actor, "catalog."+action);
         }
     }
     private static TenenciaList NewList(string province) =>
@@ -123,20 +132,24 @@ public sealed class TenenciaCatalogStore(string directory, string packagedDirect
 
     public void SaveLast(string province, TenenciaResponse response)
     {
-        if (response.Code != "ok" || response.Rows is null) return;
-        try { lock (gate) Write(LastPath(province), JsonSerializer.SerializeToUtf8Bytes(response, Json)); }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { /* sin memoria de la última consulta */ }
+        if(response.Code!="ok"||response.Rows is null)return;
+        Database.Transaction((c,tx)=>{
+            var state=System.Text.Json.JsonSerializer.Deserialize<CatalogRevision>(PharmacyDatabase.Get(c,tx,"catalog."+province)??"null",Json);
+            if(state?.Effective.Version==response.ListVersion)PharmacyDatabase.Set(c,tx,"last."+province,response);
+            return true;
+        });
     }
-    public TenenciaResponse? LoadLast(string province, string listVersion)
+    public TenenciaResponse? LoadLast(string province,string listVersion)
     {
-        try
-        {
-            var path = LastPath(province);
-            if (!File.Exists(path) || new FileInfo(path).Length > 16 * 1024 * 1024) return null;
-            var last = JsonSerializer.Deserialize<TenenciaResponse>(File.ReadAllBytes(path), Json);
-            return last is { Code: "ok", Rows: not null } && last.Province == province && last.ListVersion == listVersion ? last : null;
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException) { return null; }
+        return Database.Transaction((c,tx)=>{
+            var catalog=System.Text.Json.JsonSerializer.Deserialize<CatalogRevision>(PharmacyDatabase.Get(c,tx,"catalog."+province)??"null",Json);
+            if(catalog?.Effective.Version!=listVersion)return null;
+            var json=PharmacyDatabase.Get(c,tx,"last."+province);
+            if(json is null && File.Exists(LastPath(province)) && new FileInfo(LastPath(province)).Length<=16*1024*1024)json=File.ReadAllText(LastPath(province));
+            if(json is null)return null;
+            try{var last=JsonSerializer.Deserialize<TenenciaResponse>(json,Json);return last is {Code:"ok",Rows:not null} && last.Province==province && last.ListVersion==listVersion?last:null;}
+            catch(JsonException){return null;}
+        });
     }
     private void Write(string path, byte[] content)
     {

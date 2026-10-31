@@ -1,6 +1,8 @@
 name: Windows preview installer
 on:
   push:
+    branches:
+      - feature/post-017-improvements
     tags:
       - 'v*-preview.*'
       - 'ci/access-*'
@@ -10,6 +12,9 @@ on:
         description: Validate without packaging or publishing a release
         type: boolean
         default: false
+concurrency:
+  group: windows-preview-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: write
 jobs:
@@ -136,7 +141,7 @@ jobs:
           retention-days: 14
 
       - name: Publish preview download
-        if: ${{ !inputs.validate_only && !startsWith(github.ref_name, 'ci/') }}
+        if: ${{ !inputs.validate_only && startsWith(github.ref, 'refs/tags/v') }}
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
@@ -163,3 +168,49 @@ jobs:
         timeout-minutes: 2
         shell: pwsh
         run: ./scripts/cleanup-access-smoke.ps1
+  isolated-pc-review:
+    if: github.ref == 'refs/heads/feature/post-017-improvements'
+    runs-on: windows-2022
+    timeout-minutes: 18
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.403'
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24.19.0'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build isolated review installer
+        shell: pwsh
+        run: |
+          & pwsh -NoProfile -File ./scripts/publish-review-windows.ps1 *> review-build.log
+          if ($LASTEXITCODE -ne 0) {
+            $detail = (Get-Content review-build.log -Tail 35) -join "`n"
+            $detail = $detail.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error::$detail"
+            exit 1
+          }
+          Get-Content review-build.log -Tail 6
+      - name: Normal service baseline for coexistence
+        shell: pwsh
+        run: dotnet publish src/Viteka.Server -c Release -r win-x64 --self-contained true -p:VitekaReview=false -p:RestoreLockedMode=true -o artifacts/normal-server
+      - name: Review installer and coexistence with normal installation
+        shell: pwsh
+        run: |
+          & pwsh -NoProfile -File ./scripts/smoke-review-installer.ps1 *> review-smoke.log
+          if ($LASTEXITCODE -ne 0) {
+            $detail = (Get-Content review-smoke.log -Tail 35) -join "`n"
+            $detail = $detail.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error::$detail"
+            exit 1
+          }
+          Get-Content review-smoke.log
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Viteka-PC-Pruebas-instalador
+          path: artifacts/installer/VitekaUtilidades-Test-Setup-*.exe
+          if-no-files-found: error
+          retention-days: 14

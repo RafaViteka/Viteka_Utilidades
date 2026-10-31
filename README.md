@@ -1,6 +1,12 @@
-# Viteka Utilidades · Centro de accesos 0.14.0
+# Viteka Utilidades · Desarrollo 0.18.0
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
+
+> Cambios posteriores a 0.17, migración, distribución y límites: [mejoras 0.18](docs/mejoras-018.md). Rama de desarrollo; no publicada.
+
+## PC de pruebas independiente
+
+[Instalación de pruebas y actualizaciones por ID de PC](docs/pc-pruebas.md). El instalador de revisión aislada no sustituye al normal ni usa su servicio o datos. Primera instalación manual; después se obtiene el ID para dirigir futuras revisiones.
 
 ## Accesos y administración
 
@@ -14,12 +20,12 @@ Actualizaciones tiene una pantalla propia dentro de Configuración: búsqueda ca
 - Inicio con portal de soporte, AnyDesk local, manuales, formación, web y contactos.
 - Menú lateral plegable, logotipo inferior sin eslogan y apariencia clara/oscura/automática persistente.
 - Isotipo bicolor transparente original en ventana, ejecutable e instalador.
-- Aplicaciones incluye Tenencia obligatoria:83 grupos de Málaga del Excel, 2.089 asociaciones explícitas por CN de los vídeos y lectura de stock de NixFarma. Favoritos y Auditoría conservan estados vacíos.
+- Aplicaciones incluye Tenencia obligatoria:83 grupos de Málaga del Excel, 2.089 asociaciones explícitas por CN de los vídeos y lectura de stock de Nixfarma. Favoritos y Auditoría conservan estados vacíos.
 - Preferencias locales por usuario, conservadas entre versiones.
 - Canal de pruebas GitHub: búsqueda, descarga verificada e instalación desatendida (sin asistente; solo la confirmación UAC de Windows). Viteka se reinicia sola y recupera la sesión sin pedir la contraseña.
 - Instalador x64 autocontenido para .NET, con bootstrapper de WebView2 verificado como Microsoft. Si falta el runtime, su instalación inicial puede requerir internet.
 
-La configuración Oracle y la prueba fija de solo lectura se ejecutan ahora en el servicio del servidor, bajo LocalService y con DSN de sistema de 64 bits. Las credenciales previas se migran desde el perfil original al entrar Viteka en el propio servidor. Tenencia obligatoria incorpora consultas de clasificación y existencias de solo lectura; las restricciones de vía/dosis/tamaño se revisan por separado. Ver [conexión a NixFarma](docs/conexion-nixfarma.md).
+La configuración Oracle y la prueba fija de solo lectura se ejecutan ahora en el servicio del servidor, bajo LocalService y con DSN de sistema de 64 bits. Las credenciales previas se migran desde el perfil original al entrar Viteka en el propio servidor. Tenencia obligatoria incorpora consultas de clasificación y existencias de solo lectura; las restricciones de vía/dosis/tamaño se revisan por separado. Ver [conexión a Nixfarma](docs/conexion-nixfarma.md).
 
 [Descargar desde GitHub Releases](https://github.com/RafaViteka/Viteka_Utilidades/releases). Instalar sobre la versión anterior sin desinstalar. Desde 0.6 se puede actualizar desde Configuración; desde 0.5 hay que incorporar el actualizador mediante una descarga manual una vez. Paquetes de prueba sin firma digital del editor, no certificados para distribuir a farmacias.
 
@@ -34,7 +40,7 @@ bash scripts/setup-cloud.sh
 python scripts/smoke-ui.py
 ```
 
-El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 72 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 87 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
 
 Para editar la interfaz en navegador:
 

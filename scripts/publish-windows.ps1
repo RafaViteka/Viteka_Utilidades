@@ -17,6 +17,8 @@ try {
         & npm run build
         if ($LASTEXITCODE -ne 0) { throw 'Angular production build failed.' }
     } finally { Pop-Location }
+    & node scripts/check-report.mts
+    if ($LASTEXITCODE -ne 0) { throw 'Report selection checks failed.' }
     & python scripts/build-tenencia-catalog.py --check
     if ($LASTEXITCODE -ne 0) { throw 'Catalog transcription check failed.' }
     & python scripts/copy-ui.py

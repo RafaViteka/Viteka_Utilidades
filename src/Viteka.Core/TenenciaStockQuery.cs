@@ -18,7 +18,7 @@ public static class TenenciaStockQuery
         public string? LastSale { get; init; }
         /// <summary>Columnas de AB_ARTICULOS que contienen la agrupación o conjunto homogéneo.</summary>
         public string[] Homogeneous { get; init; } = [];
-        public Viteka.Contracts.TenenciaFields Fields => new(Expiry is not null, LastPurchase is not null || LastSale is not null, Homogeneous.Select(h => h.Trim('"')).ToArray());
+        public Viteka.Contracts.TenenciaFields Fields => new(Expiry is not null, LastPurchase is not null || LastSale is not null, Homogeneous.Select(h => h.Trim('"')).ToArray()) { Purchase=LastPurchase is not null, PurchaseColumn=LastPurchase?.Trim('"') };
     }
     private static string Normalize(string column) => column.Replace("_", "").Replace(" ", "").ToUpperInvariant();
     private static bool SafeName(string column) => Regex.IsMatch(column, "^[A-Za-z][A-Za-z0-9_ ]{0,127}$");
@@ -35,7 +35,7 @@ public static class TenenciaStockQuery
     }
     internal static bool IsExpiry(string n) => n.Contains("CADUC", StringComparison.Ordinal) && !Regex.IsMatch(n, "MES|DIAS|AVIS|ALERT|CONTROL|CTRL|LOTE|BORR");
     private static bool IsDate(string n) => Regex.IsMatch(n, "FEC|FECHA|DATE|^F") && !Regex.IsMatch(n, "PRECIO|PVP|IMP|CANT|UNID|COSTE|PROV|NUM|USU");
-    internal static bool IsLastPurchase(string n) => n.Contains("ULT", StringComparison.Ordinal) && Regex.IsMatch(n, "COMPRA|ENTRADA|RECEP|PEDIDO") && IsDate(n);
+    internal static bool IsLastPurchase(string n) => n.Contains("ULT", StringComparison.Ordinal) && Regex.IsMatch(n, "COMPRA") && IsDate(n);
     internal static bool IsLastSale(string n) => n.Contains("ULT", StringComparison.Ordinal) && Regex.IsMatch(n, "VENTA|SALIDA|DISPENS|VTA") && IsDate(n);
     /// <summary>Convierte fechas de NixFarma (fecha, texto o número) a DateOnly. Si solo hay mes y año, cuenta el último día del mes.</summary>
     public static DateOnly? ParseDate(object? value)
@@ -87,7 +87,7 @@ public static class TenenciaStockQuery
             StockColumns = e,
             // La caducidad y las últimas compras/ventas se leen de la ficha de existencias.
             Expiry = Pick(e, IsExpiry, "FECCADUCIDAD", "FECHACADUCIDAD", "CADUCIDAD", "FCADUCIDAD", "FECCAD"),
-            LastPurchase = Pick(e, IsLastPurchase, "FECULTCOMPRA", "FECHAULTIMACOMPRA", "FECULTIMACOMPRA", "FECHAULTCOMPRA", "FULTCOMPRA", "FECULTENTRADA"),
+            LastPurchase = Pick(e, IsLastPurchase, "FECULTCOMPRA", "FECHAULTIMACOMPRA", "FECULTIMACOMPRA", "FECHAULTCOMPRA", "FULTCOMPRA"),
             LastSale = Pick(e, IsLastSale, "FECULTVENTA", "FECHAULTIMAVENTA", "FECULTIMAVENTA", "FECHAULTVENTA", "FULTVENTA"),
             Homogeneous = homogeneous,
         };

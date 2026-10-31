@@ -1,11 +1,11 @@
-# Conexión local a NixFarma · 0.11.1
+# Conexión local a Nixfarma · 0.11.1
 
 La aplicación incorpora ahora Oracle ODBC x64 y una prueba real de conexión, independiente de las utilidades. Las versiones hasta 0.10.1 solo tenían un marcador de conexión pendiente: instalarlas en un servidor no iniciaba ninguna conexión Oracle.
 
 ## Prueba en el servidor de la farmacia
 
 1. Actualizar Viteka e iniciarla con el usuario de Windows que vaya a realizar la prueba en el servidor.
-2. Abrir Configuración → Conexión a NixFarma → Configurar conexión.
+2. Abrir Configuración → Conexión a Nixfarma → Configurar conexión.
 3. Conservar el DSN de sistema `NIXFARMA` si es el correcto. Introducir usuario y contraseña **de Oracle**, facilitados por el administrador con permisos mínimos de lectura. No son las credenciales del disco compartido.
 4. Guardar y pulsar Probar conexión. Se comprueba el DSN de sistema de 64 bits en este equipo y se informa de su ausencia. La prueba usa realmente ODBC, abre una transacción, ejecuta primero `SET TRANSACTION READ ONLY`, después `SELECT 1 FROM DUAL` y termina con rollback/cierre. No consulta tablas de farmacia.
 5. Si falla, comunicar el mensaje y los códigos SQLSTATE/ORA, sin enviar contraseñas ni cadenas de conexión.

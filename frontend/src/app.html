@@ -6,6 +6,9 @@
       <img class="auth-brand" src="logotipo.png" alt="Viteka" />
       <div class="eyebrow">UTILIDADES PARA TU FARMACIA</div>
       <h1>Iniciar sesión</h1>
+      @if (reviewMode()) {
+        <p class="chip">PC de pruebas · Instalación independiente</p>
+      }
       <p>Accede con tu cuenta de Viteka Utilidades.</p>
       <form (ngSubmit)="login()" class="account-form">
         <label
@@ -302,7 +305,7 @@
               (toast)="notify($event)"
               (back)="selectedUtility.set(null)"
             />
-          } @else if (page() === 'Aplicaciones' || page() === 'Favoritos' || page() === 'Auditoría') {
+          } @else if (page() === 'Aplicaciones' || page() === 'Favoritos') {
             @if (
               (page() === 'Aplicaciones' && utilities().length) ||
               (page() === 'Favoritos' && favoriteUtilities().length)
@@ -445,56 +448,61 @@
                   }}</small></span
                 ><v-icon name="arrow" />
               </button>
-              @if (user()?.role !== 'User') {
-                <button class="setting-row" (click)="openSetting('startup')">
-                  <v-icon name="star" /><span
-                    ><strong>Pantalla al iniciar</strong
-                    ><small>{{ openFavorites() ? 'Favoritos' : 'Inicio' }}</small></span
-                  ><v-icon name="arrow" />
-                </button>
-              }
+              @if (user()?.role !== 'User') {}
             </section>
           }
           @if (page() === 'Utilidades' && user()?.canManageUsers) {
             <section class="settings grants">
-              <h2>Utilidades por usuario</h2>
-              <p class="hint">
-                Los administradores y el superadministrador tienen todas las utilidades. Marca las que puede usar cada
-                usuario; el cambio se aplica en su próximo acceso a la utilidad.
-              </p>
-              <div class="grant-table" role="region" aria-label="Utilidades por usuario" tabindex="0">
-                <table>
-                  <thead>
-                    <tr>
-                      <th scope="col">Cuenta</th>
-                      @for (u of permissionCatalog(); track u.id) {
-                        <th scope="col" class="center">{{ u.name }}</th>
-                      }
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (target of users(); track target.id) {
-                      <tr>
-                        <th scope="row">
-                          <strong>{{ target.name }}</strong
-                          ><small>{{ roleName(target.role) }}</small>
-                        </th>
-                        @for (u of permissionCatalog(); track u.id) {
-                          <td class="center">
-                            <input
-                              type="checkbox"
-                              [checked]="hasGrant(target, u.id)"
-                              [disabled]="target.role !== 'User' || !canEdit(target) || busy()"
-                              [attr.aria-label]="u.name + ' para ' + target.name"
-                              (change)="grant(target, u.id, $any($event.target).checked)"
-                            />
-                          </td>
-                        }
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
+              <h2>Acceso a aplicaciones</h2>
+              <label
+                >Usuario<select
+                  aria-label="Usuario para permisos"
+                  [ngModel]="grantUserId()"
+                  (ngModelChange)="selectGrantUser($event)"
+                >
+                  <option value="">Selecciona una cuenta</option>
+                  @for (target of users(); track target.id) {
+                    <option [value]="target.id">{{ target.name }} · {{ roleName(target.role) }}</option>
+                  }
+                </select></label
+              >
+              @if (grantTarget(); as target) {
+                @if (target.role !== 'User') {
+                  <p>Esta cuenta accede a todas las aplicaciones por su rol.</p>
+                }
+                @for (u of permissionCatalog(); track u.id) {
+                  <label class="setting-row"
+                    ><input
+                      type="checkbox"
+                      [checked]="target.role !== 'User' || grantIds().includes(u.id)"
+                      [disabled]="target.role !== 'User' || !canEdit(target) || busy()"
+                      [attr.aria-label]="u.name + ' para ' + target.name"
+                      (change)="draftGrant(u.id, $any($event.target).checked)"
+                    />{{ u.name }}</label
+                  >
+                }
+                @if (target.role === 'User' && canEdit(target)) {
+                  <p class="hint">Al guardar se cerrarán sus sesiones anteriores. Los favoritos no conceden acceso.</p>
+                  <div class="actions">
+                    <button class="primary" (click)="saveGrants()" [disabled]="busy()">Guardar permisos</button
+                    ><button class="text-button" (click)="selectGrantUser(target.id)" [disabled]="busy()">
+                      Descartar cambios
+                    </button>
+                  </div>
+                }
+              }
+            </section>
+          }
+          @if (page() === 'Auditoría' && user()?.canManageUsers) {
+            <viteka-audit />
+          }
+          @if (inSettings() && reviewMode()) {
+            <section class="settings" aria-label="Identidad del PC de pruebas">
+              <h2>PC de pruebas</h2>
+              <p>Esta instalación utiliza su propio servicio local y canal de revisión.</p>
+              <label
+                >ID de este PC <code>{{ reviewDeviceId() }}</code></label
+              ><button class="text-button" (click)="copyReviewId()">Copiar identificador</button>
             </section>
           }
           @if (page() === 'Usuarios' && user()?.canManageUsers) {
@@ -604,7 +612,7 @@
               @if (user()?.canConfigure) {
                 <button class="setting-row" (click)="openSetting('connection')">
                   <v-icon name="leaf" /><span
-                    ><strong>Conexión a NixFarma</strong
+                    ><strong>Conexión a Nixfarma</strong
                     ><small
                       >{{ nixState()?.configured ? 'Configurada en el servidor' : 'Pendiente de configurar' }} · Solo
                       Viteka</small
@@ -903,7 +911,7 @@
               ? 'Pantalla al iniciar'
               : settingDialog() === 'pharmacy'
                 ? 'Datos de la farmacia'
-                : 'Conexión a NixFarma'
+                : 'Conexión a Nixfarma'
       "
       class="dialog settings-dialog"
       (click)="$event.stopPropagation()"
@@ -919,7 +927,7 @@
                   ? 'Pantalla al iniciar'
                   : settingDialog() === 'pharmacy'
                     ? 'Datos de la farmacia'
-                    : 'Conexión a NixFarma'
+                    : 'Conexión a Nixfarma'
           }}
         </h2>
         <button aria-label="Cerrar ajuste" (click)="closeModals()" [disabled]="busy()"><v-icon name="close" /></button>
@@ -993,11 +1001,11 @@
         <viteka-pharmacy-settings (working)="busy.set($event)" (cancel)="closeModals()" />
       }
       @if (settingDialog() === 'connection' && user()?.canConfigure) {
-        <section class="settings nixfarma-settings" aria-label="Conexión a NixFarma">
+        <section class="settings nixfarma-settings" aria-label="Conexión a Nixfarma">
           <div class="card-head">
             <div class="tile"><v-icon name="leaf" /></div>
             <div>
-              <h2>Conexión a NixFarma</h2>
+              <h2>Conexión a Nixfarma</h2>
               <p>Solo lectura · Configura la conexión en el servidor de la farmacia.</p>
             </div>
           </div>
@@ -1017,7 +1025,7 @@
           </dl>
           @if (bridge.native && nixState() && !nixState()?.dsnAvailable) {
             <p class="connection-warning">
-              No se encuentra este DSN de sistema de 64 bits en este equipo. Compruébalo en el servidor de NixFarma.
+              No se encuentra este DSN de sistema de 64 bits en este equipo. Compruébalo en el servidor de Nixfarma.
             </p>
           }
           <div class="actions">
@@ -1072,6 +1080,28 @@
       }
       @if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
+      }
+    </section>
+  </div>
+}
+
+@if (bridge.updatePhase()) {
+  <div class="modal-overlay">
+    <section class="dialog" role="dialog" aria-modal="true" aria-label="Progreso de actualización">
+      <h2>Actualización de Viteka</h2>
+      <p role="status">{{ phaseLabels[bridge.updatePhase()] || 'Actualizando' }}</p>
+      @if (bridge.updatePhase() === 'downloading' && bridge.progress() !== null) {
+        <progress max="100" [value]="bridge.progress()"></progress><strong>{{ bridge.progress() }} %</strong>
+      } @else if (bridge.updatePhase() !== 'failed' && bridge.updatePhase() !== 'cancelled') {
+        <progress></progress>
+        <p>Esta fase no ofrece un porcentaje medible.</p>
+      }
+      @if (['preparing', 'downloading', 'verifying'].includes(bridge.updatePhase())) {
+        <button class="text-button" (click)="cancelUpdate()">Cancelar actualización</button>
+      }
+      @if (bridge.updatePhase() === 'failed' || bridge.updatePhase() === 'cancelled') {
+        <p>{{ error() || updateMessage() }}</p>
+        <button (click)="bridge.updatePhase.set('')">Cerrar</button>
       }
     </section>
   </div>

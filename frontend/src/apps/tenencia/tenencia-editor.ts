@@ -1,6 +1,7 @@
 import { Component, computed, inject, input, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DesktopBridge } from '../../bridge';
+import { CatalogDistributionComponent } from './catalog-distribution';
 import { IconComponent } from '../../icon';
 import { buildXlsx, Cell, loadLogo, toBase64 } from './xlsx';
 import type { TenenciaFields } from './tenencia';
@@ -31,7 +32,16 @@ interface FoundArticle {
   stock: number | null;
   issue?: string | null;
 }
-type SearchMode = 'code' | 'description' | 'homogeneous';
+type SearchMode = 'code' | 'description' | 'homogeneous' | 'therapeutic.groups' | 'therapeutic.articles';
+interface Classification {
+  code: string;
+  description: string;
+  class: string;
+  type: string;
+  level: number | null;
+  parent: string;
+  source: string;
+}
 interface GroupDraft {
   id?: string;
   code: string;
@@ -51,7 +61,7 @@ const CHUNK = 50;
 @Component({
   selector: 'viteka-tenencia-editor',
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, IconComponent, CatalogDistributionComponent],
   templateUrl: './tenencia-editor.html',
   styleUrl: './tenencia-editor.css',
 })
@@ -69,6 +79,16 @@ export class TenenciaEditorComponent implements OnInit {
   readonly chosenId = signal<string | null>(null);
   readonly mode = signal<SearchMode>('code');
   readonly searchText = signal('');
+  readonly classifications = signal<Classification[]>([]);
+  readonly therapeuticChoice = signal<Classification | null>(null);
+  readonly descendants = signal(false);
+  chooseClassification(g: Classification) {
+    this.therapeuticChoice.set(g);
+    this.searchText.set(g.code);
+    this.mode.set('therapeutic.articles');
+    this.results.set([]);
+    this.picked.set([]);
+  }
   readonly field = signal('');
   readonly searching = signal(false);
   readonly results = signal<FoundArticle[]>([]);
@@ -79,6 +99,11 @@ export class TenenciaEditorComponent implements OnInit {
   readonly importing = signal(false);
   readonly importText = signal('');
   readonly importReport = signal('');
+  readonly distributionOpen = signal(false);
+  async distributionChanged() {
+    await this.call('state');
+    this.changed = true;
+  }
   private changed = false;
   private collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
   readonly groups = computed(() => {
@@ -118,7 +143,10 @@ export class TenenciaEditorComponent implements OnInit {
     return g.descriptions?.[code] || 'CN ' + code;
   }
   private async call(action: string, payload?: unknown) {
-    const r = await this.bridge.call<CatalogResponse>('tenencia.catalog.' + action, payload ?? {});
+    const r = await this.bridge.call<CatalogResponse>(
+      'tenencia.catalog.' + action,
+      action === 'state' ? {} : { ...((payload as object) ?? {}), expectedVersion: this.list()?.version },
+    );
     this.list.set(r.list);
     this.customized.set(r.customized);
     this.provinceName.set(r.provinceName ?? '');
@@ -229,13 +257,22 @@ export class TenenciaEditorComponent implements OnInit {
     this.error.set('');
     this.searchMessage.set('');
     void this.bridge
-      .call<{ code: string; message: string; articles: FoundArticle[] }>('tenencia.catalog.search', {
-        mode: this.mode(),
-        text,
-        field: this.mode() === 'homogeneous' ? this.field() : '',
-      })
+      .call<{ code: string; message: string; articles: FoundArticle[]; classifications?: Classification[] }>(
+        'tenencia.catalog.search',
+        {
+          mode: this.mode(),
+          text,
+          field:
+            this.mode() === 'homogeneous'
+              ? this.field()
+              : this.mode() === 'therapeutic.articles'
+                ? JSON.stringify({ ...this.therapeuticChoice(), descendants: this.descendants() })
+                : '',
+        },
+      )
       .then((r) => {
         this.results.set(r.articles ?? []);
+        this.classifications.set(r.classifications ?? []);
         this.searchMessage.set(r.message);
         const g = this.chosen();
         this.picked.set(
@@ -244,7 +281,7 @@ export class TenenciaEditorComponent implements OnInit {
             .map((a) => a.code),
         );
       })
-      .catch((e) => this.error.set(e instanceof Error ? e.message : 'No se pudo buscar en NixFarma.'))
+      .catch((e) => this.error.set(e instanceof Error ? e.message : 'No se pudo buscar en Nixfarma.'))
       .finally(() => this.searching.set(false));
   }
   isPicked(code: string) {
