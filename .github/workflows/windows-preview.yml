@@ -187,7 +187,12 @@ jobs:
         shell: pwsh
         run: |
           & pwsh -NoProfile -File ./scripts/publish-review-windows.ps1 *> review-build.log
-          if ($LASTEXITCODE -ne 0) { Get-Content review-build.log -Tail 60; exit 1 }
+          if ($LASTEXITCODE -ne 0) {
+            $detail = (Get-Content review-build.log -Tail 35) -join "`n"
+            $detail = $detail.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error::$detail"
+            exit 1
+          }
           Get-Content review-build.log -Tail 6
       - name: Normal service baseline for coexistence
         shell: pwsh
@@ -196,7 +201,12 @@ jobs:
         shell: pwsh
         run: |
           & pwsh -NoProfile -File ./scripts/smoke-review-installer.ps1 *> review-smoke.log
-          if ($LASTEXITCODE -ne 0) { Get-Content review-smoke.log -Tail 60; exit 1 }
+          if ($LASTEXITCODE -ne 0) {
+            $detail = (Get-Content review-smoke.log -Tail 35) -join "`n"
+            $detail = $detail.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error::$detail"
+            exit 1
+          }
           Get-Content review-smoke.log
       - uses: actions/upload-artifact@v4
         with:
