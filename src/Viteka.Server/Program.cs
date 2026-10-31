@@ -21,6 +21,12 @@ if (args.Length > 0 && args[0].StartsWith("--access-", StringComparison.Ordinal)
     return;
 }
 
+// The isolated build must never fall back to legacy demo services or their shared state paths.
+if (ProductProfile.IsReview) {
+    Console.Error.WriteLine("La edición de pruebas utiliza únicamente su servicio local de acceso.");
+    Environment.ExitCode=2; return;
+}
+
 var serviceMode = args.Contains("--service") || (OperatingSystem.IsWindows() && WindowsServiceHelpers.IsWindowsService());
 args = args.Where(x => x != "--service").ToArray();
 if (serviceMode && !OperatingSystem.IsWindows())

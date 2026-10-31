@@ -116,7 +116,15 @@ jobs:
       - name: Compile validated Windows installer
         if: ${{ !inputs.validate_only }}
         shell: pwsh
-        run: ./scripts/publish-windows.ps1 -InstallerOnly
+        run: |
+          & pwsh -NoProfile -File ./scripts/publish-windows.ps1 -InstallerOnly *> compile-installer.log
+          if ($LASTEXITCODE -ne 0) {
+            $detail=(Get-Content compile-installer.log -Tail 35) -join "`n"
+            $detail=$detail.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error::$detail"
+            exit 1
+          }
+          Get-Content compile-installer.log -Tail 5
       - name: Actual installer, upgrade and removal
         if: ${{ !inputs.validate_only }}
         timeout-minutes: 5

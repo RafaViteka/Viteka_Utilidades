@@ -60,9 +60,11 @@ try{
  if((Get-FileHash (Join-Path $review 'Private/review-device.dat') -Algorithm SHA256).Hash -ne $idHash){throw 'Review uninstall lost its identity.'}
  Write-Output 'PASS: isolated installer, local-only service, native WebView2, stable PC ID, upgrade/uninstall and untouched normal service and private data.'
 }catch{
+ $failure=$_
  Get-Content (Join-Path $directory '*.log') -Tail 12 -ErrorAction SilentlyContinue
- if(Test-Path $env:VITEKA_UI_SMOKE_REPORT){Get-Content $env:VITEKA_UI_SMOKE_REPORT}
- throw
+ if($env:VITEKA_UI_SMOKE_REPORT -and (Test-Path $env:VITEKA_UI_SMOKE_REPORT)){Get-Content $env:VITEKA_UI_SMOKE_REPORT}
+ Write-Output ('Review failure: '+$failure.Exception.Message)
+ throw $failure
 }finally{
  $uninstall=Join-Path $install 'unins000.exe'
  if((Test-Path $uninstall) -and (Get-Service VitekaUtilidadesReviewAccess -ErrorAction SilentlyContinue)){Run -Exe $uninstall -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')}
