@@ -23,6 +23,10 @@ function Run([string]$Exe,[string[]]$Arguments,[int]$Seconds=120){
 function Hash-Private([string]$Path){
  return @(Get-ChildItem (Join-Path $Path 'Private') -File -Recurse|Sort-Object FullName|ForEach-Object { $_.Name+':'+(Get-FileHash $_.FullName -Algorithm SHA256).Hash }) -join '|'
 }
+function Owned-Clients([string]$Path){
+ $expected=[System.IO.Path]::GetFullPath($Path)
+ return @(Get-Process -Name Viteka.Desktop -ErrorAction SilentlyContinue|Where-Object {$_.Path -and [System.IO.Path]::GetFullPath($_.Path) -eq $expected})
+}
 try{
  $productionOwned=$true
  Run -Exe $normal -Arguments @('--access-manage','install',('"'+(Join-Path $directory 'NormalClient')+'"'))
@@ -77,9 +81,9 @@ try{
  if(-not(Test-Path $logPath) -or -not(Get-Content $logPath -Raw).Contains('Installation process succeeded.')){throw 'Successful monitor did not match installation log.'}
  $reopenedClient=Join-Path $install 'Cliente/Viteka.Desktop.exe'
  $deadline=(Get-Date).AddSeconds(20)
- while((Get-Date) -lt $deadline -and -not(Get-Process|Where-Object {$_.Path -eq $reopenedClient})){Start-Sleep -Seconds 1}
- if(-not(Get-Process|Where-Object {$_.Path -eq $reopenedClient})){throw 'The installed application did not reopen after the monitored update.'}
- foreach($path in @($monitor,(Join-Path $install 'Cliente/Viteka.Desktop.exe'))){Get-Process|Where-Object {$_.Path -eq $path}|Stop-Process -Force}
+ while((Get-Date) -lt $deadline -and -not(Owned-Clients -Path $reopenedClient)){Start-Sleep -Seconds 1}
+ if(-not(Owned-Clients -Path $reopenedClient)){throw 'The installed application did not reopen after the monitored update.'}
+ foreach($path in @($monitor,(Join-Path $install 'Cliente/Viteka.Desktop.exe'))){Owned-Clients -Path $path|Stop-Process -Force}
  Run -Exe $server -Arguments @('--access-health',('"'+(Join-Path $install 'Cliente/access-server.json')+'"'))
  if((Get-FileHash (Join-Path $review 'Private/review-device.dat') -Algorithm SHA256).Hash -ne $idHash){throw 'Review upgrade changed its device identity.'}
  if((Get-FileHash (Join-Path $review 'Private/access.dat') -Algorithm SHA256).Hash -ne $accounts){throw 'Review upgrade changed accounts.'}

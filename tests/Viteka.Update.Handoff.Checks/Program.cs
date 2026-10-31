@@ -43,7 +43,8 @@ catch (Exception error)
         {
             using (process)
             {
-                if (!string.Equals(process.MainModule?.FileName, expected, StringComparison.OrdinalIgnoreCase) || process.MainWindowHandle == 0) continue;
+                var executable = process.MainModule?.FileName;
+                if (executable is null || !string.Equals(Path.GetFullPath(executable), Path.GetFullPath(expected), StringComparison.OrdinalIgnoreCase) || process.MainWindowHandle == 0) continue;
                 var window = AutomationElement.FromHandle(process.MainWindowHandle);
                 monitorText = string.Join(" | ", window.FindAll(TreeScope.Descendants, Condition.TrueCondition)
                     .Cast<AutomationElement>().Select(x => x.Current.Name).Where(x => x.Length > 0).Distinct().Take(20));
