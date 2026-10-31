@@ -11,6 +11,10 @@ $directory=Join-Path $env:TEMP ('VitekaPcReviewSmoke-'+[guid]::NewGuid().ToStrin
 New-Item -ItemType Directory $directory|Out-Null
 $install=Join-Path $directory 'Pruebas'
 $productionOwned=$false
+$normalKey='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{AAC03BF6-8845-4E96-AFC1-73AF54176983}_is1'
+$reviewKey='HKLM:\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{8817D5EC-91E7-4C88-88C9-27C66C565B8D}_is1'
+if(Test-Path $normalKey){throw 'Refusing test over pre-existing normal installer registration.'}
+$registryOwned=$false
 function Run([string]$Exe,[string[]]$Arguments,[int]$Seconds=120){
  $process=Start-Process $Exe -ArgumentList $Arguments -PassThru
  if(-not $process.WaitForExit($Seconds*1000)){$process.Kill();throw 'Review test operation timed out.'}
@@ -23,7 +27,13 @@ try{
  $productionOwned=$true
  Run -Exe $normal -Arguments @('--access-manage','install',('"'+(Join-Path $directory 'NormalClient')+'"'))
  $before=Hash-Private $production
+ New-Item $normalKey -Force|Out-Null
+ $registryOwned=$true
+ New-ItemProperty $normalKey -Name ProductionSmokeMarker -Value 'unchanged'|Out-Null
+ New-ItemProperty $normalKey -Name DisplayName -Value 'Viteka normal coexistence fixture'|Out-Null
  Run -Exe $setup -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$install+'"'),('/LOG="'+(Join-Path $directory 'review-install.log')+'"'))
+ if((Get-Item $setup).VersionInfo.ProductName -ne 'Viteka Utilidades - Pruebas'){throw 'Wrong installer product identity.'}
+ if(-not(Test-Path $reviewKey) -or (Get-ItemProperty $normalKey).DisplayName -ne 'Viteka normal coexistence fixture'){throw 'Review installer changed normal registration.'}
  $metadata=Get-Content (Join-Path $install 'Cliente/access-server.json') -Raw|ConvertFrom-Json
  if($metadata.ServerUrl -ne 'https://localhost:7448/'){throw 'Review installer did not use its local test endpoint.'}
  $listeners=@(Get-NetTCPConnection -LocalPort 7448 -State Listen)
@@ -45,6 +55,7 @@ try{
  if((Hash-Private $production) -ne $before -or (Get-Service VitekaUtilidadesAccess).Status -ne 'Running'){throw 'Review modified normal installation.'}
  Run -Exe (Join-Path $install 'unins000.exe') -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')
  if(Get-Service VitekaUtilidadesReviewAccess -ErrorAction SilentlyContinue){throw 'Review service was not removed.'}
+ if(-not(Test-Path $normalKey) -or (Get-ItemProperty $normalKey).ProductionSmokeMarker -ne 'unchanged'){throw 'Review removal damaged normal registration.'}
  if((Hash-Private $production) -ne $before -or (Get-Service VitekaUtilidadesAccess).Status -ne 'Running'){throw 'Review removal affected normal installation.'}
  if((Get-FileHash (Join-Path $review 'Private/review-device.dat') -Algorithm SHA256).Hash -ne $idHash){throw 'Review uninstall lost its identity.'}
  Write-Output 'PASS: isolated installer, local-only service, native WebView2, stable PC ID, upgrade/uninstall and untouched normal service and private data.'
@@ -56,5 +67,6 @@ try{
  $uninstall=Join-Path $install 'unins000.exe'
  if((Test-Path $uninstall) -and (Get-Service VitekaUtilidadesReviewAccess -ErrorAction SilentlyContinue)){Run -Exe $uninstall -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART')}
  if($productionOwned){Run -Exe $normal -Arguments @('--access-manage','uninstall')}
+ if($registryOwned -and (Test-Path $normalKey)){Remove-Item $normalKey -Recurse -Force}
  foreach($state in @($production,$review)){if(Test-Path $state){Remove-Item $state -Recurse -Force}}
 }

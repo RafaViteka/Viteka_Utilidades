@@ -29,6 +29,7 @@
 [Setup]
 AppId={{{#IdentityGuid}}
 AppName={#ProductTitle}
+VersionInfoProductName={#ProductTitle}
 AppVersion={#AppVersion}
 AppPublisher=Viteka
 ChangesAssociations=yes

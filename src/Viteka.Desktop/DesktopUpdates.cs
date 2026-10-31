@@ -107,6 +107,7 @@ internal sealed class DesktopUpdates : IDisposable
                     var update = await (await Checker(readHttp)).FindAsync(version, ct) ?? throw new InvalidOperationException("No hay una versión posterior verificable.");
                     var progress = new DownloadProgress(percent => Phase("downloading",percent));
                     using var installer = await (await Checker(downloadHttp)).DownloadAsync(update, Path.Combine(directory, "Updates"), progress, ct, ()=>Phase("verifying"));
+                    if(ProductProfile.IsReview && FileVersionInfo.GetVersionInfo(installer.Path).ProductName!="Viteka Utilidades - Pruebas")throw new InvalidDataException("El paquete no corresponde a la edición de pruebas. No se instalará.");
                     if (!AccessPolicy.CanInstallUpdates(await currentUser())) throw new AccessDeniedException();
                     // Instalación desatendida: sin asistente ni preguntas. Windows solo pide su confirmación de permisos (UAC).
                     // El instalador vuelve a abrir Viteka al terminar (/RELAUNCH=1) y la sesión se recupera sin pedir contraseña.
