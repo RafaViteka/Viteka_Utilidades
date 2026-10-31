@@ -30,6 +30,8 @@
 AppId={{{#IdentityGuid}}
 AppName={#ProductTitle}
 VersionInfoProductName={#ProductTitle}
+VersionInfoVersion={#AppVersion}
+VersionInfoProductVersion={#AppVersion}
 AppVersion={#AppVersion}
 AppPublisher=Viteka
 ChangesAssociations=yes

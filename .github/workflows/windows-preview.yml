@@ -247,4 +247,11 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           REVIEW_DEVICE_ID: ${{ inputs.review_device_id }}
-        run: ./scripts/publish-pc-review.ps1 -DeviceId $env:REVIEW_DEVICE_ID -InstallerDirectory review-installer
+        run: |
+          try {
+            ./scripts/publish-pc-review.ps1 -DeviceId $env:REVIEW_DEVICE_ID -InstallerDirectory review-installer
+          } catch {
+            $detail = $_.Exception.Message.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
+            Write-Output "::error::$detail"
+            exit 1
+          }

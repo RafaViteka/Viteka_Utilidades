@@ -27,7 +27,7 @@ $metadata = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($file.FullName)
 $productVersion = [Version]::new($metadata.ProductMajorPart, $metadata.ProductMinorPart, $metadata.ProductBuildPart, $metadata.ProductPrivatePart)
 if ($metadata.ProductName.TrimEnd([char[]]@(32, 0)) -cne 'Viteka Utilidades - Pruebas' -or
     $productVersion -ne [Version]"$version.0") {
-    throw 'The artifact is not the expected isolated review product/version.'
+    throw "Unexpected review metadata: product=[$($metadata.ProductName)] numericVersion=[$productVersion] expected=[$version.0]."
 }
 $hash = (Get-FileHash -Algorithm SHA256 $file.FullName).Hash.ToLowerInvariant()
 
