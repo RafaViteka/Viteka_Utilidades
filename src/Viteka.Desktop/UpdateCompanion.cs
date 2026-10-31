@@ -10,6 +10,11 @@ namespace Viteka.Desktop;
 internal sealed record UpdateHandoff(string Installer,string Sha256,long Size,string Log,int ParentPid,string ReadyFile,string ErrorFile,string Version);
 internal static class UpdateCompanion
 {
+    // On Windows GetFullPath expands DOS short names. Normalize both sides and
+    // compare without case; AppContext.BaseDirectory can retain a short alias.
+    private static bool SamePath(string first,string second)=>string.Equals(
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(first)),
+        Path.TrimEndingDirectorySeparator(Path.GetFullPath(second)),StringComparison.OrdinalIgnoreCase);
     internal static async Task<string> PrepareAsync(string installer,string hash,long size,string log,string version,CancellationToken ct)
     {
         var destination=Path.Combine(Path.GetDirectoryName(installer)!,"Monitor");Directory.CreateDirectory(destination);
@@ -44,11 +49,11 @@ internal static class UpdateCompanion
         window.Loaded+=async(_,_)=>{
             UpdateHandoff? handoff=null;using var installGate=new Semaphore(1,1,"Global\\"+Viteka.Core.ProductProfile.ShellAppId+"Install");var locked=false;
             try{
-                var full=Path.GetFullPath(manifest);if(Path.GetDirectoryName(full)!=Path.TrimEndingDirectorySeparator(AppContext.BaseDirectory)||new FileInfo(full).Length>8192)throw new InvalidDataException();
+                var full=Path.GetFullPath(manifest);if(!SamePath(Path.GetDirectoryName(full)!,AppContext.BaseDirectory)||new FileInfo(full).Length>8192)throw new InvalidDataException("La ubicación del manifiesto de actualización no es válida.");
                 handoff=JsonSerializer.Deserialize<UpdateHandoff>(await File.ReadAllTextAsync(full))??throw new InvalidDataException();
                 if(!installGate.WaitOne(0))throw new IOException("Ya hay una actualización en curso.");locked=true;
                 var folder=Directory.GetParent(AppContext.BaseDirectory.TrimEnd(Path.DirectorySeparatorChar))!.FullName;
-                if(Path.GetFullPath(handoff.Installer)!=Path.Combine(folder,"Viteka-Setup.exe")||Path.GetFullPath(handoff.Log)!=Path.Combine(folder,"instalacion.log")||handoff.ReadyFile!=Path.Combine(AppContext.BaseDirectory,"ready")||handoff.ErrorFile!=Path.Combine(AppContext.BaseDirectory,"error"))throw new InvalidDataException();
+                if(!SamePath(handoff.Installer,Path.Combine(folder,"Viteka-Setup.exe"))||!SamePath(handoff.Log,Path.Combine(folder,"instalacion.log"))||!SamePath(handoff.ReadyFile,Path.Combine(AppContext.BaseDirectory,"ready"))||!SamePath(handoff.ErrorFile,Path.Combine(AppContext.BaseDirectory,"error")))throw new InvalidDataException("Las rutas del paquete de actualización no son válidas.");
                 using(var file=new FileStream(handoff.Installer,FileMode.Open,FileAccess.Read,FileShare.Read)){
                     if(file.Length!=handoff.Size||Convert.ToHexString(await SHA256.HashDataAsync(file)).ToLowerInvariant()!=handoff.Sha256.ToLowerInvariant())throw new InvalidDataException("La verificación del paquete no coincide.");
                     text.Text="Esperando el permiso de Windows. La instalación continuará sin asistente.";
@@ -65,7 +70,9 @@ internal static class UpdateCompanion
             }
             catch(Exception e) when(e is IOException or InvalidDataException or InvalidOperationException or System.ComponentModel.Win32Exception or UnauthorizedAccessException or JsonException or CryptographicException){
                 text.Text=e is System.ComponentModel.Win32Exception?"Se canceló el permiso de Windows o no se pudo iniciar el instalador. La instalación no se ha confirmado.":e.Message;
-                if(handoff is not null){try{await File.WriteAllTextAsync(Path.Combine(AppContext.BaseDirectory,"error"),"No se confirmó la instalación.");}catch(IOException){}}
+                // Notify the caller even when validating/reading the manifest
+                // failed before it could be deserialized.
+                try{await File.WriteAllTextAsync(Path.Combine(AppContext.BaseDirectory,"error"),"No se confirmó la instalación.");}catch(Exception markerError)when(markerError is IOException or UnauthorizedAccessException){}
                 progress.Visibility=Visibility.Collapsed;
             }
             finally{if(locked)installGate.Release();active=false;close.Visibility=Visibility.Visible;}
