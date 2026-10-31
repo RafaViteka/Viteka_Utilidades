@@ -38,6 +38,8 @@ La compilación habitual no publica etiquetas ni Releases. Primero se instala el
 
 Para publicar una revisión autorizada, incrementar la versión de la rama y ejecutar manualmente **Windows preview installer** en `feature/post-017-improvements` con `validate_only: false` y `review_device_id` igual al ID recibido. El campo vacío solo valida y genera artefactos. El job `publish-pc-review` espera el éxito de ambos jobs Windows, descarga únicamente el instalador de pruebas de esa misma ejecución, comprueba producto/versión, crea un borrador dirigido al ID y verifica el SHA256 y tamaño devueltos por GitHub antes de publicarlo como prerelease y sin marcarlo como última versión. Nunca reemplaza una publicación existente ni crea una etiqueta normal. No es necesario fusionar main.
 
+Si las dos validaciones Windows han pasado pero la publicación se ha interrumpido, **Publish validated PC review** permite reintentar únicamente ese paso con `validated_run_id` e ID del PC. Comprueba ambos jobs, procedencia del artefacto y que el código de aplicación/instalador no cambió desde ese run. Puede completar un borrador existente solo si coinciden commit, único activo, nombre, versión, tamaño y SHA256; no reemplaza activos ni publicaciones. Los borradores se consultan mediante la lista autenticada de releases, porque GitHub no los resuelve mediante la ruta de etiqueta hasta publicarlos.
+
 La revisión 0.18.1 permite probar este ciclo desde el instalador de arranque 0.18.0; no incorpora funciones nuevas. En el PC destinatario, usar **Configuración → Actualizaciones → Buscar actualizaciones** y elegir cuándo instalar. Una revisión se ofrece únicamente si su versión es posterior a la instalada.
 
 ## Compilación y comprobaciones

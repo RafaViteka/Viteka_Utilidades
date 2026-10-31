@@ -1,33 +1,75 @@
-name: Publish built visual MVP
+name: Publish validated PC review
 on:
   workflow_dispatch:
+    inputs:
+      validated_run_id:
+        description: Run with successful package and isolated-pc-review Windows jobs
+        type: string
+        required: true
+      review_device_id:
+        description: Exact ID of the authorized test PC
+        type: string
+        required: true
 permissions:
   contents: write
   actions: read
+concurrency:
+  group: publish-validated-pc-review
+  cancel-in-progress: false
 jobs:
   publish:
+    if: github.ref == 'refs/heads/feature/post-017-improvements'
     runs-on: windows-2022
+    timeout-minutes: 5
     steps:
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v4
         with:
-          name: Viteka-Utilidades-Windows-preview
-          path: installers
-          run-id: 40502390343
-          github-token: ${{ github.token }}
-      - name: Publish tested installer
+          fetch-depth: 0
+      - name: Verify artifact provenance and unchanged application sources
+        id: validated
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
+          VALIDATED_RUN_ID: ${{ inputs.validated_run_id }}
+          REVIEW_DEVICE_ID: ${{ inputs.review_device_id }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          if ($env:VALIDATED_RUN_ID -cnotmatch '^[0-9]+$' -or $env:REVIEW_DEVICE_ID -cnotmatch '^[a-f0-9]{32}$') { throw 'Invalid run or PC ID.' }
+          $json = & gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:VALIDATED_RUN_ID"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the validated run.' }
+          $run = ($json -join "`n") | ConvertFrom-Json
+          if ($run.status -ne 'completed' -or $run.path -ne '.github/workflows/windows-preview.yml' -or
+              $run.head_branch -ne 'feature/post-017-improvements' -or $run.repository.full_name -ne $env:GITHUB_REPOSITORY -or
+              $run.head_sha -cnotmatch '^[a-f0-9]{40}$') { throw 'Not a completed Windows validation of this review branch.' }
+          $json = & gh api "repos/$env:GITHUB_REPOSITORY/actions/runs/$env:VALIDATED_RUN_ID/jobs?per_page=100"
+          if ($LASTEXITCODE -ne 0) { throw 'Could not inspect the Windows jobs.' }
+          $jobs = (($json -join "`n") | ConvertFrom-Json).jobs
+          foreach ($name in @('package','isolated-pc-review')) {
+            $verified = @($jobs | Where-Object { $_.name -eq $name -and $_.conclusion -eq 'success' })
+            if ($verified.Count -ne 1) { throw "Required Windows job did not pass: $name" }
+          }
+          $changes = @(& git diff --name-only $run.head_sha HEAD)
+          if ($LASTEXITCODE -ne 0) { throw 'Could not compare tested application sources.' }
+          $allowed = @('scripts/publish-pc-review.ps1','.github/workflows/publish-built-preview.yml','.github/workflows/windows-preview.yml','docs/pc-pruebas.md','README.md')
+          if ($changes | Where-Object { $_ -cnotin $allowed }) { throw 'Application or installer changed since validation; run Windows checks again.' }
+          "sha=$($run.head_sha)" >> $env:GITHUB_OUTPUT
+      - uses: actions/download-artifact@v4
+        with:
+          name: Viteka-PC-Pruebas-instalador
+          path: review-installer
+          run-id: ${{ inputs.validated_run_id }}
+          github-token: ${{ github.token }}
+      - name: Publish the exact validated isolated installer
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REVIEW_DEVICE_ID: ${{ inputs.review_device_id }}
+          VITEKA_REVIEW_VALIDATED_SHA: ${{ steps.validated.outputs.sha }}
         run: |
           try {
-            $files = @(Get-ChildItem installers -Filter '*.exe' -Recurse | ForEach-Object { $_.FullName })
-            if ($files.Count -ne 1) { throw 'Expected exactly one built installer' }
-            $publishOutput = & gh release upload v0.5.0-preview.1 @files --repo $env:GITHUB_REPOSITORY --clobber 2>&1
-            if ($LASTEXITCODE -ne 0) { throw ($publishOutput -join '; ') }
-            $publishOutput = & gh release edit v0.5.0-preview.1 --repo $env:GITHUB_REPOSITORY --draft=false --prerelease 2>&1
-            if ($LASTEXITCODE -ne 0) { throw ($publishOutput -join '; ') }
+            ./scripts/publish-pc-review.ps1 -DeviceId $env:REVIEW_DEVICE_ID -InstallerDirectory review-installer
           } catch {
-            $detail = ($_ | Out-String).Replace("`r", '').Replace("`n", '%0A')
+            $detail = $_.Exception.Message.Replace('%','%25').Replace("`r",'%0D').Replace("`n",'%0A')
             Write-Output "::error::$detail"
             exit 1
           }
