@@ -52,7 +52,27 @@ try{
  $report=Get-Content $env:VITEKA_UI_SMOKE_REPORT -Raw|ConvertFrom-Json
  if(-not $report.passed){throw "Review WebView2 failed: $($report.stage) $($report.error)"}
  $accounts=(Get-FileHash (Join-Path $review 'Private/access.dat') -Algorithm SHA256).Hash
- Run -Exe $setup -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$install+'"'),('/LOG="'+(Join-Path $directory 'review-upgrade.log')+'"'))
+ # Exercise the actual packaged updater -> copied monitor -> installer path.
+ Copy-Item (Join-Path $root 'artifacts/update-handoff-check/*') (Join-Path $install 'Cliente') -Recurse -Force
+ $updateFolder=Join-Path $directory ('Updates/'+[guid]::NewGuid().ToString('N'))
+ New-Item -ItemType Directory $updateFolder -Force|Out-Null
+ $updateInstaller=Join-Path $updateFolder 'Viteka-Setup.exe'
+ Copy-Item $setup $updateInstaller
+ $handoffReport=Join-Path $directory 'handoff-report.json'
+ Run -Exe (Get-Command dotnet).Source -Arguments @(('"'+(Join-Path $install 'Cliente/Viteka.Update.Handoff.Checks.dll')+'"'),('"'+$updateInstaller+'"'),('"'+$handoffReport+'"')) -Seconds 130
+ $handoff=Get-Content $handoffReport -Raw|ConvertFrom-Json
+ if(-not $handoff.passed){throw "Packaged update handoff failed: $($handoff.stage) $($handoff.error)"}
+ $monitor=Join-Path $updateFolder 'Monitor/Viteka.Desktop.exe'
+ $deadline=(Get-Date).AddMinutes(2)
+ while((Get-Date) -lt $deadline){
+  $logPath=Join-Path $updateFolder 'instalacion.log'
+  if((Test-Path $logPath) -and (Get-Content $logPath -Raw).Contains('Installation process succeeded.')){break}
+  if(Test-Path (Join-Path $updateFolder 'Monitor/error')){throw 'Monitor reported an installation failure.'}
+  Start-Sleep -Seconds 1
+ }
+ if(-not(Test-Path $logPath) -or -not(Get-Content $logPath -Raw).Contains('Installation process succeeded.')){throw 'Monitored installer did not finish successfully.'}
+ foreach($path in @($monitor,(Join-Path $install 'Cliente/Viteka.Desktop.exe'))){Get-Process|Where-Object {$_.Path -eq $path}|Stop-Process -Force}
+ Run -Exe $server -Arguments @('--access-health',('"'+(Join-Path $install 'Cliente/access-server.json')+'"'))
  if((Get-FileHash (Join-Path $review 'Private/review-device.dat') -Algorithm SHA256).Hash -ne $idHash){throw 'Review upgrade changed its device identity.'}
  if((Get-FileHash (Join-Path $review 'Private/access.dat') -Algorithm SHA256).Hash -ne $accounts){throw 'Review upgrade changed accounts.'}
  if((Hash-Private $production) -ne $before -or (Get-Service VitekaUtilidadesAccess).Status -ne 'Running'){throw 'Review modified normal installation.'}
@@ -65,6 +85,7 @@ try{
 }catch{
  $failure=$_
  Get-Content (Join-Path $directory '*.log') -Tail 12 -ErrorAction SilentlyContinue
+ Get-Content (Join-Path $directory 'handoff-report.json') -ErrorAction SilentlyContinue
  if($env:VITEKA_UI_SMOKE_REPORT -and (Test-Path $env:VITEKA_UI_SMOKE_REPORT)){Get-Content $env:VITEKA_UI_SMOKE_REPORT}
  Write-Output ('Review failure: '+$failure.Exception.Message)
  throw $failure

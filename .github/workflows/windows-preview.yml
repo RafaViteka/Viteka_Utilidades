@@ -210,6 +210,9 @@ jobs:
       - name: Normal service baseline for coexistence
         shell: pwsh
         run: dotnet publish src/Viteka.Server -c Release -r win-x64 --self-contained true -p:VitekaReview=false -p:RestoreLockedMode=true -o artifacts/normal-server
+      - name: Build packaged update handoff check
+        shell: pwsh
+        run: dotnet build tests/Viteka.Update.Handoff.Checks -c Release -o artifacts/update-handoff-check
       - name: Review installer and coexistence with normal installation
         shell: pwsh
         run: |
