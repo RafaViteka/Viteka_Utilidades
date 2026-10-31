@@ -110,15 +110,15 @@ internal sealed class DesktopUpdates : IDisposable
                     saveSession();
                     var log = Path.Combine(Path.GetDirectoryName(installer.Path)!, "instalacion.log");
                     cancellable=false;Phase("handoff");
-                    try { await UpdateCompanion.PrepareAsync(installer.Path,update.Sha256,update.Size,log,update.Version.ToString(3),ct); }
+                    try { await audit("update.requested",update.Version.ToString(3));await UpdateCompanion.PrepareAsync(installer.Path,update.Sha256,update.Size,log,update.Version.ToString(3),ct); }
                     catch { discardSession(); throw; }
-                    await audit("update.started",update.Version.ToString(3));
+                    try{await audit("update.started",update.Version.ToString(3));}catch(Exception e)when(e is HttpRequestException or OperationCanceledException or AccessSessionException or AccessDeniedException){/* The service may already be restarting. Requested was persisted before handoff. */}
                     post(new { type = "update-installing" });
                     try { journal.RecordInstallerStarted(update.Version); } catch (Exception failure) when (failure is IOException or UnauthorizedAccessException) { }
                     Application.Current.Shutdown(); return new { started = true };
                 }
                 catch(OperationCanceledException){Phase("cancelled");return new{cancelled=true};}
-                catch {Phase("failed");try{await audit("update.failed",null);}catch(HttpRequestException){}throw;}
+                catch {Phase("failed");try{await audit("update.failed",null);}catch(Exception e)when(e is HttpRequestException or OperationCanceledException or AccessSessionException or AccessDeniedException){}throw;}
                 finally { IsBusy = false;cancellable=false;downloadCancellation.Dispose();downloadCancellation=null;downloadGate.Release(); }
             }
             default: throw new InvalidOperationException();

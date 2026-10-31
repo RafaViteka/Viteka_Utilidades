@@ -12,6 +12,9 @@ on:
         description: Validate without packaging or publishing a release
         type: boolean
         default: false
+concurrency:
+  group: windows-preview-${{ github.ref }}
+  cancel-in-progress: true
 permissions:
   contents: write
 jobs:

@@ -265,7 +265,7 @@ internal static class AccessHost
         });
         app.MapPost("/access/activity",(HttpContext context,JsonElement request)=>{
             var actor=Agent(context).RequireUser();var action=request.GetProperty("action").GetString()??"";
-            if(action is not ("export.xlsx.saved" or "export.csv.saved" or "export.pdf.saved" or "print.requested" or "update.started" or "update.failed" or "update.running"))throw new AccessDeniedException();
+            if(action is not ("export.xlsx.saved" or "export.csv.saved" or "export.pdf.saved" or "print.requested" or "update.requested" or "update.started" or "update.failed" or "update.running"))throw new AccessDeniedException();
             if(action.StartsWith("update.")&&!AccessPolicy.CanInstallUpdates(actor)||!action.StartsWith("update.")&&!AccessPolicy.CanUse(actor,UtilityCatalog.TenenciaId,UtilityCatalog.Items))throw new AccessDeniedException();
             var operation=request.GetProperty("operationId").GetString();if(!Guid.TryParse(operation,out _))throw new ArgumentException();
             var note=action=="print.requested"?"Solicitud de impresión; no acredita impresión física.":"Evento confirmado por el cliente autorizado.";

@@ -7,15 +7,20 @@ internal sealed class CatalogDistribution(string directory,TenenciaCatalogStore 
 {
     private string PublicKey=>Path.Combine(directory,"catalog-trust.pem");
     private string PrivateKey=>Path.Combine(directory,"catalog-master.pem");
-    public bool CanPrepare=>File.Exists(PrivateKey);
+    public bool CanPrepare=>File.Exists(PrivateKey)&&HasTrust;
     public bool HasTrust=>File.Exists(PublicKey);
     public static void InitializeKey(string directory)
     {
-        Directory.CreateDirectory(directory);using var key=RSA.Create(3072);
-        using(var output=new FileStream(Path.Combine(directory,"catalog-master.pem"),FileMode.CreateNew,FileAccess.Write,FileShare.None)){
-            var bytes=System.Text.Encoding.UTF8.GetBytes(key.ExportPkcs8PrivateKeyPem());output.Write(bytes);output.Flush(true);
-        }
-        using var publicOutput=new StreamWriter(new FileStream(Path.Combine(directory,"catalog-trust.pem"),FileMode.CreateNew));publicOutput.Write(key.ExportSubjectPublicKeyInfoPem());
+        Directory.CreateDirectory(directory);
+        var privatePath=Path.Combine(directory,"catalog-master.pem");var publicPath=Path.Combine(directory,"catalog-trust.pem");
+        if(File.Exists(privatePath)||File.Exists(publicPath))throw new InvalidOperationException("Ya existe una clave editorial o pública; no se reemplazará.");
+        using var key=RSA.Create(3072);bool created=false;
+        try{
+            using(var output=new FileStream(privatePath,FileMode.CreateNew,FileAccess.Write,FileShare.None)){
+                created=true;var bytes=System.Text.Encoding.UTF8.GetBytes(key.ExportPkcs8PrivateKeyPem());output.Write(bytes);output.Flush(true);
+            }
+            using var publicOutput=new StreamWriter(new FileStream(publicPath,FileMode.CreateNew));publicOutput.Write(key.ExportSubjectPublicKeyInfoPem());
+        }catch{if(created)File.Delete(privatePath);throw;}
     }
     private RSA ReadKey(bool signing=false){var key=RSA.Create();try{key.ImportFromPem(File.ReadAllText(signing?PrivateKey:PublicKey));return key;}catch{key.Dispose();throw;}}
     public object State(string province){var s=catalogs.Revisions.Read(province)??throw new ArgumentException();return new{province,masterVersion=s.Base.Version,localVersion=s.Effective.Version,legacy=s.Legacy,conflicts=s.Conflicts,canPrepare=CanPrepare,hasTrust=HasTrust,history=catalogs.Revisions.History(province)};}
