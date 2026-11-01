@@ -1,4 +1,4 @@
-# Viteka Utilidades · Desarrollo 0.18.4
+# Viteka Utilidades · Desarrollo 0.18.5
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
@@ -22,7 +22,8 @@ Actualizaciones tiene una pantalla propia dentro de Configuración: búsqueda ca
 - Isotipo bicolor transparente original en ventana, ejecutable e instalador.
 - Aplicaciones incluye Tenencia obligatoria:83 grupos de Málaga del Excel, 2.089 asociaciones explícitas por CN de los vídeos y lectura de stock de Nixfarma. Favoritos y Auditoría conservan estados vacíos.
 - Tenencia muestra grupos y medicamentos en tablas compactas y alineadas. El editor busca por código nacional, descripción o agrupación homogénea, sin búsqueda terapéutica visible.
-- Al seleccionar un medicamento, el tercio inferior del panel muestra su ficha. Código y descripción se leen de `APADMIN_AB_ARTICULOS` y las existencias de `AC1_EXISTENCIAS` cuando esas vistas están disponibles; los campos aún no identificados permanecen vacíos.
+- Al seleccionar un medicamento, el tercio inferior del panel muestra su ficha. Código y descripción se leen de `APADMIN_AB_ARTICULOS`; stock, mínimo, movimientos y último proveedor parten de `APADMIN_AC_EXISTENCIAS` (con compatibilidad para `AC1_EXISTENCIAS`). El nombre del proveedor se obtiene de `APADMIN_AD_PROVEEDORES` y el laboratorio de `DW_AB_LABORATORIOS`, cruzando clase y código.
+- Datos de la farmacia permite definir con cuántos meses se revisa la caducidad (3 por defecto) y si el stock caducado cuenta como efectivo. De forma provisional, todas las unidades de una ficha comparten su fecha de caducidad.
 - Los artículos sin ficha de existencias se marcan como «No trabajado». La pantalla pide verificar físicamente las unidades antes de considerar cumplida la tenencia y no presenta información de procedencia del listado.
 - Los formularios de edición comparten las acciones Cancelar y Guardar. Las ventanas de Configuración se cierran al confirmar un guardado correcto y conservan los datos introducidos si se produce un error.
 - Preferencias locales por usuario, conservadas entre versiones.
@@ -44,7 +45,7 @@ bash scripts/setup-cloud.sh
 python scripts/smoke-ui.py
 ```
 
-El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 89 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 90 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera capturas en artifacts/ui.
 
 Para editar la interfaz en navegador:
 

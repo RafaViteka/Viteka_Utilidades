@@ -90,7 +90,7 @@
           (ngModelChange)="status.set($event); filter()"
         >
           <option value="all">Todos</option>
-          <option value="not_checked">Sin consultar</option>
+          <option value="expiry">Revisar caducidad</option>
           <option value="shortfall">Falta</option>
           <option value="covered">Correcto</option>
         </select></label
@@ -190,10 +190,14 @@
                     class="row-state"
                     role="img"
                     [attr.data-status]="row.status"
-                    [title]="label(row.status)"
-                    [attr.aria-label]="label(row.status)"
-                    ><i [class]="'status-dot ' + row.status" aria-hidden="true"></i
-                  ></span>
+                    [title]="groupStateLabel(row)"
+                    [attr.aria-label]="groupStateLabel(row)"
+                    >@if (row.status === 'shortfall') {
+                      <i class="missing-count" [attr.data-missing]="(row.missing ?? row.minimum) >= row.minimum ? 'all' : 'partial'" aria-hidden="true">{{ number(row.missing ?? row.minimum) }}</i>
+                    } @else {
+                      <i [class]="'status-dot ' + row.status" aria-hidden="true"></i>
+                    }</span
+                  >
                 </td>
               </tr>
             } @empty {
@@ -231,12 +235,12 @@
               <tr>
                 <th scope="col" [attr.aria-sort]="articleOrder('code')">
                   <button (click)="sortArticles('code')">
-                    Código nacional {{ articleOrder('code') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
+                    C.N. {{ articleOrder('code') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
                   </button>
                 </th>
                 <th scope="col" [attr.aria-sort]="articleOrder('description')">
                   <button (click)="sortArticles('description')">
-                    Medicamento {{ articleOrder('description') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
+                    Descripción {{ articleOrder('description') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
                   </button>
                 </th>
                 <th scope="col" class="center" [attr.aria-sort]="articleOrder('stock')">
@@ -251,7 +255,11 @@
             </thead>
             <tbody>
               @for (a of visibleArticles(row); track a.code) {
-                <tr [class.article-chosen]="activeArticle()?.code === a.code">
+                <tr
+                  [class.article-chosen]="activeArticle()?.code === a.code"
+                  [class.article-inactive]="a.inactive"
+                  [title]="a.inactive ? 'Artículo de baja' + (a.inactiveOn ? ' desde ' + movementDate(a.inactiveOn) : '') : null"
+                >
                   <td class="article-code">{{ a.code }}</td>
                   <td class="article-description">
                     <div class="article-caption">
@@ -314,16 +322,16 @@
             </header>
             <dl>
               <div><dt>Stock actual</dt><dd>{{ number(article.stock) }}</dd></div>
-              <div><dt>Mínimo exigido del grupo</dt><dd>{{ row.minimum }}</dd></div>
+              <div><dt>Stock mín.</dt><dd>{{ article.minimumStock === null || article.minimumStock === undefined ? '' : number(article.minimumStock) }}</dd></div>
               <div><dt>Última compra</dt><dd>{{ detailDate(article.lastPurchase) }}</dd></div>
               <div><dt>Última venta</dt><dd>{{ detailDate(article.lastSale) }}</dd></div>
               <div><dt>Laboratorio</dt><dd>{{ article.laboratory || '' }}</dd></div>
               <div><dt>Último proveedor</dt><dd>{{ article.lastSupplier || '' }}</dd></div>
-              <div><dt>Fecha de caducidad</dt><dd>{{ detailDate(article.expiry) }}</dd></div>
-              <div><dt>PVP</dt><dd>{{ pvp(article.pvp) }}</dd></div>
+              <div><dt>Fecha de caducidad</dt><dd>{{ article.expiry ? expiryText(article) : '' }}</dd></div>
+              <div><dt>PVP</dt><dd>{{ article.pvp === null || article.pvp === undefined ? 'Sin precio' : pvp(article.pvp) }}</dd></div>
               <div><dt>Agrupación homogénea (AH)</dt><dd>{{ article.homogeneous || '' }}</dd></div>
               <div><dt>Código de barras</dt><dd>{{ article.barcode || '' }}</dd></div>
-              <div><dt>Tipo de artículo</dt><dd>{{ article.articleType || '' }}</dd></div>
+              <div><dt>Clasificación</dt><dd><span class="abc-badge" [attr.data-abc]="article.classification?.toUpperCase() || '-'">{{ article.classification?.toUpperCase() || '-' }}</span></dd></div>
             </dl>
           </section>
         }

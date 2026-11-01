@@ -524,6 +524,14 @@ try
         var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "A", 1) }, { "650002", new("650002", "B", 1) } };
         var row = TenenciaRules.Evaluate(tenenciaList, stocks).Single(); Require(row.Stock == 2 && row.Missing == 1 && row.Status == "shortfall"); stocks["650001"] = new("650001", "A", 3); Require(TenenciaRules.Evaluate(tenenciaList, stocks).Single().Status == "covered");
     });
+    Check("Expired stock follows the shared pharmacy policy", () =>
+    {
+        var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "A", 3) { Expiry = new DateOnly(2026, 10, 31) } }, { "650002", new("650002", "B", 1) { Expiry = new DateOnly(2027, 12, 31) } } };
+        var excluded = TenenciaRules.Evaluate(tenenciaList, stocks, null, null, 3, false, new DateOnly(2026, 11, 1)).Single();
+        Require(excluded.Stock == 1 && excluded.Missing == 2 && excluded.Articles.Single(a => a.Code == "650001").EffectiveStock == 0);
+        var included = TenenciaRules.Evaluate(tenenciaList, stocks, null, null, 3, true, new DateOnly(2026, 11, 1)).Single();
+        Require(included.Stock == 4 && included.Status == "covered" && included.Articles.Single(a => a.Code == "650001").EffectiveStock == 3);
+    });
     Check("Articles missing from NixFarma count as zero so no stock stays pending", () =>
     {
         var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "A", 10) } };
@@ -547,6 +555,10 @@ try
         var stocks = TenenciaStockQuery.ReadOnly(c, tx => { var schema = TenenciaStockQuery.Inspect(c, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APADMIN_AB_ARTICULOS" && schema.StockTable == "AC1_EXISTENCIAS" && schema.Stock == "\"EXI_ACTUALES\""); return TenenciaStockQuery.Read(c, tx, schema, ["650001", "650002"]); });
         Require(stocks["650001"].Description == "Artículo ficticio 650001" && stocks["650001"].Stock == 2 && stocks["650002"].Stock == 1 && c.Steps.Last() == "rollback");
         Require(c.Steps.Any(s => s.Contains("FROM APADMIN_AB_ARTICULOS WHERE")) && c.Steps.Any(s => s.Contains("FROM AC1_EXISTENCIAS WHERE")) && !c.Steps.Any(s => s.Contains("LIKE ?")));
+        using var enriched = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES", AuxiliaryNativeTables = true, ApadminStockTable = true };
+        var enrichedStocks = TenenciaStockQuery.ReadOnly(enriched, tx => TenenciaStockQuery.Read(enriched, tx, TenenciaStockQuery.Inspect(enriched, tx, nativeNixFarma: true), ["650001", "650002"]));
+        Require(enrichedStocks["650001"] is { MinimumStock: 3, LastSupplier: "Proveedor de prueba", Laboratory: "Laboratorio de prueba", Classification: "A", Pvp: 12.34m, Homogeneous: "Conjunto homogéneo de prueba", Barcode: "847000650001" } && enrichedStocks["650001"].LastPurchase == new DateOnly(2026,10,1) && enrichedStocks["650001"].LastSale == new DateOnly(2026,10,20) && enrichedStocks["650002"].Inactive);
+        Require(enriched.Steps.Any(s => s.Contains("FROM APADMIN_AC_EXISTENCIAS WHERE", StringComparison.Ordinal)));
         using var legacy = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES", LegacyNativeTables = true };
         TenenciaStockQuery.ReadOnly(legacy, tx => { var schema = TenenciaStockQuery.Inspect(legacy, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APPUL.AB_ARTICULOS" && schema.StockTable == "APPUL.AB_ARTICULOS_FICHA_E"); return true; });
     });

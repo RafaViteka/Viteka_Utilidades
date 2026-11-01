@@ -211,12 +211,12 @@ internal static class AccessHost
             {
                 // La última consulta se conserva en el servidor y la ven todos los puestos hasta la siguiente.
                 var last = catalogs.LoadLast(profile.Province, list.Version);
-                if (last is not null) return Results.Ok(last with { Message = "Última consulta guardada. Pulsa Consultar existencias para actualizarla.", Cached = true, Customized = customized, ProvinceName = SpanishProvinces.Items[profile.Province] });
-                return Results.Ok(new TenenciaResponse("ready", "Lista disponible. Pulsa Consultar para leer las existencias actuales.", profile.Province, list.Version, list.Source, Rows: TenenciaRules.Preview(list)) { ProvinceName = SpanishProvinces.Items[profile.Province], Customized = customized });
+                if (last is not null) return Results.Ok(last with { Message = "Última consulta guardada. Pulsa Consultar existencias para actualizarla.", Policy = last.Policy ?? new(profile.ExpiryReviewMonths, profile.CountExpiredStock), Cached = true, Customized = customized, ProvinceName = SpanishProvinces.Items[profile.Province] });
+                return Results.Ok(new TenenciaResponse("ready", "Lista disponible. Pulsa Consultar para leer las existencias actuales.", profile.Province, list.Version, list.Source, Rows: TenenciaRules.Preview(list)) { ProvinceName = SpanishProvinces.Items[profile.Province], Policy = new(profile.ExpiryReviewMonths, profile.CountExpiredStock), Customized = customized });
             }
-            var response = await oracle.TenenciaAsync(profile.Province, list, false, context.RequestAborted);
+            var response = await oracle.TenenciaAsync(profile.Province, list, false, context.RequestAborted, profile.ExpiryReviewMonths, profile.CountExpiredStock);
             if (!AccessPolicy.CanUse(Agent(context).RequireUser(), UtilityCatalog.TenenciaId, UtilityCatalog.Items)) throw new AccessDeniedException();
-            var final = response with { ProvinceName = SpanishProvinces.Items[profile.Province], ListVersion = list.Version, Source = list.Source, Rows = response.Code == "ok" ? response.Rows : TenenciaRules.Preview(list), Customized = customized };
+            var final = response with { ProvinceName = SpanishProvinces.Items[profile.Province], ListVersion = list.Version, Source = list.Source, Rows = response.Code == "ok" ? response.Rows : TenenciaRules.Preview(list), Policy = response.Policy ?? new(profile.ExpiryReviewMonths, profile.CountExpiredStock), Customized = customized };
             catalogs.SaveLast(profile.Province, final);
             context.Items["audit-result"]=final.Code=="ok"?"ok":"error";
             context.Items["audit-note"]=final.Code=="ok"?final.Rows!.Length+" grupos · "+final.ListVersion:"Diagnóstico: "+final.Code;

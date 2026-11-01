@@ -11,6 +11,8 @@ interface Article {
   code: string;
   description: string;
   stock: number | null;
+  effectiveStock?: number | null;
+  minimumStock?: number | null;
   issue?: string;
   expiry?: string | null;
   lastPurchase?: string | null;
@@ -20,7 +22,9 @@ interface Article {
   pvp?: number | string | null;
   homogeneous?: string | null;
   barcode?: string | null;
-  articleType?: string | null;
+  classification?: string | null;
+  inactive?: boolean;
+  inactiveOn?: string | null;
 }
 export interface TenenciaFields {
   expiry: boolean;
@@ -55,6 +59,7 @@ interface Result {
   checkedAt?: string;
   rows?: Row[];
   fields?: TenenciaFields;
+  policy?: { expiryReviewMonths: number; countExpiredStock: boolean };
   cached?: boolean;
   customized?: boolean;
 }
@@ -104,12 +109,13 @@ export class TenenciaComponent implements OnInit {
   readonly rows = computed(() => this.result()?.rows ?? []);
   readonly covered = computed(() => this.rows().filter((r) => r.status === 'covered').length);
   readonly shortfalls = computed(() => this.rows().filter((r) => r.status === 'shortfall').length);
+  readonly expiryReviewMonths = computed(() => this.result()?.policy?.expiryReviewMonths ?? 3);
   readonly filtered = computed(() => {
     const q = this.search().trim().toLocaleLowerCase('es');
     return this.rows()
       .filter(
         (r) =>
-          (this.status() === 'all' || r.status === this.status()) &&
+          (this.status() === 'all' || (this.status() === 'expiry' ? this.needsExpiryReview(r) : r.status === this.status())) &&
           (!q ||
             r.name.toLocaleLowerCase('es').includes(q) ||
             (r.classification ?? '').toLocaleLowerCase('es').includes(q) ||
@@ -418,10 +424,10 @@ export class TenenciaComponent implements OnInit {
   print() {
     return this.openReport('print');
   }
-  /** Caducidad solo para artículos con existencias: verde > 6 meses, amarillo ≤ 6 meses, rojo caducado, gris sin fecha. */
+  /** Caducidad solo para artículos con existencias: umbral definido por la farmacia. */
   expiryState(a: Article): ExpiryState | null {
     if (!((a.stock ?? 0) > 0)) return null;
-    return expiryState(a.expiry);
+    return expiryState(a.expiry, this.queryDate(), this.expiryReviewMonths());
   }
   expiryText(a: Article) {
     if (!a.expiry) return 'Sin fecha';
@@ -431,9 +437,9 @@ export class TenenciaComponent implements OnInit {
   expiryTitle(a: Article) {
     const state = this.expiryState(a);
     return state === 'ok'
-      ? 'Caducidad correcta: más de 6 meses'
+      ? `Caducidad correcta: más de ${this.expiryReviewMonths()} meses`
       : state === 'soon'
-        ? 'Caduca en 6 meses o menos'
+        ? `Caduca en ${this.expiryReviewMonths()} meses o menos`
         : state === 'expired'
           ? 'Caducado'
           : 'Sin fecha de caducidad en la ficha';
@@ -445,6 +451,20 @@ export class TenenciaComponent implements OnInit {
   }
   detailDate(s?: string | null) {
     return s ? this.movementDate(s) : '';
+  }
+  private queryDate() {
+    return this.result()?.checkedAt ? new Date(this.result()!.checkedAt!) : new Date();
+  }
+  needsExpiryReview(row: Row) {
+    return row.articles.some((a) => (a.stock ?? 0) > 0 && this.expiryState(a) !== 'ok');
+  }
+  groupStateLabel(row: Row) {
+    if (row.status === 'covered') return 'Correcto';
+    if (row.status === 'not_checked') return 'Sin consultar';
+    const missing = row.missing ?? row.minimum;
+    return missing >= row.minimum
+      ? `Faltan todas las unidades: ${this.number(missing)}`
+      : `Faltan ${this.number(missing)} unidades`;
   }
   pvp(value?: number | string | null) {
     if (value === null || value === undefined || value === '') return '';
@@ -708,14 +728,14 @@ export class TenenciaComponent implements OnInit {
   }
 }
 
-export function expiryState(expiry?: string | null, today = new Date()): ExpiryState {
+export function expiryState(expiry?: string | null, today = new Date(), months = 3): ExpiryState {
   if (!expiry) return 'none';
   const [y, m, d] = expiry.split('-').map(Number);
   const date = new Date(y, m - 1, d);
   const start = new Date(today.getFullYear(), today.getMonth(), today.getDate());
   if (date < start) return 'expired';
   const limit = new Date(start);
-  limit.setMonth(limit.getMonth() + 6);
+  limit.setMonth(limit.getMonth() + months);
   return date <= limit ? 'soon' : 'ok';
 }
 /** Selección de artículos visibles (ver visibleArticles). */

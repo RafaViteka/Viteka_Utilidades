@@ -10,6 +10,8 @@ export interface PharmacyProfile {
   phone: string;
   address: string;
   postcode: string;
+  expiryReviewMonths: number;
+  countExpiredStock: boolean;
 }
 @Component({
   selector: 'viteka-pharmacy-settings',
@@ -43,6 +45,23 @@ export interface PharmacyProfile {
         ><label>Teléfono<input name="phone" [(ngModel)]="profile.phone" maxlength="40" type="tel" /></label>
       </div>
       <label>Correo electrónico<input name="email" [(ngModel)]="profile.email" maxlength="200" type="email" /></label>
+      <fieldset class="tenencia-policy">
+        <legend>Criterio de tenencia y caducidad</legend>
+        <label
+          >Revisar artículos que caduquen en los próximos meses<input
+            name="expiryReviewMonths"
+            [(ngModel)]="profile.expiryReviewMonths"
+            type="number"
+            min="1"
+            max="24"
+            required
+        /></label>
+        <label class="check-row"
+          ><input name="countExpiredStock" [(ngModel)]="profile.countExpiredStock" type="checkbox" />Contabilizar
+          los artículos caducados como existencias efectivas</label
+        >
+        <p>Este criterio se comparte con todos los puestos y queda registrado con cada consulta y cotejo.</p>
+      </fieldset>
       @if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       }
@@ -63,6 +82,11 @@ export interface PharmacyProfile {
         gap: 7px;
         font-size: 13px;
       }
+      .tenencia-policy { display: grid; gap: 12px; margin: 8px 0 0; padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
+      .tenencia-policy legend { padding: 0 6px; font-weight: 650; }
+      .tenencia-policy label:not(.check-row) { display: grid; grid-template-columns: minmax(0, 1fr) 96px; align-items: center; gap: 16px; }
+      .tenencia-policy p { margin: 0; color: var(--muted); font-size: var(--fs-xs); }
+      .check-row { display: flex; align-items: center; gap: 8px; }
       @media (max-width: 600px) {
         .pharmacy-fields {
           grid-template-columns: 1fr;
@@ -81,7 +105,7 @@ export class PharmacySettingsComponent implements OnInit {
   readonly error = signal('');
   readonly message = signal('');
   readonly provinces = signal<{ code: string; name: string }[]>([]);
-  profile: PharmacyProfile = { name: '', province: '', town: '', email: '', phone: '', address: '', postcode: '' };
+  profile: PharmacyProfile = { name: '', province: '', town: '', email: '', phone: '', address: '', postcode: '', expiryReviewMonths: 3, countExpiredStock: false };
   async ngOnInit() {
     try {
       const r = await this.bridge.call<{

@@ -76,9 +76,11 @@ Las tablas de grupos y medicamentos comparten cabeceras de 36 píxeles y filas d
 
 Los formularios utilizan un pie común con Cancelar a la izquierda y Guardar a la derecha. En Configuración, un guardado confirmado cierra la ventana; un error la mantiene abierta con los campos introducidos. Cancelar descarta el borrador local.
 
-Al seleccionar un medicamento, el tercio inferior del panel derecho presenta código nacional, descripción, stock actual, mínimo exigido del grupo, última compra, última venta, laboratorio, último proveedor, caducidad, PVP, agrupación homogénea, código de barras y tipo de artículo. Los campos cuyo origen aún no está confirmado quedan vacíos. No se infieren ni se mezclan datos de otras columnas.
+Al seleccionar un medicamento, el tercio inferior del panel derecho presenta código nacional, descripción, stock actual, stock mínimo, última compra, última venta, laboratorio, último proveedor, caducidad, PVP, agrupación homogénea, código de barras y clasificación ABC. Los campos que no existan en la instalación quedan vacíos. No se infieren ni se mezclan datos de otras columnas.
 
-La consulta prioriza `APADMIN_AB_ARTICULOS` para código y descripción y `AC1_EXISTENCIAS` para existencias, con compatibilidad de reserva para las vistas usadas por revisiones anteriores. La ausencia de ficha se etiqueta «No trabajado» y cuenta como cero. Se retira de la pantalla la procedencia editorial del listado y se recuerda realizar un recuento visual antes de considerar cumplido el mínimo.
+La consulta prioriza `APADMIN_AB_ARTICULOS` para código, descripción y baja; y `APADMIN_AC_EXISTENCIAS` para existencias, stock mínimo, FUC, FUV y `PROV_ULT_COMPRA`, con `AC1_EXISTENCIAS` como compatibilidad. El proveedor se resuelve en `APADMIN_AD_PROVEEDORES`. La ficha ampliada usa `APADMIN_AB_ARTICULOS_FICHA_E`; el laboratorio se resuelve en `DW_AB_LABORATORIOS` mediante `ART_CLASE/CLASE` y `ART_LAB_CODIGO/CODIGO`. También se consultan la agrupación homogénea andaluza y el código de barras en sus tablas confirmadas. Todas las lecturas se ejecutan dentro de una transacción Oracle de solo lectura.
+
+Datos de la farmacia define el plazo de revisión de caducidad, entre 1 y 24 meses, con 3 meses por defecto, y si las unidades caducadas se contabilizan como existencias efectivas. Hasta disponer de lotes, todas las unidades toman la fecha de caducidad de la ficha: permite advertir y aplicar la política compartida, pero no repartir cantidades entre fechas distintas. Un artículo con existencias y sin fecha aparece en «Revisar caducidad». La ausencia de ficha se etiqueta «No trabajado» y cuenta como cero.
 
 ## Validación
 

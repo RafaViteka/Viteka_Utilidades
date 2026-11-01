@@ -51,9 +51,9 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
-Añade una ficha en el tercio inferior del panel de medicamentos al seleccionar un artículo. Lee código y descripción de APADMIN_AB_ARTICULOS y existencias de AC1_EXISTENCIAS cuando están disponibles, conservando compatibilidad con las vistas anteriores. Los campos todavía no vinculados se muestran vacíos. Los artículos sin ficha se identifican como «No trabajado» con un icono específico.
+Completa la ficha del artículo con stock mínimo, FUC, FUV y último proveedor desde APADMIN_AC_EXISTENCIAS; resuelve el nombre en APADMIN_AD_PROVEEDORES. Obtiene el laboratorio cruzando ART_CLASE y ART_LAB_CODIGO con DW_AB_LABORATORIOS. Añade clasificación ABC, PVP, agrupación homogénea, código de barras y estado de baja cuando las tablas están disponibles. Conserva compatibilidad con AC1_EXISTENCIAS.
 
-Retira de la pantalla la procedencia del listado y añade un recordatorio para recontar visualmente las unidades antes de considerar cumplido el mínimo. Incluye también las tablas compactas, la retirada de la búsqueda terapéutica del editor y los formularios estandarizados de 0.18.3.
+Datos de la farmacia permite elegir el plazo de revisión de caducidad, tres meses por defecto, y si el stock caducado cuenta como efectivo. Mientras no exista una relación de lotes, todas las unidades toman la caducidad de la ficha. La pantalla incorpora el filtro Revisar caducidad, abrevia C.N. y muestra Descripción. Los grupos con faltas muestran el número de unidades pendientes.
 
 Incluye las correcciones del actualizador incorporadas en 0.18.2. Desde 0.18.2 esta revisión puede instalarse desde Configuración. Las versiones 0.18.0 y 0.18.1 requieren ejecutar manualmente una revisión corregida una vez sobre la instalación existente, sin desinstalar. Conserva el ID, las cuentas y los datos propios de pruebas; la edición habitual utiliza otro servicio y otras carpetas.
 

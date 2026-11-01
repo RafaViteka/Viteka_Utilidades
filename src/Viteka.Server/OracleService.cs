@@ -50,7 +50,7 @@ internal sealed class OracleService(string directory)
         }
         finally { gate.Release(); }
     }
-    internal async Task<Viteka.Contracts.TenenciaResponse> TenenciaAsync(string province, Viteka.Contracts.TenenciaList? list, bool inspectOnly, CancellationToken ct)
+    internal async Task<Viteka.Contracts.TenenciaResponse> TenenciaAsync(string province, Viteka.Contracts.TenenciaList? list, bool inspectOnly, CancellationToken ct, int expiryReviewMonths = 3, bool countExpiredStock = false)
     {
         if (tester.IsRunning || !await gate.WaitAsync(0, ct)) return new("busy", "Hay una operación Oracle en curso.", province);
         var operation = Task.Run(() =>
@@ -70,7 +70,7 @@ internal sealed class OracleService(string directory)
                     var resolution = Viteka.Core.TenenciaArticleResolver.Resolve(connection, tx, schema, list, deadline.Token);
                     var codes = resolution.Groups.Values.SelectMany(c => c).Distinct().ToArray();
                     var stocks = codes.Length == 0 ? new Dictionary<string, Viteka.Contracts.StockArticle>() : Viteka.Core.TenenciaStockQuery.Read(connection, tx, schema, codes, deadline.Token);
-                    return new Viteka.Contracts.TenenciaResponse("ok", "Consulta de solo lectura completada.", province, list.Version, list.Source, DateTimeOffset.UtcNow, Viteka.Core.TenenciaRules.Evaluate(list, stocks, resolution.Groups, resolution.Notes)) { Fields = schema.Fields };
+                    return new Viteka.Contracts.TenenciaResponse("ok", "Consulta de solo lectura completada.", province, list.Version, list.Source, DateTimeOffset.UtcNow, Viteka.Core.TenenciaRules.Evaluate(list, stocks, resolution.Groups, resolution.Notes, expiryReviewMonths, countExpiredStock)) { Fields = schema.Fields, Policy = new(expiryReviewMonths, countExpiredStock) };
                 });
             }
             catch (OperationCanceledException) { return new("timeout", "La lectura se ha cancelado o ha agotado el tiempo disponible.", province); }
