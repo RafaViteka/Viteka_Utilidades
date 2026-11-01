@@ -208,31 +208,6 @@
             <v-icon name="search" />{{ searching() ? 'Buscando…' : 'Buscar en Nixfarma' }}
           </button>
         </form>
-        <button class="text-button" (click)="setMode('therapeutic.groups')">Por grupo terapéutico / ATC</button>
-        @if (mode() === 'therapeutic.groups') {
-          <label
-            >Código o descripción terapéutica<input
-              aria-label="Buscar clasificación terapéutica"
-              [ngModel]="searchText()"
-              (ngModelChange)="searchText.set($event)" /></label
-          ><button (click)="search()" [disabled]="searching()">Comprobar fuente y buscar grupos</button>
-        }
-        @if (therapeuticChoice(); as g) {
-          <p>
-            {{ g.code }} · {{ g.description }} · Nivel {{ g.level ?? 'sin informar' }} · Clase {{ g.class }} · Tipo
-            {{ g.type }} · {{ g.source }}
-          </p>
-          <label
-            ><input type="checkbox" [ngModel]="descendants()" (ngModelChange)="descendants.set($event)" />Incluir
-            niveles descendientes</label
-          ><button (click)="search()" [disabled]="searching()">Consultar artículos del grupo</button>
-        }
-        @for (g of classifications(); track $index) {
-          <button class="setting-row" (click)="chooseClassification(g)">
-            {{ g.code }} · {{ g.description }} · Nivel {{ g.level ?? 'sin informar' }} · Padre
-            {{ g.parent || 'raíz' }} · {{ g.type }} / {{ g.class }}
-          </button>
-        }
         @if (searchMessage()) {
           <p class="search-message" role="status">{{ searchMessage() }}</p>
         }
@@ -281,9 +256,7 @@
           </div>
           <div class="add-footer">
             <span>{{ picked().length }} seleccionados</span>
-            <button class="primary" (click)="addPicked()" [disabled]="busy() || !picked().length">
-              <v-icon name="plus" />Añadir al grupo
-            </button>
+            <viteka-edit-actions [submit]="false" [busy]="busy()" [saveDisabled]="!picked().length" (save)="addPicked()" (cancel)="pickAll(false)" />
           </div>
         }
       </div>
@@ -294,7 +267,7 @@
 </div>
 
 @if (draft(); as d) {
-  <div class="modal-overlay" (click)="draft.set(null)">
+  <div class="modal-overlay" (click)="closeDraft()">
     <form
       class="dialog editor-dialog"
       role="dialog"
@@ -305,7 +278,7 @@
     >
       <div class="dialog-top">
         <h2>{{ d.id ? 'Editar grupo' : 'Nuevo grupo' }}</h2>
-        <button type="button" aria-label="Cerrar" (click)="draft.set(null)"><v-icon name="close" /></button>
+        <button type="button" aria-label="Cerrar" (click)="closeDraft()"><v-icon name="close" /></button>
       </div>
       <div class="draft-grid">
         <label
@@ -346,15 +319,12 @@
       @if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       }
-      <div class="dialog-actions">
-        <button type="button" class="text-button" (click)="draft.set(null)">Cancelar</button>
-        <button class="primary" type="submit" [disabled]="busy() || !d.name.trim()">Guardar</button>
-      </div>
+      <viteka-edit-actions [busy]="busy()" [saveDisabled]="!d.name.trim()" (cancel)="closeDraft()" />
     </form>
   </div>
 }
 @if (importing()) {
-  <div class="modal-overlay" (click)="importing.set(false)">
+  <div class="modal-overlay" (click)="closeImport()">
     <section
       class="dialog import-dialog"
       role="dialog"
@@ -364,7 +334,7 @@
     >
       <div class="dialog-top">
         <h2>Importar códigos</h2>
-        <button aria-label="Cerrar" (click)="importing.set(false)"><v-icon name="close" /></button>
+        <button aria-label="Cerrar" (click)="closeImport()"><v-icon name="close" /></button>
       </div>
       <p class="hint">
         Pega filas desde Excel con el formato exportado (Código grupo; Grupo; Mínimo; CN; Descripción) o filas cortas
@@ -383,12 +353,7 @@
       @if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       }
-      <div class="dialog-actions">
-        <button class="text-button" (click)="importing.set(false)">Cerrar</button>
-        <button class="primary" (click)="runImport()" [disabled]="busy() || !importText().trim()">
-          {{ busy() ? 'Importando…' : 'Importar' }}
-        </button>
-      </div>
+      <viteka-edit-actions [submit]="false" [busy]="busy()" [saveDisabled]="!importText().trim()" (save)="runImport()" (cancel)="closeImport()" />
     </section>
   </div>
 }

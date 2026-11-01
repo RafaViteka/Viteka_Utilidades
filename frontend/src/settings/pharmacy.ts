@@ -1,6 +1,7 @@
 import { Component, inject, signal, output, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DesktopBridge } from '../bridge';
+import { EditActionsComponent } from '../edit-actions';
 export interface PharmacyProfile {
   name: string;
   province: string;
@@ -13,7 +14,7 @@ export interface PharmacyProfile {
 @Component({
   selector: 'viteka-pharmacy-settings',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, EditActionsComponent],
   template: ` <p>
       Estos datos se comparten con todos los puestos. La provincia determina la lista de tenencia que se comprobará.
     </p>
@@ -48,12 +49,7 @@ export interface PharmacyProfile {
       @if (message()) {
         <p role="status">{{ message() }}</p>
       }
-      <div class="actions">
-        <button type="button" class="text-button" (click)="cancel.emit()" [disabled]="busy()">Cancelar</button
-        ><button type="submit" class="primary" [disabled]="busy() || loading()">
-          {{ busy() ? 'Guardando…' : 'Guardar datos' }}
-        </button>
-      </div>
+      <viteka-edit-actions [busy]="busy()" [saveDisabled]="loading()" (cancel)="cancel.emit()" />
     </form>`,
   styles: [
     `

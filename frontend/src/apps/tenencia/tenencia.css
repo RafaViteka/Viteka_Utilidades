@@ -185,25 +185,31 @@ html[data-theme='dark'] .status-dot.covered {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
-  padding: 8px 10px;
+  gap: 8px;
+  padding: 4px 8px;
   background: var(--surface);
   border-bottom: 1px solid var(--line);
-  min-height: 48px;
+  height: 36px;
+  min-height: 36px;
   flex-shrink: 0;
 }
 .panel-heading h2 {
   font-size: var(--fs-xs);
   letter-spacing: 0;
   margin: 0;
-  line-height: 1.4;
-  overflow-wrap: anywhere;
+  line-height: 20px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.panel-title { display: flex; align-items: center; gap: 10px; min-width: 0; flex: 1; }
+.panel-title h2 { flex: 1; min-width: 0; }
+.panel-title p { flex: none; white-space: nowrap; }
 .panel-heading p,
 .panel-heading small {
   font-size: var(--fs-xs);
   color: var(--muted);
-  margin-top: 3px;
+  margin: 0;
 }
 .panel-heading .text-button {
   flex: none;
@@ -262,7 +268,7 @@ thead th {
   padding: 6px 8px;
 }
 .groups-table td:first-child {
-  padding: 0;
+  padding: 4px 8px;
   border-left: 3px solid transparent;
 }
 .groups-table .chosen td {
@@ -275,20 +281,21 @@ thead th {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 8px;
+  padding: 0;
+  min-height: 24px;
   background: transparent;
   border: 0;
   color: var(--ink);
 }
 .group-button strong {
   font-size: var(--fs-xs);
-  line-height: 1.35;
+  line-height: 20px;
   font-weight: 500;
-  /* Nombres largos: dos líneas como máximo; el nombre completo aparece al pasar el ratón y en Información. */
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
+  /* El nombre completo sigue disponible en el tooltip, el detalle y en Información. */
+  display: block;
+  white-space: nowrap;
   overflow: hidden;
+  text-overflow: ellipsis;
 }
 .summary-chip {
   display: inline-flex;
@@ -326,9 +333,31 @@ thead th {
   text-align: left;
   width: 100%;
   font-size: var(--fs-xs);
-  line-height: 1.5;
-  overflow-wrap: anywhere;
+  line-height: 20px;
+  min-height: 24px;
+  display: block;
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
+.article-caption { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.article-caption .article-select { flex: 1; }
+.article-warning { display: inline-flex; color: var(--warning-strong); flex: none; }
+.article-warning v-icon { width: 14px; height: 14px; }
+.groups-table, .tenencia-medications table { table-layout: fixed; }
+.groups-table .code-column { width: 76px; }
+.groups-table .minimum-column { width: 52px; }
+.groups-table .status-column { width: 64px; }
+.tenencia-medications .article-code-column { width: 112px; }
+.tenencia-medications .stock-column { width: 100px; }
+.tenencia-medications .expiry-column { width: 96px; }
+.groups-table th, .groups-table td, .tenencia-medications th, .tenencia-medications td {
+  height: 32px;
+  padding: 3px 8px;
+  line-height: 20px;
+}
+.tenencia-medications th button, .groups-table th button { padding: 0; min-height: 24px; }
 .article-chosen td {
   background: var(--active);
 }

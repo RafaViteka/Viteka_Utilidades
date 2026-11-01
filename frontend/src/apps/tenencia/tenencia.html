@@ -143,6 +143,7 @@
       </div>
       <div class="group-list" tabindex="0" aria-label="Lista de grupos">
         <table class="groups-table">
+          <colgroup><col class="code-column" /><col /><col class="minimum-column" /><col class="status-column" /></colgroup>
           <thead>
             <tr>
               <th scope="col" class="group-code" [attr.aria-sort]="groupOrder('classification')">
@@ -207,18 +208,16 @@
     <section class="tenencia-medications" aria-label="Medicamentos del grupo">
       @if (activeRow(); as row) {
         <div class="panel-heading">
-          <div>
-            <h2>
+          <div class="panel-title">
+            <h2 [title]="(row.classification ? row.classification + ' · ' : '') + row.name">
               @if (row.classification) {
                 <span class="classification-code">{{ row.classification }} · </span>
               }
               {{ row.name }}
             </h2>
-            <p>
-              {{ row.articles.length }} medicamentos asociados
-              @if (row.articles.length > visibleArticles(row).length) {
-                · se muestran {{ visibleArticles(row).length }}: con existencias y últimas compras o ventas
-              }
+            <p [title]="row.articles.length + ' medicamentos asociados'">
+              @if (row.articles.length > visibleArticles(row).length) { {{ visibleArticles(row).length }} de }
+              {{ row.articles.length }} artículos
             </p>
           </div>
           <button class="text-button" (click)="detail(row)" [attr.aria-label]="'Ver detalle de ' + row.name">
@@ -227,6 +226,7 @@
         </div>
         <div class="tenencia-table" tabindex="0" aria-label="Lista de medicamentos asociados">
           <table>
+            <colgroup><col class="article-code-column" /><col /><col class="stock-column" />@if (showExpiry()) { <col class="expiry-column" /> }</colgroup>
             <thead>
               <tr>
                 <th scope="col" [attr.aria-sort]="articleOrder('code')">
@@ -253,9 +253,11 @@
               @for (a of visibleArticles(row); track a.code) {
                 <tr [class.article-chosen]="activeArticle()?.code === a.code">
                   <td class="article-code">{{ a.code }}</td>
-                  <td>
+                  <td class="article-description">
+                    <div class="article-caption">
                     <button
                       class="article-select"
+                      [title]="a.description"
                       [attr.aria-label]="'Seleccionar artículo ' + a.code"
                       [attr.aria-pressed]="activeArticle()?.code === a.code"
                       (click)="chooseArticle(a)"
@@ -265,8 +267,9 @@
                       {{ a.description }}
                     </button>
                     @if (a.issue && a.issue !== 'not_checked') {
-                      <small>{{ issue(a) }}</small>
+                      <span class="article-warning" role="img" [title]="issue(a)" [attr.aria-label]="issue(a)"><v-icon name="warning" /></span>
                     }
+                    </div>
                   </td>
                   <td class="center drug-stock" [attr.title]="issue(a) || null">
                     {{ row.status === 'not_checked' ? 'Sin consultar' : number(a.stock) }}

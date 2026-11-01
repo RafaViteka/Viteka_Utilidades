@@ -1,4 +1,4 @@
-# Viteka Utilidades · Desarrollo 0.18.2
+# Viteka Utilidades · Desarrollo 0.18.3
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
@@ -21,6 +21,8 @@ Actualizaciones tiene una pantalla propia dentro de Configuración: búsqueda ca
 - Menú lateral plegable, logotipo inferior sin eslogan y apariencia clara/oscura/automática persistente.
 - Isotipo bicolor transparente original en ventana, ejecutable e instalador.
 - Aplicaciones incluye Tenencia obligatoria:83 grupos de Málaga del Excel, 2.089 asociaciones explícitas por CN de los vídeos y lectura de stock de Nixfarma. Favoritos y Auditoría conservan estados vacíos.
+- Tenencia muestra grupos y medicamentos en tablas compactas y alineadas. El editor busca por código nacional, descripción o agrupación homogénea, sin búsqueda terapéutica visible.
+- Los formularios de edición comparten las acciones Cancelar y Guardar. Las ventanas de Configuración se cierran al confirmar un guardado correcto y conservan los datos introducidos si se produce un error.
 - Preferencias locales por usuario, conservadas entre versiones.
 - Canal de pruebas GitHub: búsqueda, descarga verificada e instalación desatendida (sin asistente; solo la confirmación UAC de Windows). Viteka se reinicia sola y recupera la sesión sin pedir la contraseña.
 - Instalador x64 autocontenido para .NET, con bootstrapper de WebView2 verificado como Microsoft. Si falta el runtime, su instalación inicial puede requerir internet.

@@ -66,9 +66,15 @@ Un monitor WPF se ejecuta desde una copia temporal autocontenida, verifica nueva
 
 ## Clasificación terapéutica
 
-El editor ofrece una búsqueda condicional, separada de agrupación homogénea. Comprueba metadatos de AB_ARTICULOS y AB_GRUPOS_TERAPEUTICOS y coincidencia de GTE_CODIGO/CODIGO, CLASE y GTETIP antes de usar el enlace. Niveles, padres, clase y tipo se devuelven de la fuente; no se inventan niveles ni se infieren grupos humanos a partir de otro tipo.
+La búsqueda terapéutica se ha retirado de la interfaz de edición. El editor ofrece código nacional, descripción y agrupación homogénea. La capacidad de diagnóstico de metadatos terapéuticos permanece en el servicio para futuras comprobaciones técnicas, pero no forma parte del flujo de asociación de artículos de esta revisión.
 
-La selección identifica código/clase/tipo y exige unicidad. Incluir descendientes es explícito y usa la jerarquía GTEPAD con protección de ciclos y límites. Las coincidencias se seleccionan antes de añadir; el editor no duplica CN ya asociados. No se ha verificado físicamente esta relación en el servidor del usuario: un esquema distinto, permisos insuficientes o ninguna coincidencia producen diagnóstico, no resultados supuestos. BOTPLUS no se utiliza como relación alternativa no confirmada.
+Las coincidencias se seleccionan antes de añadir y el editor no duplica CN ya asociados. No se ha verificado físicamente la relación terapéutica en el servidor del usuario; BOTPLUS tampoco se utiliza como relación alternativa no confirmada.
+
+## Interfaz de edición
+
+Las tablas de grupos y medicamentos comparten cabeceras de 36 píxeles y filas de 32, con columnas alineadas, texto en una línea y acceso al contenido completo mediante detalle o ayuda contextual. Las incidencias de artículo se indican con un icono para mantener la densidad de la tabla.
+
+Los formularios utilizan un pie común con Cancelar a la izquierda y Guardar a la derecha. En Configuración, un guardado confirmado cierra la ventana; un error la mantiene abierta con los campos introducidos. Cancelar descarta el borrador local.
 
 ## Validación
 

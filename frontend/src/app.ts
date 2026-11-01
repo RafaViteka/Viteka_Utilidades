@@ -12,6 +12,7 @@ import {
   NixFarmaResponse,
 } from './bridge';
 import { AuditComponent } from './settings/audit';
+import { EditActionsComponent } from './edit-actions';
 import { IconComponent } from './icon';
 import { PharmacySettingsComponent } from './settings/pharmacy';
 import { TenenciaComponent } from './apps/tenencia/tenencia';
@@ -33,7 +34,7 @@ const SETTINGS_PAGES: Page[] = ['Configuración', 'Mi cuenta', 'Usuarios', 'Util
 @Component({
   selector: 'viteka-app',
   standalone: true,
-  imports: [IconComponent, FormsModule, PharmacySettingsComponent, TenenciaComponent, AuditComponent],
+  imports: [IconComponent, FormsModule, PharmacySettingsComponent, TenenciaComponent, AuditComponent, EditActionsComponent],
   templateUrl: './app.html',
 })
 export class AppComponent {
@@ -834,6 +835,10 @@ export class AppComponent {
       this.busy.set(false);
     }
   }
+  pharmacySaved() {
+    this.closeModals(true);
+    this.notify('Datos de la farmacia guardados.');
+  }
   async setStart(e: Event) {
     const enabled = (e.target as HTMLInputElement).checked;
     try {
@@ -998,6 +1003,10 @@ export class AppComponent {
             ? 'Conexión guardada. Pulsa Probar conexión para verificarla.'
             : 'Se ha eliminado la conexión guardada en el servidor.',
         );
+      }
+      if (action === 'configure' && r.state?.configured && !r.busy) {
+        if (this.settingDialog() === 'connection') this.closeModals(true);
+        this.notify('Conexión guardada.');
       }
     } catch (e) {
       this.nixMessage.set(this.message(e));

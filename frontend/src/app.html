@@ -78,8 +78,7 @@
         @if (error()) {
           <p class="error" role="alert">{{ error() }}</p>
         }
-        <button class="primary" type="submit" [disabled]="busy()">Guardar contraseña</button
-        ><button class="text-button" type="button" (click)="logout()" [disabled]="busy()">Cerrar sesión</button>
+        <viteka-edit-actions [busy]="busy()" (cancel)="logout()" />
       </form>
     </section>
   </div>
@@ -483,12 +482,7 @@
                 }
                 @if (target.role === 'User' && canEdit(target)) {
                   <p class="hint">Al guardar se cerrarán sus sesiones anteriores. Los favoritos no conceden acceso.</p>
-                  <div class="actions">
-                    <button class="primary" (click)="saveGrants()" [disabled]="busy()">Guardar permisos</button
-                    ><button class="text-button" (click)="selectGrantUser(target.id)" [disabled]="busy()">
-                      Descartar cambios
-                    </button>
-                  </div>
+                  <viteka-edit-actions [submit]="false" [busy]="busy()" (save)="saveGrants()" (cancel)="selectGrantUser(target.id)" />
                 }
               }
             </section>
@@ -852,10 +846,7 @@
         @if (error()) {
           <p class="error" role="alert">{{ error() }}</p>
         }
-        <div class="actions">
-          <button type="submit" class="primary" [disabled]="busy()">Guardar cuenta</button
-          ><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button>
-        </div>
+        <viteka-edit-actions [busy]="busy()" (cancel)="closeModals()" />
       </form>
     </section>
   </div>
@@ -891,7 +882,7 @@
         @if (error()) {
           <p class="error" role="alert">{{ error() }}</p>
         }
-        <button type="submit" class="primary" [disabled]="busy()">Restablecer contraseña</button>
+        <viteka-edit-actions [busy]="busy()" (cancel)="closeModals()" />
       </form>
     </section>
   </div>
@@ -961,8 +952,8 @@
               maxlength="128"
               required /></label
           ><small>Entre 3 y 128 caracteres.</small
-          ><button class="primary" type="submit" [disabled]="busy()">Cambiar mi contraseña</button
-          ><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button>
+          >
+          <viteka-edit-actions [busy]="busy()" (cancel)="closeModals()" />
         </form>
       }
       @if (settingDialog() === 'appearance' || settingDialog() === 'startup') {
@@ -991,14 +982,11 @@
               />Abrir Favoritos al iniciar</label
             >
           }
-          <div class="actions">
-            <button type="submit" class="primary" [disabled]="busy()">Guardar cambios</button
-            ><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button>
-          </div>
+          <viteka-edit-actions [busy]="busy()" (cancel)="closeModals()" />
         </form>
       }
       @if (settingDialog() === 'pharmacy' && user()?.canManageUsers) {
-        <viteka-pharmacy-settings (working)="busy.set($event)" (cancel)="closeModals()" />
+        <viteka-pharmacy-settings (working)="busy.set($event)" (saved)="pharmacySaved()" (cancel)="closeModals()" />
       }
       @if (settingDialog() === 'connection' && user()?.canConfigure) {
         <section class="settings nixfarma-settings" aria-label="Conexión a Nixfarma">

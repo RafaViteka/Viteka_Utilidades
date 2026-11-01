@@ -2,6 +2,7 @@ import { Component, inject, signal, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DesktopBridge } from '../../bridge';
 import { toBase64 } from './xlsx';
+import { EditActionsComponent } from '../../edit-actions';
 interface State {
   province: string;
   masterVersion: string;
@@ -15,7 +16,7 @@ interface State {
 @Component({
   selector: 'viteka-catalog-distribution',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, EditActionsComponent],
   template: ` <section class="settings">
     <h2>Distribución y versiones del listado</h2>
     @if (state(); as s) {
@@ -32,13 +33,8 @@ interface State {
       @if (s.canPrepare) {
         <label
           >Nueva versión maestra<input maxlength="40" [(ngModel)]="version" placeholder="Málaga-2026-11-01" /></label
-        ><button
-          class="primary"
-          (click)="prepare()"
-          [disabled]="busy() || !version || s.legacy || s.conflicts.length > 0"
         >
-          Preparar paquete maestro
-        </button>
+        <viteka-edit-actions [submit]="false" [busy]="busy()" [saveDisabled]="!version || s.legacy || s.conflicts.length > 0" (save)="prepare()" (cancel)="version = ''" />
         <p>
           Se guarda un paquete firmado. No se publica en GitHub. Tras autorizar y publicar, impórtalo también en la
           instalación maestra para avanzar su base.
@@ -58,9 +54,7 @@ interface State {
         @if (p.missingPrevious && !p.alreadyApplied) {
           <p>Falta instalar una versión anterior.</p>
         }
-        <button class="primary" (click)="apply()" [disabled]="busy() || (p.missingPrevious && !p.alreadyApplied)">
-          {{ p.alreadyApplied ? 'Ya aplicada' : 'Aplicar actualización' }}
-        </button>
+        <viteka-edit-actions [submit]="false" [busy]="busy()" [saveDisabled]="p.alreadyApplied || p.missingPrevious" (save)="apply()" (cancel)="cancelPreview()" />
       }
       @if (s.conflicts.length) {
         <h3>Personalizaciones por revisar</h3>
@@ -111,6 +105,7 @@ export class CatalogDistributionComponent implements OnInit {
     changes: { groupId: string; action: string; name?: string; codes?: number }[];
   } | null>(null);
   private package: unknown;
+  cancelPreview() { if (!this.busy()) { this.preview.set(null); this.package=undefined; this.error.set(''); this.message.set(''); } }
   version = '';
   async ngOnInit() {
     await this.load();

@@ -51,7 +51,9 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
-Corrige el cierre del monitor antes de solicitar permisos de Windows. El arranque normal y el monitor utilizan rutas de inicio independientes. Incorpora diagnóstico por fase con código público, sin credenciales ni datos de conexión. Las versiones 0.18.0 y 0.18.1 requieren ejecutar este instalador una vez sobre la instalación existente, sin desinstalar. Conserva el ID, las cuentas y los datos propios de pruebas; la edición habitual utiliza otro servicio y otras carpetas.
+Compacta y alinea las tablas de grupos y medicamentos de Tenencia obligatoria. Retira la búsqueda terapéutica de la edición y conserva las búsquedas por código nacional, descripción y agrupación homogénea. Estandariza los formularios con Cancelar y Guardar; las ventanas de Configuración se cierran tras un guardado confirmado y permanecen abiertas con los datos intactos cuando falla.
+
+Incluye las correcciones del actualizador incorporadas en 0.18.2. Desde 0.18.2 esta revisión puede instalarse desde Configuración. Las versiones 0.18.0 y 0.18.1 requieren ejecutar manualmente una revisión corregida una vez sobre la instalación existente, sin desinstalar. Conserva el ID, las cuentas y los datos propios de pruebas; la edición habitual utiliza otro servicio y otras carpetas.
 
 La publicación exige las pruebas Windows de ambas ediciones y de convivencia del mismo commit. No acredita conexión a Oracle en la farmacia. Las ediciones normales y los demás identificadores de pruebas omiten esta etiqueta.
 

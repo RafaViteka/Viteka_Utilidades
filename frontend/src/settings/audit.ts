@@ -1,6 +1,7 @@
 import { Component, inject, signal, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DesktopBridge } from '../bridge';
+import { EditActionsComponent } from '../edit-actions';
 interface Entry {
   id: number;
   at: string;
@@ -14,7 +15,7 @@ interface Entry {
 @Component({
   selector: 'viteka-audit',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, EditActionsComponent],
   template: ` <section class="settings">
     <h2>Auditoría de la farmacia</h2>
     <div class="audit-filters">
@@ -90,7 +91,8 @@ interface Entry {
           max="120"
           [ngModel]="retention()"
           (ngModelChange)="retention.set($event)" /></label
-      ><button class="text-button" (click)="saveRetention()">Guardar conservación</button>
+      >
+      <viteka-edit-actions [submit]="false" [busy]="savingRetention()" (save)="saveRetention()" (cancel)="retention.set(savedRetention); error.set('')" />
     }
     <p class="hint">
       Actividad central de los puestos autorizados. Las solicitudes de impresión no acreditan impresión física.
@@ -125,14 +127,20 @@ export class AuditComponent implements OnInit {
   readonly error = signal('');
   readonly busy = signal(false);
   readonly retention = signal(12);
+  savedRetention = 12;
+  readonly savingRetention = signal(false);
   async saveRetention() {
+    if (this.savingRetention()) return;
+    this.savingRetention.set(true);
+    this.error.set('');
     try {
       const r = await this.bridge.call<{ months: number }>('audit.settings', { months: this.retention() });
       this.retention.set(r.months);
+      this.savedRetention = r.months;
       await this.load();
     } catch (e) {
       this.error.set(e instanceof Error ? e.message : 'No se pudo guardar.');
-    }
+    } finally { this.savingRetention.set(false); }
   }
   from = '';
   to = '';
@@ -148,6 +156,7 @@ export class AuditComponent implements OnInit {
     try {
       const r = await this.bridge.call<{ months: number }>('audit.settings');
       this.retention.set(r.months);
+      this.savedRetention = r.months;
     } catch {}
     await this.load();
   }

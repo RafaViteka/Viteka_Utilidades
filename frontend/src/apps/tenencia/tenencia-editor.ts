@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { DesktopBridge } from '../../bridge';
 import { CatalogDistributionComponent } from './catalog-distribution';
 import { IconComponent } from '../../icon';
+import { EditActionsComponent } from '../../edit-actions';
 import { buildXlsx, Cell, loadLogo, toBase64 } from './xlsx';
 import type { TenenciaFields } from './tenencia';
 
@@ -32,16 +33,7 @@ interface FoundArticle {
   stock: number | null;
   issue?: string | null;
 }
-type SearchMode = 'code' | 'description' | 'homogeneous' | 'therapeutic.groups' | 'therapeutic.articles';
-interface Classification {
-  code: string;
-  description: string;
-  class: string;
-  type: string;
-  level: number | null;
-  parent: string;
-  source: string;
-}
+type SearchMode = 'code' | 'description' | 'homogeneous';
 interface GroupDraft {
   id?: string;
   code: string;
@@ -61,7 +53,7 @@ const CHUNK = 50;
 @Component({
   selector: 'viteka-tenencia-editor',
   standalone: true,
-  imports: [FormsModule, IconComponent, CatalogDistributionComponent],
+  imports: [FormsModule, IconComponent, CatalogDistributionComponent, EditActionsComponent],
   templateUrl: './tenencia-editor.html',
   styleUrl: './tenencia-editor.css',
 })
@@ -79,16 +71,6 @@ export class TenenciaEditorComponent implements OnInit {
   readonly chosenId = signal<string | null>(null);
   readonly mode = signal<SearchMode>('code');
   readonly searchText = signal('');
-  readonly classifications = signal<Classification[]>([]);
-  readonly therapeuticChoice = signal<Classification | null>(null);
-  readonly descendants = signal(false);
-  chooseClassification(g: Classification) {
-    this.therapeuticChoice.set(g);
-    this.searchText.set(g.code);
-    this.mode.set('therapeutic.articles');
-    this.results.set([]);
-    this.picked.set([]);
-  }
   readonly field = signal('');
   readonly searching = signal(false);
   readonly results = signal<FoundArticle[]>([]);
@@ -257,22 +239,16 @@ export class TenenciaEditorComponent implements OnInit {
     this.error.set('');
     this.searchMessage.set('');
     void this.bridge
-      .call<{ code: string; message: string; articles: FoundArticle[]; classifications?: Classification[] }>(
+      .call<{ code: string; message: string; articles: FoundArticle[] }>(
         'tenencia.catalog.search',
         {
           mode: this.mode(),
           text,
-          field:
-            this.mode() === 'homogeneous'
-              ? this.field()
-              : this.mode() === 'therapeutic.articles'
-                ? JSON.stringify({ ...this.therapeuticChoice(), descendants: this.descendants() })
-                : '',
+          field: this.mode() === 'homogeneous' ? this.field() : '',
         },
       )
       .then((r) => {
         this.results.set(r.articles ?? []);
-        this.classifications.set(r.classifications ?? []);
         this.searchMessage.set(r.message);
         const g = this.chosen();
         this.picked.set(
@@ -390,6 +366,8 @@ export class TenenciaEditorComponent implements OnInit {
     this.importing.set(true);
     setTimeout(() => document.querySelector<HTMLTextAreaElement>('.import-dialog textarea')?.focus(), 0);
   }
+  closeDraft() { if (!this.busy()) this.draft.set(null); }
+  closeImport() { if (!this.busy()) this.importing.set(false); }
   /**
    * Importación masiva. Admite el formato exportado (Código grupo; Grupo; Mínimo; CN; Descripción)
    * o líneas cortas «grupo; CN; descripción», donde grupo es su código o su nombre.
@@ -453,7 +431,8 @@ export class TenenciaEditorComponent implements OnInit {
           (skipped ? ` · ${skipped} líneas no reconocidas` : '') +
           '.',
       );
-      if (added || created) this.toast.emit('Importación completada.');
+      this.importing.set(false);
+      this.toast.emit(this.importReport());
     });
   }
 }
