@@ -15,6 +15,12 @@ interface Article {
   expiry?: string | null;
   lastPurchase?: string | null;
   lastSale?: string | null;
+  laboratory?: string | null;
+  lastSupplier?: string | null;
+  pvp?: number | string | null;
+  homogeneous?: string | null;
+  barcode?: string | null;
+  articleType?: string | null;
 }
 export interface TenenciaFields {
   expiry: boolean;
@@ -124,10 +130,7 @@ export class TenenciaComponent implements OnInit {
     () => this.filtered().find((r) => r.id === this.activeId()) ?? this.filtered()[0] ?? null,
   );
   readonly activeArticle = computed(
-    () =>
-      this.activeRow()?.articles.find((a) => a.code === this.activeArticleCode()) ??
-      this.activeRow()?.articles[0] ??
-      null,
+    () => this.activeRow()?.articles.find((a) => a.code === this.activeArticleCode()) ?? null,
   );
   readonly canQuery = computed(() => !!this.result()?.listVersion && !this.busy());
   readonly coveredPercent = computed(() => (this.rows().length ? (this.covered() * 100) / this.rows().length : 0));
@@ -440,6 +443,14 @@ export class TenenciaComponent implements OnInit {
     const [y, m, d] = s.split('-');
     return `${d}/${m}/${y}`;
   }
+  detailDate(s?: string | null) {
+    return s ? this.movementDate(s) : '';
+  }
+  pvp(value?: number | string | null) {
+    if (value === null || value === undefined || value === '') return '';
+    const amount = typeof value === 'number' ? value : Number(value);
+    return Number.isFinite(amount) ? new Intl.NumberFormat('es-ES', { style: 'currency', currency: 'EUR' }).format(amount) : String(value);
+  }
   isExpanded(row: Row) {
     return this.expanded().includes(row.id);
   }
@@ -678,7 +689,7 @@ export class TenenciaComponent implements OnInit {
       case 'not_found':
         return 'No dado de alta en Nixfarma: cuenta como 0.';
       case 'stock_not_found':
-        return 'Sin ficha de existencias en Nixfarma: cuenta como 0.';
+        return 'No trabajado';
       case 'stock_null':
         return 'Existencias vacías en Nixfarma: cuenta como 0.';
       case 'summed_stock':

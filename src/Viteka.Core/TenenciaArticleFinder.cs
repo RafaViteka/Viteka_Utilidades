@@ -15,7 +15,7 @@ public static class TenenciaArticleFinder
     public static ArticleSearchResult Search(DbConnection connection, DbTransaction tx, TenenciaStockQuery.Schema schema, string mode, string text, string? field, CancellationToken ct = default)
     {
         text = (text ?? "").Trim();
-        if (schema.ArticleTable is not ("ARTICULOS" or "APPUL.AB_ARTICULOS")) throw new InvalidDataException("Tabla de artículos no válida.");
+        if (schema.ArticleTable is not ("ARTICULOS" or "APADMIN_AB_ARTICULOS" or "APPUL.AB_ARTICULOS")) throw new InvalidDataException("Tabla de artículos no válida.");
         if(mode.StartsWith("therapeutic.",StringComparison.Ordinal))return TherapeuticFinder.Search(connection,tx,schema,mode,text,field,ct);
         switch (mode)
         {

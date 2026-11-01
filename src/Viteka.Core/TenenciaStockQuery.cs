@@ -71,13 +71,21 @@ public static class TenenciaStockQuery
     public static Schema Inspect(DbConnection connection, DbTransaction transaction, bool nativeNixFarma = false)
     {
         string[] Columns(string table) { using var cmd = Command(connection, transaction, "SELECT * FROM " + table + " WHERE 1 = 0"); using var reader = cmd.ExecuteReader(); return Enumerable.Range(0, reader.FieldCount).Select(reader.GetName).ToArray(); }
+        (string Table, string[] Columns) FirstAvailable(params string[] tables)
+        {
+            DbException? last = null;
+            foreach (var table in tables) try { return (table, Columns(table)); } catch (DbException error) { last = error; }
+            if (last is not null) throw last;
+            throw new InvalidDataException("No se encuentra la tabla de artículos o existencias de NixFarma.");
+        }
         string Find(string[] columns, params string[] names) { var hits = columns.Where(c => names.Contains(c.Replace("_", "").Replace(" ", "").ToUpperInvariant())).ToArray(); if (hits.Length != 1 || !Regex.IsMatch(hits[0], "^[A-Za-z][A-Za-z0-9_ ]{0,127}$")) throw new InvalidDataException("No se identifica de forma única la columna de artículos o stock. Viteka debe revisar la estructura."); return "\"" + hits[0] + "\""; }
-        var articleTable = nativeNixFarma ? "APPUL.AB_ARTICULOS" : "ARTICULOS"; var stockTable = nativeNixFarma ? "APPUL.AB_ARTICULOS_FICHA_E" : "EXISTENCIAS";
-        var a = Columns(articleTable); var e = Columns(stockTable);
+        var article = nativeNixFarma ? FirstAvailable("APADMIN_AB_ARTICULOS", "APPUL.AB_ARTICULOS") : FirstAvailable("ARTICULOS");
+        var stock = nativeNixFarma ? FirstAvailable("AC1_EXISTENCIAS", "APPUL.AB_ARTICULOS_FICHA_E") : FirstAvailable("EXISTENCIAS");
+        var articleTable = article.Table; var stockTable = stock.Table; var a = article.Columns; var e = stock.Columns;
         var candidates = a.Where(c => Regex.IsMatch(c, "^[A-Za-z][A-Za-z0-9_ ]{0,127}$") && Regex.IsMatch(c, "ATC|TERAP|GRUPO", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)).ToArray();
         var exact = candidates.Where(c => new[] { "ATC", "CODIGOATC", "GRUPOATC" }.Contains(c.Replace("_", "").Replace(" ", "").ToUpperInvariant())).ToArray();
         var homogeneous = a.Where(c => SafeName(c) && Normalize(c).Contains("HOMOG", StringComparison.Ordinal)).Take(6).Select(Quote).ToArray();
-        return new(Find(a, nativeNixFarma ? "CODIGO" : "ARTICULO"), Find(a, "DESCRIPCION"), Find(e, nativeNixFarma ? "ARTCODIGO" : "ARTICULO"), Find(e, nativeNixFarma ? ["EXIACTUALES"] : ["ACTUAL", "STOCKACTUAL"]))
+        return new(Find(a, nativeNixFarma ? ["CODIGO", "ARTICULO", "ARTCODIGO"] : ["ARTICULO"]), Find(a, "DESCRIPCION"), Find(e, nativeNixFarma ? ["ARTCODIGO", "ARTICULO", "CODIGO"] : ["ARTICULO"]), Find(e, nativeNixFarma ? ["EXIACTUALES", "ACTUAL", "STOCKACTUAL"] : ["ACTUAL", "STOCKACTUAL"]))
         {
             ArticleTable = articleTable,
             StockTable = stockTable,
@@ -143,7 +151,7 @@ public static class TenenciaStockQuery
         extras ??= [];
         // Identifiers originate exclusively in Inspect; values always use positional ODBC parameters.
         foreach (var identifier in new[] { code, value }.Concat(extras)) if (!Regex.IsMatch(identifier, "^\"[A-Za-z][A-Za-z0-9_ ]{0,127}\"$")) throw new ArgumentException();
-        if (table is not ("ARTICULOS" or "EXISTENCIAS" or "APPUL.AB_ARTICULOS" or "APPUL.AB_ARTICULOS_FICHA_E")) throw new ArgumentException();
+        if (table is not ("ARTICULOS" or "EXISTENCIAS" or "APADMIN_AB_ARTICULOS" or "AC1_EXISTENCIAS" or "APPUL.AB_ARTICULOS" or "APPUL.AB_ARTICULOS_FICHA_E")) throw new ArgumentException();
         var cmd = Command(connection, tx, $"SELECT {string.Join(", ", new[] { code, value }.Concat(extras))} FROM {table} WHERE {code} IN ({string.Join(",", codes.Select(_ => "?"))})"); foreach (var c in codes) { var p = cmd.CreateParameter(); p.DbType = DbType.String; p.Value = c; cmd.Parameters.Add(p); }
         return cmd;
     }

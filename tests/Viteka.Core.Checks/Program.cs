@@ -544,9 +544,11 @@ try
     Check("Confirmed NixFarma tables read descriptions and current stock by explicit CN without ATC", () =>
     {
         using var c = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES" };
-        var stocks = TenenciaStockQuery.ReadOnly(c, tx => { var schema = TenenciaStockQuery.Inspect(c, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APPUL.AB_ARTICULOS" && schema.StockTable == "APPUL.AB_ARTICULOS_FICHA_E" && schema.Stock == "\"EXI_ACTUALES\""); return TenenciaStockQuery.Read(c, tx, schema, ["650001", "650002"]); });
+        var stocks = TenenciaStockQuery.ReadOnly(c, tx => { var schema = TenenciaStockQuery.Inspect(c, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APADMIN_AB_ARTICULOS" && schema.StockTable == "AC1_EXISTENCIAS" && schema.Stock == "\"EXI_ACTUALES\""); return TenenciaStockQuery.Read(c, tx, schema, ["650001", "650002"]); });
         Require(stocks["650001"].Description == "Artículo ficticio 650001" && stocks["650001"].Stock == 2 && stocks["650002"].Stock == 1 && c.Steps.Last() == "rollback");
-        Require(c.Steps.Any(s => s.Contains("FROM APPUL.AB_ARTICULOS WHERE")) && c.Steps.Any(s => s.Contains("FROM APPUL.AB_ARTICULOS_FICHA_E WHERE")) && !c.Steps.Any(s => s.Contains("LIKE ?")));
+        Require(c.Steps.Any(s => s.Contains("FROM APADMIN_AB_ARTICULOS WHERE")) && c.Steps.Any(s => s.Contains("FROM AC1_EXISTENCIAS WHERE")) && !c.Steps.Any(s => s.Contains("LIKE ?")));
+        using var legacy = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES", LegacyNativeTables = true };
+        TenenciaStockQuery.ReadOnly(legacy, tx => { var schema = TenenciaStockQuery.Inspect(legacy, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APPUL.AB_ARTICULOS" && schema.StockTable == "APPUL.AB_ARTICULOS_FICHA_E"); return true; });
     });
     Check("NixFarma stock reading stops before SELECT when read-only fails", () =>
     {

@@ -344,7 +344,8 @@ thead th {
 .article-caption { display: flex; align-items: center; gap: 6px; min-width: 0; }
 .article-caption .article-select { flex: 1; }
 .article-warning { display: inline-flex; color: var(--warning-strong); flex: none; }
-.article-warning v-icon { width: 14px; height: 14px; }
+.article-unworked { display: inline-flex; color: var(--warning-strong); flex: none; cursor: help; }
+.article-warning v-icon, .article-unworked v-icon { width: 14px; height: 14px; }
 .groups-table, .tenencia-medications table { table-layout: fixed; }
 .groups-table .code-column { width: 76px; }
 .groups-table .minimum-column { width: 52px; }
@@ -370,53 +371,56 @@ td small {
   margin-top: 3px;
   font-size: var(--fs-xs);
 }
-.tenencia-information {
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
-  border: 1px solid var(--line);
-  border-radius: 6px;
-  background: var(--card);
-  flex-shrink: 0;
-  max-height: 190px;
+.article-information {
+  flex: 0 0 34%;
+  min-height: 150px;
+  max-height: 220px;
   overflow: auto;
+  padding: 10px 12px;
+  border-top: 1px solid var(--line);
+  background: var(--surface);
 }
-.selection-information {
-  min-width: 0;
-  padding: 9px 12px;
-}
-.information-heading {
+.article-information header {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   margin-bottom: 8px;
 }
-.information-heading h2 {
+.article-information header small {
+  color: var(--muted);
   font-size: var(--fs-xs);
+}
+.article-information h3 {
+  font-size: var(--fs-xs);
+  margin: 2px 0 0;
+}
+.unworked-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--warning-strong);
+  white-space: nowrap;
+  font-size: var(--fs-xs);
+}
+.unworked-label v-icon { width: 16px; height: 16px; }
+.article-information dl {
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 7px 10px;
   margin: 0;
 }
-.information-heading > span {
+.article-information dt {
   font-size: var(--fs-xs);
   color: var(--muted);
 }
-.information-values {
-  display: grid;
-  grid-template-columns: 1.3fr 0.8fr 1.3fr;
-  gap: 14px;
-}
-.information-values small {
-  display: block;
+.article-information dd {
+  min-height: 18px;
+  margin: 2px 0 0;
   font-size: var(--fs-xs);
-  color: var(--muted);
-  margin-bottom: 4px;
+  font-weight: 600;
+  overflow-wrap: break-word;
 }
-.information-values strong {
-  font-size: var(--fs-xs);
-  font-weight: 550;
-  display: block;
-  overflow-wrap: anywhere;
-}
-.reference-help,
 .selection-note {
   font-size: var(--fs-xs);
   line-height: 1.4;
@@ -427,44 +431,14 @@ td small {
   padding-left: 7px;
   color: var(--ink);
 }
-.group-totals {
-  border-left: 1px solid var(--line);
-  padding: 10px 12px;
-  align-content: center;
+.tenencia-count-warning {
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  margin: 0;
+  padding: 7px 10px;
+  border-left: 3px solid var(--warning);
   background: var(--surface);
-}
-.group-totals > .row-state {
-  display: block;
-  text-align: center;
-  margin-bottom: 10px;
-}
-.group-totals dl {
-  display: flex;
-  justify-content: space-around;
-  gap: 10px;
-  margin: 0;
-}
-.group-totals dl div {
-  text-align: center;
-  min-width: 0;
-}
-.group-totals dt {
-  font-size: var(--fs-xs);
-  color: var(--muted);
-}
-.group-totals dd {
-  font-size: var(--fs-lg);
-  margin: 6px 0 0;
-  font-weight: 600;
-}
-.tenencia-source {
-  font-size: var(--fs-xs);
-  margin: 0;
   flex-shrink: 0;
-}
-.tenencia-source p {
-  font-size: var(--fs-xs);
-  margin: 4px 0;
 }
 .tenencia-empty {
   text-align: center;
@@ -497,12 +471,7 @@ td small {
   .row-state > span {
     display: none;
   }
-  .information-values {
-    grid-template-columns: 1fr 1fr;
-  }
-  .information-values > div:first-child {
-    display: none;
-  }
+  .article-information dl { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .utility-title h1 {
     font-size: var(--fs-lg);
   }
@@ -532,17 +501,8 @@ td small {
   .tenencia-table {
     max-height: 330px;
   }
-  .tenencia-information {
-    grid-template-columns: 1fr;
-    max-height: none;
-  }
-  .group-totals {
-    border-left: 0;
-    border-top: 1px solid var(--line);
-  }
-  .information-values {
-    grid-template-columns: 1fr;
-  }
+  .article-information { flex-basis: auto; max-height: none; }
+  .article-information dl { grid-template-columns: 1fr 1fr; }
   .information-values > div:first-child {
     display: block;
   }

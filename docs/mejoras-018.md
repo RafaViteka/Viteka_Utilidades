@@ -76,6 +76,10 @@ Las tablas de grupos y medicamentos comparten cabeceras de 36 píxeles y filas d
 
 Los formularios utilizan un pie común con Cancelar a la izquierda y Guardar a la derecha. En Configuración, un guardado confirmado cierra la ventana; un error la mantiene abierta con los campos introducidos. Cancelar descarta el borrador local.
 
+Al seleccionar un medicamento, el tercio inferior del panel derecho presenta código nacional, descripción, stock actual, mínimo exigido del grupo, última compra, última venta, laboratorio, último proveedor, caducidad, PVP, agrupación homogénea, código de barras y tipo de artículo. Los campos cuyo origen aún no está confirmado quedan vacíos. No se infieren ni se mezclan datos de otras columnas.
+
+La consulta prioriza `APADMIN_AB_ARTICULOS` para código y descripción y `AC1_EXISTENCIAS` para existencias, con compatibilidad de reserva para las vistas usadas por revisiones anteriores. La ausencia de ficha se etiqueta «No trabajado» y cuenta como cero. Se retira de la pantalla la procedencia editorial del listado y se recuerda realizar un recuento visual antes de considerar cumplido el mínimo.
+
 ## Validación
 
 Pruebas del núcleo: migración, edición/caché, firma, secuencia, conflictos, altas/cambios/bajas, reintentos, transacción interrumpida, recuperación e historial; auditoría central y paginación; reglas de compras y CSV con Node; interfaz con autoridad y Oracle simulados, navegación, geometría de tarjetas, permisos, modalidades y auditoría. Las pruebas nativas requieren Windows; pasar fixtures no demuestra existencias, fechas ni relaciones terapéuticas reales.

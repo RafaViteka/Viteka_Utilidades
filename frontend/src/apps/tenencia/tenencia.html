@@ -266,7 +266,9 @@
                     >
                       {{ a.description }}
                     </button>
-                    @if (a.issue && a.issue !== 'not_checked') {
+                    @if (a.issue === 'stock_not_found') {
+                      <span class="article-unworked" role="img" title="No trabajado" aria-label="No trabajado"><v-icon name="packageOff" /></span>
+                    } @else if (a.issue && a.issue !== 'not_checked') {
                       <span class="article-warning" role="img" [title]="issue(a)" [attr.aria-label]="issue(a)"><v-icon name="warning" /></span>
                     }
                     </div>
@@ -299,71 +301,37 @@
             }
           }
         </div>
+        @if (activeArticle(); as article) {
+          <section class="article-information" aria-label="Información del artículo seleccionado">
+            <header>
+              <div>
+                <small>Artículo seleccionado · CN {{ article.code }}</small>
+                <h3>{{ article.description }}</h3>
+              </div>
+              @if (article.issue === 'stock_not_found') {
+                <span class="unworked-label"><v-icon name="packageOff" />No trabajado</span>
+              }
+            </header>
+            <dl>
+              <div><dt>Stock actual</dt><dd>{{ number(article.stock) }}</dd></div>
+              <div><dt>Mínimo exigido del grupo</dt><dd>{{ row.minimum }}</dd></div>
+              <div><dt>Última compra</dt><dd>{{ detailDate(article.lastPurchase) }}</dd></div>
+              <div><dt>Última venta</dt><dd>{{ detailDate(article.lastSale) }}</dd></div>
+              <div><dt>Laboratorio</dt><dd>{{ article.laboratory || '' }}</dd></div>
+              <div><dt>Último proveedor</dt><dd>{{ article.lastSupplier || '' }}</dd></div>
+              <div><dt>Fecha de caducidad</dt><dd>{{ detailDate(article.expiry) }}</dd></div>
+              <div><dt>PVP</dt><dd>{{ pvp(article.pvp) }}</dd></div>
+              <div><dt>Agrupación homogénea (AH)</dt><dd>{{ article.homogeneous || '' }}</dd></div>
+              <div><dt>Código de barras</dt><dd>{{ article.barcode || '' }}</dd></div>
+              <div><dt>Tipo de artículo</dt><dd>{{ article.articleType || '' }}</dd></div>
+            </dl>
+          </section>
+        }
       } @else {
         <p class="group-empty">Selecciona un grupo para ver sus medicamentos asociados.</p>
       }
     </section>
   </div>
-  <section class="tenencia-information" aria-label="Información de la selección">
-    <div class="selection-information">
-      <div class="information-heading">
-        <h2>Información</h2>
-        <span>{{ hasStock() ? 'Consulta · ' + date(result()?.checkedAt) : 'Existencias sin consultar' }}</span>
-      </div>
-      @if (activeRow(); as row) {
-        <div class="information-values">
-          <div>
-            <small>Grupo seleccionado</small
-            ><strong>{{ row.classification ? row.classification + ' · ' : '' }}{{ row.name }}</strong>
-          </div>
-          <div>
-            <small>Clasificación de referencia</small
-            ><strong>{{ row.classification || 'Productos sanitarios' }}</strong>
-          </div>
-          @if (activeArticle(); as article) {
-            <div>
-              <small>Artículo · CN {{ article.code }}</small
-              ><strong>{{ article.description }}</strong>
-            </div>
-            @if (article.lastPurchase || article.lastSale) {
-              <div>
-                <small>Movimientos</small
-                ><strong
-                  >Compra {{ movementDate(article.lastPurchase) }} · Venta {{ movementDate(article.lastSale) }}</strong
-                >
-              </div>
-            }
-          }
-        </div>
-        @if (row.selectionNote) {
-          <p class="selection-note">{{ row.selectionNote }}</p>
-        } @else {
-          <p class="reference-help">
-            Nombres iniciales abreviados. La descripción completa y las existencias se leen de Nixfarma al consultar.
-          </p>
-        }
-      }
-    </div>
-    <div class="group-totals" aria-label="Resumen del grupo seleccionado">
-      @if (activeRow(); as row) {
-        <span class="row-state" [attr.data-status]="row.status">{{ label(row.status) }}</span>
-        <dl>
-          <div>
-            <dt>Mínimo</dt>
-            <dd>{{ row.minimum }}</dd>
-          </div>
-          <div>
-            <dt>Existencias</dt>
-            <dd>{{ row.status === 'not_checked' ? '—' : number(row.stock) }}</dd>
-          </div>
-          <div>
-            <dt>Faltan</dt>
-            <dd>{{ row.status === 'not_checked' ? '—' : number(row.missing) }}</dd>
-          </div>
-        </dl>
-      }
-    </div>
-  </section>
 } @else {
   <section class="tenencia-empty settings">
     <v-icon name="grid" />
@@ -378,11 +346,10 @@
   </section>
 }
 @if (result()?.listVersion) {
-  <details class="tenencia-source">
-    <summary>Fuente y versión del listado · {{ result()?.listVersion }}</summary>
-    <p>Fuente: {{ result()?.source }}</p>
-    <p>Un dato ausente o ambiguo no se cuenta como cero. No se importan existencias de los vídeos.</p>
-  </details>
+  <p class="tenencia-count-warning">
+    Recuenta visualmente las unidades disponibles y confirma que alcanzan el mínimo exigido antes de dar por cumplida
+    la tenencia obligatoria. Esta consulta sirve de apoyo y no sustituye la comprobación física del stock.
+  </p>
 }
 @if (selected(); as row) {
   <div class="modal-overlay" (click)="close()">

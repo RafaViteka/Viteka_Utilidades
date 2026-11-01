@@ -51,7 +51,9 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
-Compacta y alinea las tablas de grupos y medicamentos de Tenencia obligatoria. Retira la búsqueda terapéutica de la edición y conserva las búsquedas por código nacional, descripción y agrupación homogénea. Estandariza los formularios con Cancelar y Guardar; las ventanas de Configuración se cierran tras un guardado confirmado y permanecen abiertas con los datos intactos cuando falla.
+Añade una ficha en el tercio inferior del panel de medicamentos al seleccionar un artículo. Lee código y descripción de APADMIN_AB_ARTICULOS y existencias de AC1_EXISTENCIAS cuando están disponibles, conservando compatibilidad con las vistas anteriores. Los campos todavía no vinculados se muestran vacíos. Los artículos sin ficha se identifican como «No trabajado» con un icono específico.
+
+Retira de la pantalla la procedencia del listado y añade un recordatorio para recontar visualmente las unidades antes de considerar cumplido el mínimo. Incluye también las tablas compactas, la retirada de la búsqueda terapéutica del editor y los formularios estandarizados de 0.18.3.
 
 Incluye las correcciones del actualizador incorporadas en 0.18.2. Desde 0.18.2 esta revisión puede instalarse desde Configuración. Las versiones 0.18.0 y 0.18.1 requieren ejecutar manualmente una revisión corregida una vez sobre la instalación existente, sin desinstalar. Conserva el ID, las cuentas y los datos propios de pruebas; la edición habitual utiliza otro servicio y otras carpetas.
 
