@@ -25,7 +25,12 @@ function Hash-Private([string]$Path){
 }
 function Owned-Clients([string]$Path){
  $expected=[System.IO.Path]::GetFullPath($Path)
- return @(Get-Process -Name Viteka.Desktop -ErrorAction SilentlyContinue|Where-Object {$_.Path -and [System.IO.Path]::GetFullPath($_.Path) -eq $expected})
+ return @(Get-Process -Name Viteka.Desktop -ErrorAction SilentlyContinue|Where-Object {
+   try {
+     $candidate=$_.Path
+     -not [string]::IsNullOrWhiteSpace($candidate) -and [System.IO.Path]::GetFullPath($candidate) -eq $expected
+   } catch { $false }
+ })
 }
 try{
  $productionOwned=$true
