@@ -15,6 +15,7 @@ internal static class AccessHost
 {
     internal const string ServiceName = ProductProfile.ServiceName;
     private sealed record DeclarationDraft(string ListVersion, Dictionary<string,string[]> Selections);
+    private sealed record CotejoDraft(string ListVersion, Dictionary<string,Dictionary<string,int>> Counts, string Observation, DateTimeOffset? CheckedAt, int ExpiryReviewMonths, bool CountExpiredStock, string? UserName = null);
     private sealed record Session(AccessSessionAgent Agent, DateTimeOffset Expires);
     internal static async Task RunAsync(string[] args)
     {
@@ -294,6 +295,28 @@ internal static class AccessHost
                     PharmacyDatabase.Record(c,tx,new(actor.Id,actor.Name),"declaration.save","ok",clean.Sum(x=>x.Value.Length)+" artículos seleccionados",utility:UtilityCatalog.TenenciaId);
                 }else if(action!="state")throw new AccessDeniedException();
                 return Results.Ok(new{listVersion=list.Version,groups=list.Groups,selections=clean,reviewRequired=saved is not null&&JsonSerializer.Deserialize<DeclarationDraft>(saved,PharmacyDatabase.Json)!.ListVersion!=list.Version});
+            });
+        });
+        app.MapPost("/access/cotejo/{action}",(string action,HttpContext context,JsonElement request)=>{
+            var actor=Agent(context).RequireUser();if(!AccessPolicy.CanUse(actor,UtilityCatalog.TenenciaId,UtilityCatalog.Items))throw new AccessDeniedException();
+            var profile=pharmacy.Load()??throw new ArgumentException("Configura la farmacia.");var list=catalogs.Load(profile.Province)??throw new ArgumentException();
+            var key="cotejo."+profile.Province+".current";var historyKey="cotejo."+profile.Province+".history";
+            return database.Transaction((c,tx)=>{
+                CotejoDraft Empty()=>new(list.Version,new(),"",null,profile.ExpiryReviewMonths,profile.CountExpiredStock);
+                var saved=PharmacyDatabase.Get(c,tx,key);var current=saved is null?Empty():JsonSerializer.Deserialize<CotejoDraft>(saved,PharmacyDatabase.Json)??Empty();
+                if(current.ListVersion!=list.Version)current=Empty();
+                if(action=="save"){
+                    var draft=request.Deserialize<CotejoDraft>(PharmacyDatabase.Json)??throw new ArgumentException();if(draft.ListVersion!=list.Version)throw new ArgumentException("El listado cambió; vuelve a iniciar el cotejo.");
+                    var clean=new Dictionary<string,Dictionary<string,int>>();
+                    foreach(var group in draft.Counts){var known=list.Groups.FirstOrDefault(x=>x.Id==group.Key)??throw new ArgumentException("Grupo no reconocido.");var items=new Dictionary<string,int>();foreach(var item in group.Value){if(!known.Codes.Contains(item.Key)||item.Value is <0 or >10000)throw new ArgumentException("Recuento no válido.");if(item.Value>0)items[item.Key]=item.Value;}if(items.Count>0)clean[group.Key]=items;}
+                    if(draft.Observation.Length>1000)throw new ArgumentException("La observación es demasiado larga.");
+                    current=new(list.Version,clean,draft.Observation.Trim(),DateTimeOffset.UtcNow,profile.ExpiryReviewMonths,profile.CountExpiredStock,actor.Name);PharmacyDatabase.Set(c,tx,key,current);
+                    var historyJson=PharmacyDatabase.Get(c,tx,historyKey);var history=historyJson is null?new List<CotejoDraft>():JsonSerializer.Deserialize<List<CotejoDraft>>(historyJson,PharmacyDatabase.Json)??new();history.Insert(0,current);if(history.Count>50)history.RemoveRange(50,history.Count-50);PharmacyDatabase.Set(c,tx,historyKey,history);
+                    PharmacyDatabase.Record(c,tx,new(actor.Id,actor.Name),"cotejo.save","ok",clean.Sum(g=>g.Value.Values.Sum())+" unidades cotejadas",utility:UtilityCatalog.TenenciaId);
+                }else if(action=="history"){
+                    var historyJson=PharmacyDatabase.Get(c,tx,historyKey);var history=historyJson is null?new List<CotejoDraft>():JsonSerializer.Deserialize<List<CotejoDraft>>(historyJson,PharmacyDatabase.Json)??new();return Results.Ok(new{rows=history});
+                }else if(action!="state")throw new AccessDeniedException();
+                return Results.Ok(current);
             });
         });
         await app.RunAsync();

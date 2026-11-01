@@ -366,8 +366,9 @@ thead th {
 .article-chosen td {
   background: var(--active);
 }
-.article-inactive td { background: rgba(201, 56, 56, 0.14); }
-.article-inactive.article-chosen td { background: rgba(201, 56, 56, 0.24); }
+.article-inactive td,
+.article-inactive .article-select { color: #c93838; }
+.article-inactive .article-select { font-weight: 650; }
 tbody tr:hover td {
   background: var(--surface);
 }
@@ -684,6 +685,32 @@ td.center .row-state {
 .show-all {
   margin: 8px 10px;
 }
+.tenencia-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); }
+.tenencia-tabs button { padding: 8px 16px; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); }
+.tenencia-tabs button.active { color: var(--ink); border-bottom-color: var(--green); font-weight: 650; }
+.cotejo { min-height: 0; display: flex; flex: 1; flex-direction: column; gap: 10px; }
+.cotejo-toolbar { display: flex; align-items: end; justify-content: space-between; gap: 18px; padding: 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.cotejo-toolbar h2, .cotejo-toolbar p { margin: 0; }
+.cotejo-toolbar p { color: var(--muted); font-size: var(--fs-xs); }
+.cotejo-toolbar label { width: min(420px, 48%); }
+.cotejo-groups { min-height: 0; overflow: auto; display: grid; gap: 10px; }
+.cotejo-group { border: 1px solid var(--line); border-radius: 8px; overflow: hidden; background: var(--card); }
+.cotejo-group > header { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--surface); }
+.cotejo-group > header div { display: grid; }
+.cotejo-group > header small { color: var(--muted); }
+.cotejo-state { padding: 3px 9px; border-radius: 999px; color: #9b1c12; background: #fbd9d6; }
+.cotejo-state[data-complete='true'] { color: #17643f; background: #e3f4ea; }
+.counter { display: inline-grid; grid-template-columns: 30px 42px 30px; align-items: center; text-align: center; }
+.counter button { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); }
+.cotejo-footer { display: grid; gap: 8px; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.cotejo-footer label { display: grid; gap: 5px; }
+.cotejo-footer textarea { resize: vertical; }
+.cotejo-footer > div { display: flex; justify-content: space-between; align-items: center; gap: 16px; color: var(--muted); font-size: var(--fs-xs); }
+.cotejo-actions { display: flex; gap: 8px; }
+.cotejo-history { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
+.cotejo-history h3, .cotejo-history p { margin: 0; }
+.cotejo-history article { display: grid; grid-template-columns: 160px 1fr; gap: 4px 12px; padding: 7px 9px; background: var(--surface); border-radius: 5px; }
+.cotejo-history article p { grid-column: 1 / -1; }
 /* Menú de exportación. */
 .export-menu {
   position: relative;

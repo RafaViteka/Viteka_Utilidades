@@ -51,7 +51,13 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
+Corrige la presentación de artículos dados de baja para mostrar el texto rojo sin colorear el fondo. Ordena primero los artículos trabajados por existencias descendentes y deja al final los no trabajados por descripción. La caducidad de la ficha utiliza la misma caja visual que la tabla.
+
+Hace visible Caducidad y existencias mínimas como opción propia de Configuración. Añade las pestañas Consulta y Cotejo: recuento manual con sumar/restar, entrada por CN o código de barras, observaciones, guardado compartido e historial de la farmacia.
+
 Completa la ficha del artículo con stock mínimo, FUC, FUV y último proveedor desde APADMIN_AC_EXISTENCIAS; resuelve el nombre en APADMIN_AD_PROVEEDORES. Obtiene el laboratorio cruzando ART_CLASE y ART_LAB_CODIGO con DW_AB_LABORATORIOS. Añade clasificación ABC, PVP, agrupación homogénea, código de barras y estado de baja cuando las tablas están disponibles. Conserva compatibilidad con AC1_EXISTENCIAS.
+
+Admite los nombres de tabla con prefijo separado por punto o guion bajo, `AC_EXISTENCIAS` y la columna `ACOMUNIDAD`. Si una vista contiene el stock y otra los datos auxiliares, combina ambas dentro de la misma transacción de solo lectura.
 
 Datos de la farmacia permite elegir el plazo de revisión de caducidad, tres meses por defecto, y si el stock caducado cuenta como efectivo. Mientras no exista una relación de lotes, todas las unidades toman la caducidad de la ficha. La pantalla incorpora el filtro Revisar caducidad, abrevia C.N. y muestra Descripción. Los grupos con faltas muestran el número de unidades pendientes.
 

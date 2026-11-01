@@ -1,4 +1,4 @@
-# Viteka Utilidades · Desarrollo 0.18.5
+# Viteka Utilidades · Desarrollo 0.18.6
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
@@ -24,6 +24,7 @@ Actualizaciones tiene una pantalla propia dentro de Configuración: búsqueda ca
 - Tenencia muestra grupos y medicamentos en tablas compactas y alineadas. El editor busca por código nacional, descripción o agrupación homogénea, sin búsqueda terapéutica visible.
 - Al seleccionar un medicamento, el tercio inferior del panel muestra su ficha. Código y descripción se leen de `APADMIN_AB_ARTICULOS`; stock, mínimo, movimientos y último proveedor parten de `APADMIN_AC_EXISTENCIAS` (con compatibilidad para `AC1_EXISTENCIAS`). El nombre del proveedor se obtiene de `APADMIN_AD_PROVEEDORES` y el laboratorio de `DW_AB_LABORATORIOS`, cruzando clase y código.
 - Datos de la farmacia permite definir con cuántos meses se revisa la caducidad (3 por defecto) y si el stock caducado cuenta como efectivo. De forma provisional, todas las unidades de una ficha comparten su fecha de caducidad.
+- Tenencia separa Consulta y Cotejo. El cotejo compartido permite sumar o restar unidades por artículo, leer CN o código de barras, guardar observaciones y revisar el historial de la farmacia.
 - Los artículos sin ficha de existencias se marcan como «No trabajado». La pantalla pide verificar físicamente las unidades antes de considerar cumplida la tenencia y no presenta información de procedencia del listado.
 - Los formularios de edición comparten las acciones Cancelar y Guardar. Las ventanas de Configuración se cierran al confirmar un guardado correcto y conservan los datos introducidos si se produce un error.
 - Preferencias locales por usuario, conservadas entre versiones.

@@ -66,12 +66,46 @@
 @if (error()) {
   <p class="error" role="alert">{{ error() }}</p>
 }
+@if (!editing()) {
+  <nav class="tenencia-tabs" aria-label="Vista de tenencia">
+    <button [class.active]="view() === 'query'" [attr.aria-current]="view() === 'query' ? 'page' : null" (click)="setView('query')">Consulta</button>
+    <button [class.active]="view() === 'cotejo'" [attr.aria-current]="view() === 'cotejo' ? 'page' : null" (click)="setView('cotejo')">Cotejo</button>
+  </nav>
+}
 @if (editing()) {
   <viteka-tenencia-editor
     [fields]="result()?.fields ?? null"
     (done)="finishEditing($event)"
     (toast)="toast.emit($event)"
   />
+} @else if (view() === 'cotejo') {
+  <section class="cotejo" aria-label="Cotejo de existencias mínimas">
+    <header class="cotejo-toolbar">
+      <div><h2>Cotejo físico</h2><p>Confirma una a una las unidades que has recontado físicamente.</p></div>
+      <label>CN o código de barras<input type="search" [ngModel]="scanCode()" (ngModelChange)="scanCode.set($event)" (keydown.enter)="scanCotejo()" placeholder="Escanea o escribe y pulsa Intro" /></label>
+    </header>
+    @if (!hasStock()) {
+      <p class="tenencia-count-warning">Realiza primero una consulta de existencias para cargar los artículos y sus códigos.</p>
+    } @else if (cotejoBusy() && !cotejo()) {
+      <p class="group-empty">Cargando el cotejo compartido…</p>
+    } @else {
+      <div class="cotejo-groups">
+        @for (row of rows(); track row.id) {
+          <article class="cotejo-group">
+            <header><div><strong>{{ row.classification ? row.classification + ' · ' : '' }}{{ row.name }}</strong><small>Mínimo {{ row.minimum }} · Cotejado {{ cotejoTotal(row) }}</small></div><span class="cotejo-state" [attr.data-complete]="cotejoMissing(row) === 0">{{ cotejoMissing(row) === 0 ? 'Completo' : 'Faltan ' + cotejoMissing(row) }}</span></header>
+            <table><thead><tr><th>C.N.</th><th>Descripción</th><th>Stock</th><th>Cotejado</th></tr></thead><tbody>
+              @for (article of sortedArticles(row); track article.code) {
+                <tr [class.article-inactive]="article.inactive"><td>{{ article.code }}</td><td>{{ article.description }}</td><td>{{ number(article.stock) }}</td><td><div class="counter"><button (click)="adjustCotejo(row, article, -1)" [disabled]="cotejoCount(row, article) === 0" [attr.aria-label]="'Restar ' + article.code">−</button><strong>{{ cotejoCount(row, article) }}</strong><button (click)="adjustCotejo(row, article, 1)" [attr.aria-label]="'Sumar ' + article.code">+</button></div></td></tr>
+              }
+            </tbody></table>
+          </article>
+        }
+      </div>
+      <footer class="cotejo-footer"><label>Observaciones<textarea [(ngModel)]="cotejoObservation" maxlength="1000" rows="3" placeholder="Incidencias observadas durante el recuento"></textarea></label><div><span>@if (cotejo()?.checkedAt) { Último guardado: {{ stamp(cotejo()?.checkedAt ?? undefined) }} · {{ cotejo()?.userName }}}</span><span class="cotejo-actions"><button (click)="toggleCotejoHistory()">{{ historyOpen() ? 'Cerrar historial' : 'Historial' }}</button><button class="primary" (click)="saveCotejo()" [disabled]="cotejoBusy()">{{ cotejoBusy() ? 'Guardando…' : 'Guardar cotejo' }}</button></span></div>
+      @if (historyOpen()) { <section class="cotejo-history" aria-label="Historial de cotejos"><h3>Historial de cotejos</h3>@for (item of cotejoHistory() ?? []; track item.checkedAt) { <article><strong>{{ stamp(item.checkedAt ?? undefined) }}</strong><span>{{ item.userName || 'Usuario' }} · {{ cotejoUnits(item) }} unidades</span><p>{{ item.observation || 'Sin observaciones' }}</p></article> } @empty { <p>No hay cotejos guardados.</p> }</section> }
+      </footer>
+    }
+  </section>
 } @else if (rows().length) {
   <div class="tenencia-commandbar">
     <div class="tenencia-filters">
@@ -327,7 +361,7 @@
               <div><dt>Última venta</dt><dd>{{ detailDate(article.lastSale) }}</dd></div>
               <div><dt>Laboratorio</dt><dd>{{ article.laboratory || '' }}</dd></div>
               <div><dt>Último proveedor</dt><dd>{{ article.lastSupplier || '' }}</dd></div>
-              <div><dt>Fecha de caducidad</dt><dd>{{ article.expiry ? expiryText(article) : '' }}</dd></div>
+              <div><dt>Fecha de caducidad</dt><dd>@if (expiryState(article); as e) { <span class="expiry" [attr.data-expiry]="e" [title]="expiryTitle(article)">{{ expiryText(article) }}</span> }</dd></div>
               <div><dt>PVP</dt><dd>{{ article.pvp === null || article.pvp === undefined ? 'Sin precio' : pvp(article.pvp) }}</dd></div>
               <div><dt>Agrupación homogénea (AH)</dt><dd>{{ article.homogeneous || '' }}</dd></div>
               <div><dt>Código de barras</dt><dd>{{ article.barcode || '' }}</dd></div>

@@ -63,6 +63,15 @@ interface Result {
   cached?: boolean;
   customized?: boolean;
 }
+interface CotejoState {
+  listVersion: string;
+  counts: Record<string, Record<string, number>>;
+  observation: string;
+  checkedAt?: string | null;
+  expiryReviewMonths: number;
+  countExpiredStock: boolean;
+  userName?: string | null;
+}
 @Component({
   selector: 'viteka-tenencia',
   standalone: true,
@@ -84,6 +93,13 @@ export class TenenciaComponent implements OnInit {
   readonly toast = output<string>();
   readonly VISIBLE = VISIBLE_ARTICLES;
   readonly editing = signal(false);
+  readonly view = signal<'query' | 'cotejo'>('query');
+  readonly cotejo = signal<CotejoState | null>(null);
+  readonly cotejoHistory = signal<CotejoState[] | null>(null);
+  readonly historyOpen = signal(false);
+  readonly cotejoBusy = signal(false);
+  readonly scanCode = signal('');
+  cotejoObservation = '';
   readonly exporting = signal(false);
   readonly expanded = signal<string[]>([]);
   readonly showExpiry = computed(() => !!this.result()?.fields?.expiry);
@@ -557,6 +573,10 @@ export class TenenciaComponent implements OnInit {
     const key = this.articleSort();
     if (!key) return row.articles;
     return [...row.articles].sort((a, b) => {
+      const aUnworked = a.issue === 'stock_not_found';
+      const bUnworked = b.issue === 'stock_not_found';
+      if (aUnworked !== bUnworked) return aUnworked ? 1 : -1;
+      if (aUnworked) return this.collator.compare(a.description, b.description);
       const x = a[key],
         y = b[key];
       if (x === null || y === null) return x === y ? 0 : x === null ? 1 : -1;
@@ -655,6 +675,90 @@ export class TenenciaComponent implements OnInit {
   }
   chooseArticle(article: Article) {
     this.activeArticleCode.set(article.code);
+  }
+  async setView(view: 'query' | 'cotejo') {
+    this.view.set(view);
+    if (view === 'cotejo' && !this.cotejo()) await this.loadCotejo();
+  }
+  async loadCotejo() {
+    this.cotejoBusy.set(true);
+    try {
+      const state = await this.bridge.call<CotejoState>('cotejo.state');
+      this.cotejo.set({ ...state, counts: state.counts ?? {} });
+      this.cotejoObservation = state.observation ?? '';
+    } catch (e) {
+      this.error.set(this.message(e));
+    } finally {
+      this.cotejoBusy.set(false);
+    }
+  }
+  cotejoCount(row: Row, article: Article) {
+    return this.cotejo()?.counts?.[row.id]?.[article.code] ?? 0;
+  }
+  cotejoTotal(row: Row) {
+    return row.articles.reduce((sum, article) => sum + this.cotejoCount(row, article), 0);
+  }
+  cotejoMissing(row: Row) {
+    return Math.max(0, row.minimum - this.cotejoTotal(row));
+  }
+  cotejoUnits(state: CotejoState) {
+    return Object.values(state.counts ?? {}).reduce((total, group) => total + Object.values(group).reduce((sum, value) => sum + value, 0), 0);
+  }
+  adjustCotejo(row: Row, article: Article, change: number) {
+    const state = this.cotejo();
+    if (!state) return;
+    const counts = structuredClone(state.counts ?? {});
+    counts[row.id] ??= {};
+    counts[row.id][article.code] = Math.max(0, Math.min(10000, (counts[row.id][article.code] ?? 0) + change));
+    if (!counts[row.id][article.code]) delete counts[row.id][article.code];
+    this.cotejo.set({ ...state, counts });
+  }
+  scanCotejo() {
+    const value = this.scanCode().trim();
+    if (!value) return;
+    for (const row of this.rows()) {
+      const article = row.articles.find((a) => a.code === value || a.barcode === value);
+      if (article) {
+        this.activeId.set(row.id);
+        this.activeArticleCode.set(article.code);
+        this.adjustCotejo(row, article, 1);
+        this.scanCode.set('');
+        this.toast.emit(`${article.code} · unidad añadida al cotejo`);
+        return;
+      }
+    }
+    this.error.set('El código no pertenece a los artículos del listado actual.');
+  }
+  async saveCotejo() {
+    const state = this.cotejo();
+    if (!state || !this.result()?.listVersion || this.cotejoBusy()) return;
+    this.cotejoBusy.set(true);
+    try {
+      const saved = await this.bridge.call<CotejoState>('cotejo.save', {
+        ...state,
+        listVersion: this.result()!.listVersion,
+        observation: this.cotejoObservation,
+      });
+      this.cotejo.set(saved);
+      this.toast.emit('Cotejo guardado en el historial de la farmacia.');
+    } catch (e) {
+      this.error.set(this.message(e));
+    } finally {
+      this.cotejoBusy.set(false);
+    }
+  }
+  async toggleCotejoHistory() {
+    if (this.historyOpen()) { this.historyOpen.set(false); return; }
+    this.cotejoBusy.set(true);
+    try {
+      const result = await this.bridge.call<{ rows: CotejoState[] }>('cotejo.history');
+      this.cotejoHistory.set(result.rows ?? []);
+      this.historyOpen.set(true);
+    } catch (e) {
+      this.error.set(this.message(e));
+    } finally {
+      this.cotejoBusy.set(false);
+    }
   }
   move(e: Event, step: number) {
     const element = e.currentTarget as HTMLElement;

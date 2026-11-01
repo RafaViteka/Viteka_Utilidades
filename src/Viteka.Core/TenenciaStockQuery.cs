@@ -18,6 +18,13 @@ public static class TenenciaStockQuery
         public string? LastSale { get; init; }
         public string? MinimumStock { get; init; }
         public string? SupplierCode { get; init; }
+        public string? AuxiliaryStockTable { get; init; }
+        public string? AuxiliaryStockCode { get; init; }
+        public string? AuxiliaryExpiry { get; init; }
+        public string? AuxiliaryLastPurchase { get; init; }
+        public string? AuxiliaryLastSale { get; init; }
+        public string? AuxiliaryMinimumStock { get; init; }
+        public string? AuxiliarySupplierCode { get; init; }
         public string? ProviderTable { get; init; }
         public string? ProviderCode { get; init; }
         public string? ProviderDescription { get; init; }
@@ -49,7 +56,7 @@ public static class TenenciaStockQuery
         public string? RelativeBarcodeValue { get; init; }
         /// <summary>Columnas de AB_ARTICULOS que contienen la agrupación o conjunto homogéneo.</summary>
         public string[] Homogeneous { get; init; } = [];
-        public Viteka.Contracts.TenenciaFields Fields => new(Expiry is not null, LastPurchase is not null || LastSale is not null, Homogeneous.Select(h => h.Trim('"')).ToArray()) { Purchase=LastPurchase is not null, PurchaseColumn=LastPurchase?.Trim('"') };
+        public Viteka.Contracts.TenenciaFields Fields => new(Expiry is not null || AuxiliaryExpiry is not null, LastPurchase is not null || LastSale is not null || AuxiliaryLastPurchase is not null || AuxiliaryLastSale is not null, Homogeneous.Select(h => h.Trim('"')).ToArray()) { Purchase=LastPurchase is not null || AuxiliaryLastPurchase is not null, PurchaseColumn=(LastPurchase??AuxiliaryLastPurchase)?.Trim('"') };
     }
     private static string Normalize(string column) => column.Replace("_", "").Replace(" ", "").ToUpperInvariant();
     private static bool SafeName(string column) => Regex.IsMatch(column, "^[A-Za-z][A-Za-z0-9_ ]{0,127}$");
@@ -119,17 +126,25 @@ public static class TenenciaStockQuery
             foreach (var table in tables) try { return (table, Columns(table)); } catch (DbException) { }
             return null;
         }
+        (string Table, string[] Columns)? OptionalOther(string excluded, params string[] tables)
+        {
+            foreach (var table in tables.Where(t=>t!=excluded)) try { var columns=Columns(table);if(columns.Any(c=>Normalize(c) is "STOCKMIN" or "PROVULTCOMPRA"))return (table,columns); } catch (DbException) { }
+            return null;
+        }
         string Find(string[] columns, params string[] names) { var hits = columns.Where(c => names.Contains(c.Replace("_", "").Replace(" ", "").ToUpperInvariant())).ToArray(); if (hits.Length != 1 || !Regex.IsMatch(hits[0], "^[A-Za-z][A-Za-z0-9_ ]{0,127}$")) throw new InvalidDataException("No se identifica de forma única la columna de artículos o stock. Viteka debe revisar la estructura."); return "\"" + hits[0] + "\""; }
-        var article = nativeNixFarma ? FirstAvailable("APADMIN_AB_ARTICULOS", "APPUL.AB_ARTICULOS") : FirstAvailable("ARTICULOS");
-        var stock = nativeNixFarma ? FirstAvailable("APADMIN_AC_EXISTENCIAS", "AC1_EXISTENCIAS", "APPUL.AB_ARTICULOS_FICHA_E") : FirstAvailable("EXISTENCIAS");
+        var article = nativeNixFarma ? FirstAvailable("APADMIN_AB_ARTICULOS", "APADMIN.AB_ARTICULOS", "APPUL.AB_ARTICULOS") : FirstAvailable("ARTICULOS");
+        // AC1 aporta el stock que ya está confirmado en las instalaciones probadas. Las vistas APADMIN/AC
+        // se usan como fuente auxiliar para completar mínimo, proveedor y movimientos cuando sea necesario.
+        var stock = nativeNixFarma ? FirstAvailable("AC1_EXISTENCIAS", "APADMIN_AC_EXISTENCIAS", "APADMIN.AC_EXISTENCIAS", "AC_EXISTENCIAS", "APPUL.AB_ARTICULOS_FICHA_E") : FirstAvailable("EXISTENCIAS");
         var articleTable = article.Table; var stockTable = stock.Table; var a = article.Columns; var e = stock.Columns;
-        var details = nativeNixFarma ? Optional("APADMIN_AB_ARTICULOS_FICHA_E") : null;
-        var providers = nativeNixFarma ? Optional("APADMIN_AD_PROVEEDORES") : null;
-        var laboratories = nativeNixFarma ? Optional("DW_AB_LABORATORIOS") : null;
-        var homogeneousDetail = nativeNixFarma ? Optional("APPUL_AB_CJTO_DET_ESPECIALIDAD") : null;
-        var homogeneousMaster = nativeNixFarma ? Optional("APPUL_AB_CJTO_ESPECIALIDAD") : null;
-        var barcodes = nativeNixFarma ? Optional("DSP_AB_ARTICULOS") : null;
-        var relativeBarcodes = nativeNixFarma ? Optional("DONET_AD_CRELATIVOS") : null;
+        var auxiliaryStock = nativeNixFarma && (Exact(e,"STOCKMIN") is null || Exact(e,"PROVULTCOMPRA") is null) ? OptionalOther(stockTable,"APADMIN_AC_EXISTENCIAS", "APADMIN.AC_EXISTENCIAS", "AC_EXISTENCIAS", "AC1_EXISTENCIAS") : null;
+        var details = nativeNixFarma ? Optional("APADMIN_AB_ARTICULOS_FICHA_E", "APADMIN.AB_ARTICULOS_FICHA_E") : null;
+        var providers = nativeNixFarma ? Optional("APADMIN_AD_PROVEEDORES", "APADMIN.AD_PROVEEDORES") : null;
+        var laboratories = nativeNixFarma ? Optional("DW_AB_LABORATORIOS", "DW.AB_LABORATORIOS") : null;
+        var homogeneousDetail = nativeNixFarma ? Optional("APPUL_AB_CJTO_DET_ESPECIALIDAD", "APPUL.AB_CJTO_DET_ESPECIALIDAD") : null;
+        var homogeneousMaster = nativeNixFarma ? Optional("APPUL_AB_CJTO_ESPECIALIDAD", "APPUL.AB_CJTO_ESPECIALIDAD") : null;
+        var barcodes = nativeNixFarma ? Optional("DSP_AB_ARTICULOS", "DSP.AB_ARTICULOS") : null;
+        var relativeBarcodes = nativeNixFarma ? Optional("DONET_AD_CRELATIVOS", "DONET.AD_CRELATIVOS") : null;
         var candidates = a.Where(c => Regex.IsMatch(c, "^[A-Za-z][A-Za-z0-9_ ]{0,127}$") && Regex.IsMatch(c, "ATC|TERAP|GRUPO", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)).ToArray();
         var exact = candidates.Where(c => new[] { "ATC", "CODIGOATC", "GRUPOATC" }.Contains(c.Replace("_", "").Replace(" ", "").ToUpperInvariant())).ToArray();
         var homogeneous = a.Where(c => SafeName(c) && Normalize(c).Contains("HOMOG", StringComparison.Ordinal)).Take(6).Select(Quote).ToArray();
@@ -147,11 +162,18 @@ public static class TenenciaStockQuery
             LastSale = Exact(e, "FUV") ?? Pick(e, IsLastSale, "FECULTVENTA", "FECHAULTIMAVENTA", "FECULTIMAVENTA", "FECHAULTVENTA", "FULTVENTA"),
             MinimumStock = Exact(e, "STOCKMIN"),
             SupplierCode = Exact(e, "PROVULTCOMPRA"),
+            AuxiliaryStockTable = auxiliaryStock?.Table,
+            AuxiliaryStockCode = auxiliaryStock is null ? null : Exact(auxiliaryStock.Value.Columns,"ARTCODIGO","ARTICULO","CODIGO"),
+            AuxiliaryExpiry = auxiliaryStock is null ? null : Pick(auxiliaryStock.Value.Columns,IsExpiry,"FECCADUCIDAD","FECHACADUCIDAD","CADUCIDAD","FCADUCIDAD","FECCAD"),
+            AuxiliaryLastPurchase = auxiliaryStock is null ? null : Exact(auxiliaryStock.Value.Columns,"FUC") ?? (auxiliaryStock is null ? null : Pick(auxiliaryStock.Value.Columns,IsLastPurchase)),
+            AuxiliaryLastSale = auxiliaryStock is null ? null : Exact(auxiliaryStock.Value.Columns,"FUV") ?? (auxiliaryStock is null ? null : Pick(auxiliaryStock.Value.Columns,IsLastSale)),
+            AuxiliaryMinimumStock = auxiliaryStock is null ? null : Exact(auxiliaryStock.Value.Columns,"STOCKMIN"),
+            AuxiliarySupplierCode = auxiliaryStock is null ? null : Exact(auxiliaryStock.Value.Columns,"PROVULTCOMPRA"),
             ProviderTable = providers?.Table,
-            ProviderCode = providers is null ? null : Exact(providers.Value.Columns, "CODIGO", "PROVCODIGO", "PROVEEDOR"),
-            ProviderDescription = providers is null ? null : Exact(providers.Value.Columns, "DESCRIPCION", "NOMBRE", "RAZONSOCIAL"),
+            ProviderCode = providers is null ? null : Exact(providers.Value.Columns, "CODIGO", "PROVCODIGO", "PROVEEDOR", "PROVCOD"),
+            ProviderDescription = providers is null ? null : Exact(providers.Value.Columns, "DESCRIPCION", "PROVDESCRIPCION", "NOMBRE", "RAZONSOCIAL"),
             DetailsTable = details?.Table,
-            DetailsCode = details is null ? null : Exact(details.Value.Columns, "ARTCODIGO", "CODIGO"),
+            DetailsCode = details is null ? null : Exact(details.Value.Columns, "ARTCODIGO", "ARTICULO", "CODIGO"),
             DetailsClass = details is null ? null : Exact(details.Value.Columns, "ARTCLASE", "CLASE"),
             LaboratoryCode = details is null ? null : Exact(details.Value.Columns, "ARTLABCODIGO"),
             AbcCode = details is null ? null : Exact(details.Value.Columns, "CODIGOABC"),
@@ -159,22 +181,22 @@ public static class TenenciaStockQuery
             LaboratoryTable = laboratories?.Table,
             LaboratoryClass = laboratories is null ? null : Exact(laboratories.Value.Columns, "CLASE"),
             LaboratoryKey = laboratories is null ? null : Exact(laboratories.Value.Columns, "CODIGO", "LABCODIGO"),
-            LaboratoryDescription = laboratories is null ? null : Exact(laboratories.Value.Columns, "DESCRIPCION", "NOMBRE"),
+            LaboratoryDescription = laboratories is null ? null : Exact(laboratories.Value.Columns, "DESCRIPCION", "LABDESCRIPCION", "NOMBRE"),
             Inactive = Exact(a, "BAJA"),
             InactiveOn = Pick(a, n => n.Contains("BAJA", StringComparison.Ordinal) && IsDate(n), "FECHABAJA", "FECBAJA", "FBAJA"),
             HomogeneousDetailTable = homogeneousDetail?.Table,
-            HomogeneousArticleCode = homogeneousDetail is null ? null : Exact(homogeneousDetail.Value.Columns, "ARTCOD", "ARTCODIGO"),
-            HomogeneousCommunity = homogeneousDetail is null ? null : Exact(homogeneousDetail.Value.Columns, "COMUNIDAD"),
+            HomogeneousArticleCode = homogeneousDetail is null ? null : Exact(homogeneousDetail.Value.Columns, "ARTCOD", "ARTCODIGO", "ARTICULO"),
+            HomogeneousCommunity = homogeneousDetail is null ? null : Exact(homogeneousDetail.Value.Columns, "COMUNIDAD", "ACOMUNIDAD"),
             HomogeneousGroupCode = homogeneousDetail is null ? null : Exact(homogeneousDetail.Value.Columns, "CJTOCOD"),
             HomogeneousMasterTable = homogeneousMaster?.Table,
             HomogeneousMasterCode = homogeneousMaster is null ? null : Exact(homogeneousMaster.Value.Columns, "CJTOCOD", "CODIGO"),
-            HomogeneousMasterCommunity = homogeneousMaster is null ? null : Exact(homogeneousMaster.Value.Columns, "COMUNIDAD"),
+            HomogeneousMasterCommunity = homogeneousMaster is null ? null : Exact(homogeneousMaster.Value.Columns, "COMUNIDAD", "ACOMUNIDAD"),
             HomogeneousDescription = homogeneousMaster is null ? null : Exact(homogeneousMaster.Value.Columns, "DESCRIPCION"),
             BarcodeTable = barcodes?.Table,
-            BarcodeArticleCode = barcodes is null ? null : Exact(barcodes.Value.Columns, "ARTCODIGO", "ARTCOD", "CODIGO"),
+            BarcodeArticleCode = barcodes is null ? null : Exact(barcodes.Value.Columns, "ARTCODIGO", "ARTCOD", "ARTICULO", "CODIGO"),
             BarcodeValue = barcodes is null ? null : Exact(barcodes.Value.Columns, "EAN13"),
             RelativeBarcodeTable = relativeBarcodes?.Table,
-            RelativeBarcodeArticleCode = relativeBarcodes is null ? null : Exact(relativeBarcodes.Value.Columns, "ARTCODIGO", "ARTCOD"),
+            RelativeBarcodeArticleCode = relativeBarcodes is null ? null : Exact(relativeBarcodes.Value.Columns, "ARTCODIGO", "ARTCOD", "ARTICULO"),
             RelativeBarcodeValue = relativeBarcodes is null ? null : Exact(relativeBarcodes.Value.Columns, "CODRELATIVO"),
             Homogeneous = homogeneous,
         };
@@ -234,6 +256,19 @@ public static class TenenciaStockQuery
                 decimal? pvp = null; if (schema.Pvp is not null) { if (!reader.IsDBNull(column) && decimal.TryParse(Convert.ToString(reader.GetValue(column), CultureInfo.InvariantCulture), NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)) pvp = amount; column++; }
                 details[code] = (@class, laboratory, abc, pvp);
             }
+        }
+        var auxiliaryExtras = new[] { schema.AuxiliaryExpiry, schema.AuxiliaryLastPurchase, schema.AuxiliaryLastSale, schema.AuxiliaryMinimumStock, schema.AuxiliarySupplierCode }.Where(x=>x is not null).Select(x=>x!).ToArray();
+        if(schema.AuxiliaryStockTable is not null && schema.AuxiliaryStockCode is not null && auxiliaryExtras.Length>0)
+        foreach(var batch in codes.Distinct().Chunk(250))
+        using(var cmd=Select(connection,tx,schema.AuxiliaryStockTable,schema.AuxiliaryStockCode,auxiliaryExtras[0],batch,auxiliaryExtras.Skip(1).ToArray()))
+        using(var reader=cmd.ExecuteReader())while(reader.Read())
+        {
+            var code=Code(reader.GetValue(0));var column=1;
+            if(schema.AuxiliaryExpiry is not null&&ParseDate(reader.GetValue(column++)) is {} exp&&(!expiry.TryGetValue(code,out var priorExp)||exp<priorExp))expiry[code]=exp;
+            if(schema.AuxiliaryLastPurchase is not null&&ParseDate(reader.GetValue(column++)) is {} buy&&(!purchase.TryGetValue(code,out var priorBuy)||buy>priorBuy))purchase[code]=buy;
+            if(schema.AuxiliaryLastSale is not null&&ParseDate(reader.GetValue(column++)) is {} sold&&(!sale.TryGetValue(code,out var priorSale)||sold>priorSale))sale[code]=sold;
+            if(schema.AuxiliaryMinimumStock is not null){if(!reader.IsDBNull(column)&&decimal.TryParse(Convert.ToString(reader.GetValue(column),CultureInfo.InvariantCulture),NumberStyles.Number,CultureInfo.InvariantCulture,out var min))minimum[code]=min;column++;}
+            if(schema.AuxiliarySupplierCode is not null&&!reader.IsDBNull(column))supplier[code]=Convert.ToString(reader.GetValue(column),CultureInfo.InvariantCulture)?.Trim()??"";
         }
         var providerNames = Lookup(connection, tx, schema.ProviderTable, schema.ProviderCode, schema.ProviderDescription, supplier.Values);
         var laboratoryNames = LookupLaboratories(connection, tx, schema, details.Values.Select(x => (x.Class, x.Laboratory)));
@@ -313,7 +348,7 @@ public static class TenenciaStockQuery
         extras ??= [];
         // Identifiers originate exclusively in Inspect; values always use positional ODBC parameters.
         foreach (var identifier in new[] { code, value }.Concat(extras)) if (!Regex.IsMatch(identifier, "^\"[A-Za-z][A-Za-z0-9_ ]{0,127}\"$")) throw new ArgumentException();
-        if (table is not ("ARTICULOS" or "EXISTENCIAS" or "APADMIN_AB_ARTICULOS" or "APADMIN_AC_EXISTENCIAS" or "AC1_EXISTENCIAS" or "APPUL.AB_ARTICULOS" or "APPUL.AB_ARTICULOS_FICHA_E" or "APADMIN_AB_ARTICULOS_FICHA_E" or "APADMIN_AD_PROVEEDORES" or "DW_AB_LABORATORIOS" or "DSP_AB_ARTICULOS" or "DONET_AD_CRELATIVOS")) throw new ArgumentException();
+        if (table is not ("ARTICULOS" or "EXISTENCIAS" or "APADMIN_AB_ARTICULOS" or "APADMIN.AB_ARTICULOS" or "APADMIN_AC_EXISTENCIAS" or "APADMIN.AC_EXISTENCIAS" or "AC_EXISTENCIAS" or "AC1_EXISTENCIAS" or "APPUL.AB_ARTICULOS" or "APPUL.AB_ARTICULOS_FICHA_E" or "APADMIN_AB_ARTICULOS_FICHA_E" or "APADMIN.AB_ARTICULOS_FICHA_E" or "APADMIN_AD_PROVEEDORES" or "APADMIN.AD_PROVEEDORES" or "DW_AB_LABORATORIOS" or "DW.AB_LABORATORIOS" or "DSP_AB_ARTICULOS" or "DSP.AB_ARTICULOS" or "DONET_AD_CRELATIVOS" or "DONET.AD_CRELATIVOS")) throw new ArgumentException();
         var cmd = Command(connection, tx, $"SELECT {string.Join(", ", new[] { code, value }.Concat(extras))} FROM {table} WHERE {code} IN ({string.Join(",", codes.Select(_ => "?"))})"); foreach (var c in codes) { var p = cmd.CreateParameter(); p.DbType = DbType.String; p.Value = c; cmd.Parameters.Add(p); }
         return cmd;
     }

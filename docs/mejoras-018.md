@@ -82,6 +82,10 @@ La consulta prioriza `APADMIN_AB_ARTICULOS` para código, descripción y baja; y
 
 Datos de la farmacia define el plazo de revisión de caducidad, entre 1 y 24 meses, con 3 meses por defecto, y si las unidades caducadas se contabilizan como existencias efectivas. Hasta disponer de lotes, todas las unidades toman la fecha de caducidad de la ficha: permite advertir y aplicar la política compartida, pero no repartir cantidades entre fechas distintas. Un artículo con existencias y sin fecha aparece en «Revisar caducidad». La ausencia de ficha se etiqueta «No trabajado» y cuenta como cero.
 
+La opción «Caducidad y existencias mínimas» aparece directamente en Configuración y abre el criterio compartido de la farmacia. Tenencia ofrece Consulta y Cotejo. Cotejo permite contar por artículo con botones o introduciendo CN/código de barras, guarda observaciones, usuario, fecha, versión del listado y política de caducidad, y conserva las últimas 50 revisiones compartidas.
+
+La detección acepta nombres de esquema separados por punto o guion bajo, además de `AC_EXISTENCIAS` y `AC1_EXISTENCIAS`. Si la vista principal carece de `STOCK_MIN` o `PROV_ULT_COMPRA`, una segunda vista confirmada completa esos campos dentro de la misma transacción de solo lectura. `ACOMUNIDAD` se admite para las agrupaciones homogéneas andaluzas.
+
 ## Validación
 
 Pruebas del núcleo: migración, edición/caché, firma, secuencia, conflictos, altas/cambios/bajas, reintentos, transacción interrumpida, recuperación e historial; auditoría central y paginación; reglas de compras y CSV con Node; interfaz con autoridad y Oracle simulados, navegación, geometría de tarjetas, permisos, modalidades y auditoría. Las pruebas nativas requieren Windows; pasar fixtures no demuestra existencias, fechas ni relaciones terapéuticas reales.
