@@ -173,7 +173,7 @@ public static class TenenciaStockQuery
             Find(a, articleTable, "código nacional del artículo", nativeNixFarma, nativeNixFarma ? ["CODIGO", "ARTCODIGO", "ARTICULO"] : ["ARTICULO"]),
             Find(a, articleTable, "descripción del artículo", nativeNixFarma, "DESCRIPCION"),
             Find(e, stockTable, "código nacional de existencias", nativeNixFarma, nativeNixFarma ? ["ARTCODIGO", "ARTICULO", "CODIGO"] : ["ARTICULO"]),
-            Find(e, stockTable, "stock actual", nativeNixFarma, nativeNixFarma ? ["EXIACTUALES", "ACTUAL", "STOCKACTUAL"] : ["ACTUAL", "STOCKACTUAL"]))
+            Find(e, stockTable, "stock actual", nativeNixFarma, nativeNixFarma ? ["EXIACTUALES", "ACTUALES", "ACTUAL", "STOCKACTUAL"] : ["ACTUAL", "STOCKACTUAL"]))
         {
             ArticleTable = articleTable,
             StockTable = stockTable,

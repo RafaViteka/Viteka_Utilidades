@@ -51,7 +51,7 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
-Corrige la detección de columnas cuando NixFarma expone simultáneamente nombres actuales e históricos: prioriza `CODIGO` para artículos, `ART_CODIGO` para existencias y `EXI_ACTUALES` para stock. Los errores de estructura indican ahora la tabla, el concepto y las columnas encontradas. También reduce los viajes ODBC, admite un tiempo realista para los 2.089 artículos y evita que una tabla auxiliar opcional impida devolver el stock principal.
+Corrige la detección de columnas cuando NixFarma expone simultáneamente nombres actuales e históricos: prioriza `CODIGO` para artículos y `ART_CODIGO` para existencias, y admite `EXI_ACTUALES` o `ACTUALES` para el stock. Esta última denominación corresponde a la vista `APADMIN.AC_EXISTENCIAS` diagnosticada en el servidor de pruebas. Los errores de estructura indican la tabla, el concepto y las columnas encontradas.
 
 Tenencia incorpora Consulta, Cotejo y Caducidades. Caducidades contiene los meses de aviso y el tratamiento del stock caducado. Cotejo funciona aunque Oracle no haya terminado una consulta: muestra una tabla de grupos con mínimo, cotejado y pendiente, y otra de artículos del grupo. La entrada por CN o código de barras actualiza todos los grupos a los que pertenezca el artículo.
 

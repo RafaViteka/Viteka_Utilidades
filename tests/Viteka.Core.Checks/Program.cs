@@ -561,6 +561,8 @@ try
         Require(enriched.Steps.Any(s => s.Contains("FROM APADMIN_AC_EXISTENCIAS WHERE", StringComparison.Ordinal)));
         using var nativeWithLegacyStock = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES", AmbiguousColumns = true };
         TenenciaStockQuery.ReadOnly(nativeWithLegacyStock, tx => { Require(TenenciaStockQuery.Inspect(nativeWithLegacyStock, tx, nativeNixFarma: true).Stock == "\"EXI_ACTUALES\""); return true; });
+        using var nativeActuales = new TenenciaFixture { NativeSchema = true, StockColumn = "ACTUALES" };
+        TenenciaStockQuery.ReadOnly(nativeActuales, tx => { Require(TenenciaStockQuery.Inspect(nativeActuales, tx, nativeNixFarma: true).Stock == "\"ACTUALES\""); return true; });
         using var legacy = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES", LegacyNativeTables = true };
         TenenciaStockQuery.ReadOnly(legacy, tx => { var schema = TenenciaStockQuery.Inspect(legacy, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APPUL.AB_ARTICULOS" && schema.StockTable == "APPUL.AB_ARTICULOS_FICHA_E"); return true; });
     });
