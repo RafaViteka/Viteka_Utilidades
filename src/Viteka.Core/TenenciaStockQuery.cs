@@ -214,7 +214,9 @@ public static class TenenciaStockQuery
         var details = new Dictionary<string, (string Class, string Laboratory, string Abc, decimal? Pvp)>();
         var stockExtras = new[] { schema.Expiry, schema.LastPurchase, schema.LastSale, schema.MinimumStock, schema.SupplierCode }.Where(x => x is not null).Select(x => x!).ToArray();
         var articleExtras = new[] { schema.Inactive, schema.InactiveOn }.Where(x => x is not null).Select(x => x!).ToArray();
-        foreach (var batch in codes.Distinct().Chunk(250))
+        // Oracle admite hasta 1000 expresiones en IN. Lotes de 900 reducen drásticamente los viajes ODBC
+        // del catálogo provincial (más de 2000 CN) sin alcanzar ese límite.
+        foreach (var batch in codes.Distinct().Chunk(900))
         {
             ct.ThrowIfCancellationRequested();
             using (var cmd = Select(connection, tx, schema.ArticleTable, schema.ArticleCode, schema.Description, batch, articleExtras))
@@ -245,30 +247,40 @@ public static class TenenciaStockQuery
                 if (schema.SupplierCode is not null && !reader.IsDBNull(column)) supplier[code] = Convert.ToString(reader.GetValue(column), CultureInfo.InvariantCulture)?.Trim() ?? "";
             }
             var detailColumns = new[] { schema.DetailsClass, schema.LaboratoryCode, schema.AbcCode, schema.Pvp }.Where(x => x is not null).Select(x => x!).ToArray();
-            if (schema.DetailsTable is not null && schema.DetailsCode is not null && detailColumns.Length > 0)
-            using (var cmd = Select(connection, tx, schema.DetailsTable, schema.DetailsCode, detailColumns[0], batch, detailColumns.Skip(1).ToArray()))
-            using (var reader = cmd.ExecuteReader()) while (reader.Read())
+            try
             {
-                var code = Code(reader.GetValue(0)); var column = 1;
-                string ReadText(string? field) => field is null ? "" : reader.IsDBNull(column) ? Advance("") : Advance(Convert.ToString(reader.GetValue(column), CultureInfo.InvariantCulture)?.Trim() ?? "");
-                string Advance(string value) { column++; return value; }
-                var @class = ReadText(schema.DetailsClass); var laboratory = ReadText(schema.LaboratoryCode); var abc = ReadText(schema.AbcCode);
-                decimal? pvp = null; if (schema.Pvp is not null) { if (!reader.IsDBNull(column) && decimal.TryParse(Convert.ToString(reader.GetValue(column), CultureInfo.InvariantCulture), NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)) pvp = amount; column++; }
-                details[code] = (@class, laboratory, abc, pvp);
+                if (schema.DetailsTable is not null && schema.DetailsCode is not null && detailColumns.Length > 0)
+                using (var cmd = Select(connection, tx, schema.DetailsTable, schema.DetailsCode, detailColumns[0], batch, detailColumns.Skip(1).ToArray()))
+                using (var reader = cmd.ExecuteReader()) while (reader.Read())
+                {
+                    var code = Code(reader.GetValue(0)); var column = 1;
+                    string ReadText(string? field) => field is null ? "" : reader.IsDBNull(column) ? Advance("") : Advance(Convert.ToString(reader.GetValue(column), CultureInfo.InvariantCulture)?.Trim() ?? "");
+                    string Advance(string value) { column++; return value; }
+                    var @class = ReadText(schema.DetailsClass); var laboratory = ReadText(schema.LaboratoryCode); var abc = ReadText(schema.AbcCode);
+                    decimal? pvp = null; if (schema.Pvp is not null) { if (!reader.IsDBNull(column) && decimal.TryParse(Convert.ToString(reader.GetValue(column), CultureInfo.InvariantCulture), NumberStyles.Number, CultureInfo.InvariantCulture, out var amount)) pvp = amount; column++; }
+                    details[code] = (@class, laboratory, abc, pvp);
+                }
             }
+            catch (DbException) { /* Los datos ampliados nunca deben impedir devolver existencias. */ }
         }
         var auxiliaryExtras = new[] { schema.AuxiliaryExpiry, schema.AuxiliaryLastPurchase, schema.AuxiliaryLastSale, schema.AuxiliaryMinimumStock, schema.AuxiliarySupplierCode }.Where(x=>x is not null).Select(x=>x!).ToArray();
         if(schema.AuxiliaryStockTable is not null && schema.AuxiliaryStockCode is not null && auxiliaryExtras.Length>0)
-        foreach(var batch in codes.Distinct().Chunk(250))
-        using(var cmd=Select(connection,tx,schema.AuxiliaryStockTable,schema.AuxiliaryStockCode,auxiliaryExtras[0],batch,auxiliaryExtras.Skip(1).ToArray()))
-        using(var reader=cmd.ExecuteReader())while(reader.Read())
+        foreach(var batch in codes.Distinct().Chunk(900))
         {
-            var code=Code(reader.GetValue(0));var column=1;
-            if(schema.AuxiliaryExpiry is not null&&ParseDate(reader.GetValue(column++)) is {} exp&&(!expiry.TryGetValue(code,out var priorExp)||exp<priorExp))expiry[code]=exp;
-            if(schema.AuxiliaryLastPurchase is not null&&ParseDate(reader.GetValue(column++)) is {} buy&&(!purchase.TryGetValue(code,out var priorBuy)||buy>priorBuy))purchase[code]=buy;
-            if(schema.AuxiliaryLastSale is not null&&ParseDate(reader.GetValue(column++)) is {} sold&&(!sale.TryGetValue(code,out var priorSale)||sold>priorSale))sale[code]=sold;
-            if(schema.AuxiliaryMinimumStock is not null){if(!reader.IsDBNull(column)&&decimal.TryParse(Convert.ToString(reader.GetValue(column),CultureInfo.InvariantCulture),NumberStyles.Number,CultureInfo.InvariantCulture,out var min))minimum[code]=min;column++;}
-            if(schema.AuxiliarySupplierCode is not null&&!reader.IsDBNull(column))supplier[code]=Convert.ToString(reader.GetValue(column),CultureInfo.InvariantCulture)?.Trim()??"";
+            try
+            {
+                using var cmd=Select(connection,tx,schema.AuxiliaryStockTable,schema.AuxiliaryStockCode,auxiliaryExtras[0],batch,auxiliaryExtras.Skip(1).ToArray());
+                using var reader=cmd.ExecuteReader();while(reader.Read())
+                {
+                    var code=Code(reader.GetValue(0));var column=1;
+                    if(schema.AuxiliaryExpiry is not null&&ParseDate(reader.GetValue(column++)) is {} exp&&(!expiry.TryGetValue(code,out var priorExp)||exp<priorExp))expiry[code]=exp;
+                    if(schema.AuxiliaryLastPurchase is not null&&ParseDate(reader.GetValue(column++)) is {} buy&&(!purchase.TryGetValue(code,out var priorBuy)||buy>priorBuy))purchase[code]=buy;
+                    if(schema.AuxiliaryLastSale is not null&&ParseDate(reader.GetValue(column++)) is {} sold&&(!sale.TryGetValue(code,out var priorSale)||sold>priorSale))sale[code]=sold;
+                    if(schema.AuxiliaryMinimumStock is not null){if(!reader.IsDBNull(column)&&decimal.TryParse(Convert.ToString(reader.GetValue(column),CultureInfo.InvariantCulture),NumberStyles.Number,CultureInfo.InvariantCulture,out var min))minimum[code]=min;column++;}
+                    if(schema.AuxiliarySupplierCode is not null&&!reader.IsDBNull(column))supplier[code]=Convert.ToString(reader.GetValue(column),CultureInfo.InvariantCulture)?.Trim()??"";
+                }
+            }
+            catch (DbException) { /* Fuente auxiliar opcional. */ }
         }
         var providerNames = Lookup(connection, tx, schema.ProviderTable, schema.ProviderCode, schema.ProviderDescription, supplier.Values);
         var laboratoryNames = LookupLaboratories(connection, tx, schema, details.Values.Select(x => (x.Class, x.Laboratory)));
@@ -294,22 +306,22 @@ public static class TenenciaStockQuery
     {
         var values = requested.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().Take(10000).ToArray(); var result = new Dictionary<string, string>();
         if (table is null || code is null || description is null) return result;
-        foreach (var batch in values.Chunk(250)) using (var cmd = Select(connection, tx, table, code, description, batch)) using (var reader = cmd.ExecuteReader()) while (reader.Read())
+        foreach (var batch in values.Chunk(900)) try { using (var cmd = Select(connection, tx, table, code, description, batch)) using (var reader = cmd.ExecuteReader()) while (reader.Read())
         {
             var key = Convert.ToString(reader.GetValue(0), CultureInfo.InvariantCulture)?.Trim() ?? ""; var value = reader.IsDBNull(1) ? "" : Convert.ToString(reader.GetValue(1), CultureInfo.InvariantCulture)?.Trim() ?? "";
             if (key.Length > 0 && value.Length > 0) { if (result.TryGetValue(key, out var previous) && previous != value) result.Remove(key); else result.TryAdd(key, value); }
-        }
+        } } catch (DbException) { }
         return result;
     }
     private static Dictionary<(string Class, string Code), string> LookupLaboratories(DbConnection connection, DbTransaction tx, Schema schema, IEnumerable<(string Class, string Code)> requested)
     {
         var keys = requested.Where(x => !string.IsNullOrWhiteSpace(x.Code)).Distinct().Take(10000).ToArray(); var result = new Dictionary<(string, string), string>();
         if (schema.LaboratoryTable is null || schema.LaboratoryKey is null || schema.LaboratoryClass is null || schema.LaboratoryDescription is null) return result;
-        foreach (var batch in keys.Select(x => x.Code).Distinct().Chunk(250)) using (var cmd = Select(connection, tx, schema.LaboratoryTable, schema.LaboratoryKey, schema.LaboratoryDescription, batch, [schema.LaboratoryClass])) using (var reader = cmd.ExecuteReader()) while (reader.Read())
+        foreach (var batch in keys.Select(x => x.Code).Distinct().Chunk(900)) try { using (var cmd = Select(connection, tx, schema.LaboratoryTable, schema.LaboratoryKey, schema.LaboratoryDescription, batch, [schema.LaboratoryClass])) using (var reader = cmd.ExecuteReader()) while (reader.Read())
         {
             var code = Convert.ToString(reader.GetValue(0), CultureInfo.InvariantCulture)?.Trim() ?? ""; var description = reader.IsDBNull(1) ? "" : Convert.ToString(reader.GetValue(1), CultureInfo.InvariantCulture)?.Trim() ?? ""; var @class = reader.IsDBNull(2) ? "" : Convert.ToString(reader.GetValue(2), CultureInfo.InvariantCulture)?.Trim() ?? "";
             if (code.Length > 0 && description.Length > 0) result.TryAdd((@class, code), description);
-        }
+        } } catch (DbException) { }
         return result;
     }
     private static Dictionary<string, string> LookupHomogeneous(DbConnection connection, DbTransaction tx, Schema schema, IEnumerable<string> requested)
@@ -317,19 +329,23 @@ public static class TenenciaStockQuery
         var result = new Dictionary<string, string>();
         if (new[] { schema.HomogeneousDetailTable, schema.HomogeneousArticleCode, schema.HomogeneousCommunity, schema.HomogeneousGroupCode, schema.HomogeneousMasterTable, schema.HomogeneousMasterCode, schema.HomogeneousMasterCommunity, schema.HomogeneousDescription }.Any(x => x is null)) return result;
         var articleGroups = new Dictionary<string, string>();
-        foreach (var batch in requested.Distinct().Chunk(250))
+        try
         {
-            var sql = $"SELECT {schema.HomogeneousArticleCode}, {schema.HomogeneousGroupCode} FROM {schema.HomogeneousDetailTable} WHERE {schema.HomogeneousCommunity}=? AND {schema.HomogeneousArticleCode} IN ({string.Join(",", batch.Select(_ => "?"))})";
-            using var cmd = Command(connection, tx, sql); Add(cmd, "AND"); foreach (var code in batch) Add(cmd, code); using var reader = cmd.ExecuteReader();
-            while (reader.Read()) { var article = Convert.ToString(reader.GetValue(0), CultureInfo.InvariantCulture)?.Trim() ?? ""; var group = Convert.ToString(reader.GetValue(1), CultureInfo.InvariantCulture)?.Trim() ?? ""; if (TenenciaRules.ValidCode(article) && group.Length is > 0 and <= 100) articleGroups.TryAdd(article, group); }
+            foreach (var batch in requested.Distinct().Chunk(900))
+            {
+                var sql = $"SELECT {schema.HomogeneousArticleCode}, {schema.HomogeneousGroupCode} FROM {schema.HomogeneousDetailTable} WHERE {schema.HomogeneousCommunity}=? AND {schema.HomogeneousArticleCode} IN ({string.Join(",", batch.Select(_ => "?"))})";
+                using var cmd = Command(connection, tx, sql); Add(cmd, "AND"); foreach (var code in batch) Add(cmd, code); using var reader = cmd.ExecuteReader();
+                while (reader.Read()) { var article = Convert.ToString(reader.GetValue(0), CultureInfo.InvariantCulture)?.Trim() ?? ""; var group = Convert.ToString(reader.GetValue(1), CultureInfo.InvariantCulture)?.Trim() ?? ""; if (TenenciaRules.ValidCode(article) && group.Length is > 0 and <= 100) articleGroups.TryAdd(article, group); }
+            }
         }
+        catch (DbException) { return result; }
         var names = new Dictionary<string, string>();
-        foreach (var batch in articleGroups.Values.Distinct().Chunk(250))
+        try { foreach (var batch in articleGroups.Values.Distinct().Chunk(900))
         {
             var sql = $"SELECT {schema.HomogeneousMasterCode}, {schema.HomogeneousDescription} FROM {schema.HomogeneousMasterTable} WHERE {schema.HomogeneousMasterCommunity}=? AND {schema.HomogeneousMasterCode} IN ({string.Join(",", batch.Select(_ => "?"))})";
             using var cmd = Command(connection, tx, sql); Add(cmd, "AND"); foreach (var code in batch) Add(cmd, code); using var reader = cmd.ExecuteReader();
             while (reader.Read()) { var code = Convert.ToString(reader.GetValue(0), CultureInfo.InvariantCulture)?.Trim() ?? ""; var name = reader.IsDBNull(1) ? "" : Convert.ToString(reader.GetValue(1), CultureInfo.InvariantCulture)?.Trim() ?? ""; if (code.Length > 0 && name.Length > 0) names.TryAdd(code, name); }
-        }
+        } } catch (DbException) { return result; }
         foreach (var item in articleGroups) if (names.TryGetValue(item.Value, out var name)) result[item.Key] = name;
         return result;
     }

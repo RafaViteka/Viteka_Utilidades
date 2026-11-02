@@ -72,6 +72,10 @@ interface CotejoState {
   countExpiredStock: boolean;
   userName?: string | null;
 }
+interface TenenciaPolicySettings {
+  expiryReviewMonths: number;
+  countExpiredStock: boolean;
+}
 @Component({
   selector: 'viteka-tenencia',
   standalone: true,
@@ -93,12 +97,15 @@ export class TenenciaComponent implements OnInit {
   readonly toast = output<string>();
   readonly VISIBLE = VISIBLE_ARTICLES;
   readonly editing = signal(false);
-  readonly view = signal<'query' | 'cotejo'>('query');
+  readonly view = signal<'query' | 'cotejo' | 'expiry'>('query');
   readonly cotejo = signal<CotejoState | null>(null);
   readonly cotejoHistory = signal<CotejoState[] | null>(null);
   readonly historyOpen = signal(false);
   readonly cotejoBusy = signal(false);
   readonly scanCode = signal('');
+  readonly cotejoActiveId = signal<string | null>(null);
+  readonly policyBusy = signal(false);
+  readonly policy = signal<TenenciaPolicySettings | null>(null);
   cotejoObservation = '';
   readonly exporting = signal(false);
   readonly expanded = signal<string[]>([]);
@@ -123,6 +130,9 @@ export class TenenciaComponent implements OnInit {
   private collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
   readonly hasStock = computed(() => this.result()?.code === 'ok' && !!this.result()?.checkedAt);
   readonly rows = computed(() => this.result()?.rows ?? []);
+  readonly cotejoActiveRow = computed(
+    () => this.rows().find((row) => row.id === this.cotejoActiveId()) ?? this.rows()[0] ?? null,
+  );
   readonly covered = computed(() => this.rows().filter((r) => r.status === 'covered').length);
   readonly shortfalls = computed(() => this.rows().filter((r) => r.status === 'shortfall').length);
   readonly expiryReviewMonths = computed(() => this.result()?.policy?.expiryReviewMonths ?? 3);
@@ -615,28 +625,17 @@ export class TenenciaComponent implements OnInit {
     if (!this.canQuery()) return;
     this.busy.set(true);
     this.error.set('');
-    this.result.update((r) =>
-      r
-        ? {
-            ...r,
-            rows: r.rows?.map((row) => ({
-              ...row,
-              stock: null,
-              missing: null,
-              status: 'not_checked',
-              articles: row.articles.map((a) => ({ ...a, stock: null, issue: 'not_checked' })),
-            })),
-            checkedAt: undefined,
-          }
-        : r,
-    );
     this.selected.set(null);
     try {
       const r = await this.bridge.call<Result>('tenencia.query');
-      this.result.set(r);
-      this.emitSummary(r);
-      if (r.code === 'ok') this.toast.emit('Consulta completada · ' + this.stamp(r.checkedAt));
-      if (r.code !== 'ok') this.status.set('all');
+      if (r.code === 'ok') {
+        this.result.set(r);
+        this.emitSummary(r);
+        this.toast.emit('Consulta completada · ' + this.stamp(r.checkedAt));
+      } else {
+        this.error.set(r.message || 'No se pudo completar la consulta de existencias.');
+        this.status.set('all');
+      }
     } catch (e) {
       this.status.set('all');
       this.error.set(this.message(e));
@@ -676,9 +675,13 @@ export class TenenciaComponent implements OnInit {
   chooseArticle(article: Article) {
     this.activeArticleCode.set(article.code);
   }
-  async setView(view: 'query' | 'cotejo') {
+  async setView(view: 'query' | 'cotejo' | 'expiry') {
     this.view.set(view);
     if (view === 'cotejo' && !this.cotejo()) await this.loadCotejo();
+    if (view === 'expiry' && !this.policy()) await this.loadPolicy();
+  }
+  chooseCotejoGroup(row: Row) {
+    this.cotejoActiveId.set(row.id);
   }
   async loadCotejo() {
     this.cotejoBusy.set(true);
@@ -716,18 +719,72 @@ export class TenenciaComponent implements OnInit {
   scanCotejo() {
     const value = this.scanCode().trim();
     if (!value) return;
+    const matches: { row: Row; article: Article }[] = [];
     for (const row of this.rows()) {
       const article = row.articles.find((a) => a.code === value || a.barcode === value);
-      if (article) {
-        this.activeId.set(row.id);
-        this.activeArticleCode.set(article.code);
-        this.adjustCotejo(row, article, 1);
-        this.scanCode.set('');
-        this.toast.emit(`${article.code} · unidad añadida al cotejo`);
-        return;
-      }
+      if (article) matches.push({ row, article });
+    }
+    if (matches.length) {
+      for (const match of matches) this.adjustCotejo(match.row, match.article, 1);
+      this.cotejoActiveId.set(matches[0].row.id);
+      this.activeId.set(matches[0].row.id);
+      this.activeArticleCode.set(matches[0].article.code);
+      this.scanCode.set('');
+      this.error.set('');
+      this.toast.emit(
+        matches.length === 1
+          ? `${matches[0].article.code} · unidad añadida al cotejo`
+          : `${matches[0].article.code} · unidad añadida a ${matches.length} grupos`,
+      );
+      return;
     }
     this.error.set('El código no pertenece a los artículos del listado actual.');
+  }
+  async loadPolicy() {
+    this.policyBusy.set(true);
+    this.error.set('');
+    try {
+      const state = await this.bridge.call<TenenciaPolicySettings>('tenencia.policy.state');
+      this.policy.set({ ...state });
+    } catch (e) {
+      this.error.set(this.message(e));
+    } finally {
+      this.policyBusy.set(false);
+    }
+  }
+  setExpiryReviewMonths(value: number | string) {
+    const profile = this.policy();
+    if (profile) this.policy.set({ ...profile, expiryReviewMonths: Number(value) });
+  }
+  setCountExpiredStock(value: boolean) {
+    const profile = this.policy();
+    if (profile) this.policy.set({ ...profile, countExpiredStock: value });
+  }
+  async savePolicy() {
+    const profile = this.policy();
+    if (!profile || this.policyBusy()) return;
+    this.policyBusy.set(true);
+    this.error.set('');
+    try {
+      const response = await this.bridge.call<TenenciaPolicySettings>('tenencia.policy.save', profile);
+      this.policy.set({ ...response });
+      this.result.update((result) =>
+        result
+          ? {
+              ...result,
+              policy: {
+                expiryReviewMonths: response.expiryReviewMonths,
+                countExpiredStock: response.countExpiredStock,
+              },
+            }
+          : result,
+      );
+      this.toast.emit('Configuración de caducidades guardada para toda la farmacia.');
+    } catch (e) {
+      this.error.set(this.message(e));
+    } finally {
+      this.policyBusy.set(false);
+    }
   }
   async saveCotejo() {
     const state = this.cotejo();

@@ -16,6 +16,7 @@ internal static class AccessHost
     internal const string ServiceName = ProductProfile.ServiceName;
     private sealed record DeclarationDraft(string ListVersion, Dictionary<string,string[]> Selections);
     private sealed record CotejoDraft(string ListVersion, Dictionary<string,Dictionary<string,int>> Counts, string Observation, DateTimeOffset? CheckedAt, int ExpiryReviewMonths, bool CountExpiredStock, string? UserName = null);
+    private sealed record TenenciaPolicyDraft(int ExpiryReviewMonths, bool CountExpiredStock);
     private sealed record Session(AccessSessionAgent Agent, DateTimeOffset Expires);
     internal static async Task RunAsync(string[] args)
     {
@@ -218,10 +219,26 @@ internal static class AccessHost
             var response = await oracle.TenenciaAsync(profile.Province, list, false, context.RequestAborted, profile.ExpiryReviewMonths, profile.CountExpiredStock);
             if (!AccessPolicy.CanUse(Agent(context).RequireUser(), UtilityCatalog.TenenciaId, UtilityCatalog.Items)) throw new AccessDeniedException();
             var final = response with { ProvinceName = SpanishProvinces.Items[profile.Province], ListVersion = list.Version, Source = list.Source, Rows = response.Code == "ok" ? response.Rows : TenenciaRules.Preview(list), Policy = response.Policy ?? new(profile.ExpiryReviewMonths, profile.CountExpiredStock), Customized = customized };
-            catalogs.SaveLast(profile.Province, final);
+            // Un fallo de Oracle no debe sustituir la última consulta válida por una previsualización sin stock.
+            if (final.Code == "ok") catalogs.SaveLast(profile.Province, final);
             context.Items["audit-result"]=final.Code=="ok"?"ok":"error";
             context.Items["audit-note"]=final.Code=="ok"?final.Rows!.Length+" grupos · "+final.ListVersion:"Diagnóstico: "+final.Code;
             return Results.Ok(final);
+        });
+        app.MapPost("/access/tenencia-policy/{action}", (string action, HttpContext context, JsonElement request) =>
+        {
+            var actor = Agent(context).RequireUser();
+            if (!AccessPolicy.CanUse(actor, UtilityCatalog.TenenciaId, UtilityCatalog.Items)) throw new AccessDeniedException();
+            var profile = pharmacy.Load() ?? throw new ArgumentException("Configura primero los datos de la farmacia.");
+            if (action == "save")
+            {
+                var policy = request.Deserialize<TenenciaPolicyDraft>(PharmacyDatabase.Json) ?? throw new ArgumentException("Criterio no válido.");
+                var updated = profile with { ExpiryReviewMonths = policy.ExpiryReviewMonths, CountExpiredStock = policy.CountExpiredStock };
+                pharmacy.Save(updated); profile = updated;
+                database.Record(new(actor.Id, actor.Name), "tenencia.policy.save", "ok", $"Aviso: {policy.ExpiryReviewMonths} meses · caducado: {(policy.CountExpiredStock ? "incluido" : "excluido")}", utility: UtilityCatalog.TenenciaId);
+            }
+            else if (action != "state") throw new AccessDeniedException();
+            return Results.Ok(new { expiryReviewMonths = profile.ExpiryReviewMonths, countExpiredStock = profile.CountExpiredStock });
         });
         // Edición del listado y búsqueda de artículos: exclusivamente Viteka (superadministrador).
         app.MapPost("/access/tenencia-catalog/{action}", async (string action, HttpContext context, JsonElement request) =>

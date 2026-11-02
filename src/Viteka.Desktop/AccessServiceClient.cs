@@ -151,6 +151,8 @@ internal sealed class AccessServiceClient : IDisposable
             "tenencia.state" => "access/tenencia/state",
             "tenencia.query" => "access/tenencia/query",
             "tenencia.schema" => "access/tenencia/schema",
+            "tenencia.policy.state" => "access/tenencia-policy/state",
+            "tenencia.policy.save" => "access/tenencia-policy/save",
             _ when command.StartsWith("tenencia.catalog.", StringComparison.Ordinal) && command.Length <= 40 && command[17..] is "state" or "search" or "group.save" or "group.delete" or "codes.add" or "codes.remove" or "reset" => "access/tenencia-catalog/" + command[17..],
             _ => throw new AccessDeniedException()
         };
@@ -161,7 +163,7 @@ internal sealed class AccessServiceClient : IDisposable
         using var request = new HttpRequestMessage(method, path);
         if (token is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
         if (body is not null) request.Content = JsonContent.Create(body.Value);
-        using var timeout = new CancellationTokenSource((path == "access/oracle/test" || path.StartsWith("access/tenencia/", StringComparison.Ordinal)) ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20));
+        using var timeout = new CancellationTokenSource(path.StartsWith("access/tenencia/", StringComparison.Ordinal) ? TimeSpan.FromSeconds(100) : path == "access/oracle/test" ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20));
         using var response = await trust.Client.SendAsync(request, timeout.Token);
         if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new AccessDeniedException("Demasiados intentos. Espera un minuto antes de volver a intentarlo.");
         if (response.StatusCode == HttpStatusCode.Unauthorized) { token = null; throw new AccessSessionException(); }

@@ -70,6 +70,7 @@
   <nav class="tenencia-tabs" aria-label="Vista de tenencia">
     <button [class.active]="view() === 'query'" [attr.aria-current]="view() === 'query' ? 'page' : null" (click)="setView('query')">Consulta</button>
     <button [class.active]="view() === 'cotejo'" [attr.aria-current]="view() === 'cotejo' ? 'page' : null" (click)="setView('cotejo')">Cotejo</button>
+    <button [class.active]="view() === 'expiry'" [attr.aria-current]="view() === 'expiry' ? 'page' : null" (click)="setView('expiry')">Caducidades</button>
   </nav>
 }
 @if (editing()) {
@@ -78,28 +79,58 @@
     (done)="finishEditing($event)"
     (toast)="toast.emit($event)"
   />
+} @else if (view() === 'expiry') {
+  <section class="tenencia-policy-page" aria-label="Configuración de caducidades">
+    <header><div><h2>Caducidades</h2><p>Define cómo debe tratar la farmacia los artículos próximos a caducar.</p></div></header>
+    @if (policyBusy() && !policy()) {
+      <p>Cargando la configuración compartida…</p>
+    } @else if (policy(); as profile) {
+      <form (ngSubmit)="savePolicy()">
+        <label>Revisar artículos que caduquen en los próximos meses
+          <input name="expiryReviewMonths" type="number" min="1" max="24" required
+            [ngModel]="profile.expiryReviewMonths"
+            (ngModelChange)="setExpiryReviewMonths($event)"
+            />
+        </label>
+        <label class="policy-check"><input name="countExpiredStock" type="checkbox"
+          [ngModel]="profile.countExpiredStock"
+          (ngModelChange)="setCountExpiredStock($event)"
+          />Contabilizar los artículos caducados como existencias efectivas</label>
+        <p class="tenencia-count-warning">Para evitar incumplimientos, revisa visualmente las unidades disponibles y su caducidad antes de confirmar la tenencia mínima.</p>
+        <div class="policy-actions"><button type="button" (click)="loadPolicy()" [disabled]="policyBusy()">Cancelar</button><button class="primary" type="submit" [disabled]="policyBusy()">{{ policyBusy() ? 'Guardando…' : 'Guardar' }}</button></div>
+      </form>
+    }
+  </section>
 } @else if (view() === 'cotejo') {
   <section class="cotejo" aria-label="Cotejo de existencias mínimas">
     <header class="cotejo-toolbar">
       <div><h2>Cotejo físico</h2><p>Confirma una a una las unidades que has recontado físicamente.</p></div>
       <label>CN o código de barras<input type="search" [ngModel]="scanCode()" (ngModelChange)="scanCode.set($event)" (keydown.enter)="scanCotejo()" placeholder="Escanea o escribe y pulsa Intro" /></label>
     </header>
-    @if (!hasStock()) {
-      <p class="tenencia-count-warning">Realiza primero una consulta de existencias para cargar los artículos y sus códigos.</p>
-    } @else if (cotejoBusy() && !cotejo()) {
+    @if (cotejoBusy() && !cotejo()) {
       <p class="group-empty">Cargando el cotejo compartido…</p>
     } @else {
-      <div class="cotejo-groups">
-        @for (row of rows(); track row.id) {
-          <article class="cotejo-group">
-            <header><div><strong>{{ row.classification ? row.classification + ' · ' : '' }}{{ row.name }}</strong><small>Mínimo {{ row.minimum }} · Cotejado {{ cotejoTotal(row) }}</small></div><span class="cotejo-state" [attr.data-complete]="cotejoMissing(row) === 0">{{ cotejoMissing(row) === 0 ? 'Completo' : 'Faltan ' + cotejoMissing(row) }}</span></header>
-            <table><thead><tr><th>C.N.</th><th>Descripción</th><th>Stock</th><th>Cotejado</th></tr></thead><tbody>
+      <div class="cotejo-workspace">
+        <section class="cotejo-groups" aria-label="Grupos del cotejo">
+          <div class="panel-heading"><h2>Grupos de tenencia</h2><small>{{ rows().length }} grupos</small></div>
+          <div class="cotejo-table-scroll"><table><thead><tr><th>Código</th><th>Grupo</th><th>Mín.</th><th>Cotejado</th><th>Faltan</th></tr></thead><tbody>
+            @for (row of rows(); track row.id) {
+              <tr [class.chosen]="cotejoActiveRow().id === row.id">
+                <td>{{ row.classification || '—' }}</td><td><button class="cotejo-group-button" (click)="chooseCotejoGroup(row)">{{ row.name }}</button></td><td class="center">{{ row.minimum }}</td><td class="center">{{ cotejoTotal(row) }}</td><td class="center"><span class="cotejo-state" [attr.data-complete]="cotejoMissing(row) === 0">{{ cotejoMissing(row) }}</span></td>
+              </tr>
+            }
+          </tbody></table></div>
+        </section>
+        <section class="cotejo-articles" aria-label="Artículos del grupo seleccionado">
+          @if (cotejoActiveRow(); as row) {
+            <header><div><strong>{{ row.classification ? row.classification + ' · ' : '' }}{{ row.name }}</strong><small>Existencias mínimas: {{ row.minimum }} · Cotejadas: {{ cotejoTotal(row) }} · Pendientes: {{ cotejoMissing(row) }}</small></div></header>
+            <div class="cotejo-table-scroll"><table><thead><tr><th>C.N.</th><th>Descripción</th><th>Stock</th><th>Cotejado</th></tr></thead><tbody>
               @for (article of sortedArticles(row); track article.code) {
-                <tr [class.article-inactive]="article.inactive"><td>{{ article.code }}</td><td>{{ article.description }}</td><td>{{ number(article.stock) }}</td><td><div class="counter"><button (click)="adjustCotejo(row, article, -1)" [disabled]="cotejoCount(row, article) === 0" [attr.aria-label]="'Restar ' + article.code">−</button><strong>{{ cotejoCount(row, article) }}</strong><button (click)="adjustCotejo(row, article, 1)" [attr.aria-label]="'Sumar ' + article.code">+</button></div></td></tr>
+                <tr [class.article-inactive]="article.inactive"><td>{{ article.code }}</td><td><button class="cotejo-article-button" (click)="adjustCotejo(row, article, 1)">{{ article.description }}</button></td><td class="center">{{ article.stock == null ? '—' : number(article.stock) }}</td><td><div class="counter"><button (click)="adjustCotejo(row, article, -1)" [disabled]="cotejoCount(row, article) === 0" [attr.aria-label]="'Restar ' + article.code">−</button><strong>{{ cotejoCount(row, article) }}</strong><button (click)="adjustCotejo(row, article, 1)" [attr.aria-label]="'Sumar ' + article.code">+</button></div></td></tr>
               }
-            </tbody></table>
-          </article>
-        }
+            </tbody></table></div>
+          }
+        </section>
       </div>
       <footer class="cotejo-footer"><label>Observaciones<textarea [(ngModel)]="cotejoObservation" maxlength="1000" rows="3" placeholder="Incidencias observadas durante el recuento"></textarea></label><div><span>@if (cotejo()?.checkedAt) { Último guardado: {{ stamp(cotejo()?.checkedAt ?? undefined) }} · {{ cotejo()?.userName }}}</span><span class="cotejo-actions"><button (click)="toggleCotejoHistory()">{{ historyOpen() ? 'Cerrar historial' : 'Historial' }}</button><button class="primary" (click)="saveCotejo()" [disabled]="cotejoBusy()">{{ cotejoBusy() ? 'Guardando…' : 'Guardar cotejo' }}</button></span></div>
       @if (historyOpen()) { <section class="cotejo-history" aria-label="Historial de cotejos"><h3>Historial de cotejos</h3>@for (item of cotejoHistory() ?? []; track item.checkedAt) { <article><strong>{{ stamp(item.checkedAt ?? undefined) }}</strong><span>{{ item.userName || 'Usuario' }} · {{ cotejoUnits(item) }} unidades</span><p>{{ item.observation || 'Sin observaciones' }}</p></article> } @empty { <p>No hay cotejos guardados.</p> }</section> }

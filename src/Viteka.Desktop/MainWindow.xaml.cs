@@ -329,7 +329,7 @@ public partial class MainWindow : Window
                 if (command.StartsWith("pharmacy.", StringComparison.Ordinal) && !AccessPolicy.CanManageUsers(actor) || (command == "tenencia.schema" || command.StartsWith("tenencia.catalog.", StringComparison.Ordinal)) && !AccessPolicy.CanConfigure(actor) || command is "tenencia.state" or "tenencia.query" && !AccessPolicy.CanUse(actor, Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items)) throw new AccessDeniedException();
                 Reply(id, await Access.UtilityAsync(command, root.TryGetProperty("payload", out var payload) ? payload : null)); return;
             }
-            if(command?.StartsWith("catalog.data.",StringComparison.Ordinal)==true || command is "audit.settings" or "audit.query" or "activity.record" or "declaration.state" or "declaration.save" or "cotejo.state" or "cotejo.save" or "cotejo.history"){
+            if(command?.StartsWith("catalog.data.",StringComparison.Ordinal)==true || command is "audit.settings" or "audit.query" or "activity.record" or "declaration.state" or "declaration.save" or "cotejo.state" or "cotejo.save" or "cotejo.history" or "tenencia.policy.state" or "tenencia.policy.save"){
                 Reply(id,await Access.UtilityAsync(command!,root.TryGetProperty("payload",out var extra)?extra:null));return;
             }
             switch (command)

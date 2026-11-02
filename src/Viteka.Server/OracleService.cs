@@ -55,7 +55,7 @@ internal sealed class OracleService(string directory)
         if (tester.IsRunning || !await gate.WaitAsync(0, ct)) return new("busy", "Hay una operación Oracle en curso.", province);
         var operation = Task.Run(() =>
         {
-            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct); deadline.CancelAfter(TimeSpan.FromSeconds(28));
+            using var deadline = CancellationTokenSource.CreateLinkedTokenSource(ct); deadline.CancelAfter(TimeSpan.FromSeconds(85));
             try
             {
                 if (!OperatingSystem.IsWindows()) return new Viteka.Contracts.TenenciaResponse("driver", "Se requiere Windows.", province);
@@ -85,7 +85,7 @@ internal sealed class OracleService(string directory)
             catch (Exception error) when (error is InvalidOperationException or ArgumentException or DllNotFoundException or BadImageFormatException or NotSupportedException or FormatException or OverflowException or InvalidCastException) { return new("driver_or_data", "No se pudo completar la lectura. Revisa el controlador, las tablas y los datos con Viteka.", province); }
             finally { gate.Release(); }
         });
-        try { return await operation.WaitAsync(TimeSpan.FromSeconds(30), ct); } catch (TimeoutException) { return new("timeout", "El controlador no respondió en 30 segundos. Espera a que termine antes de repetir.", province); }
+        try { return await operation.WaitAsync(TimeSpan.FromSeconds(90), ct); } catch (TimeoutException) { return new("timeout", "El controlador no respondió en 90 segundos. Espera a que termine antes de repetir.", province); }
     }
     /// <summary>Búsqueda de artículos de solo lectura para el editor del listado (solo Viteka).</summary>
     internal async Task<Viteka.Contracts.ArticleSearchResult> SearchArticlesAsync(string mode, string text, string? field, CancellationToken ct)

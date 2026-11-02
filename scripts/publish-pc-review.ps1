@@ -51,9 +51,9 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
-Corrige la presentación de artículos dados de baja para mostrar el texto rojo sin colorear el fondo. Ordena primero los artículos trabajados por existencias descendentes y deja al final los no trabajados por descripción. La caducidad de la ficha utiliza la misma caja visual que la tabla.
+Corrige la consulta de existencias ampliada: reduce los viajes ODBC, admite un tiempo realista para los 2.089 artículos y evita que una tabla auxiliar opcional impida devolver el stock principal. Una consulta fallida conserva en pantalla el último resultado correcto y muestra el diagnóstico.
 
-Hace visible Caducidad y existencias mínimas como opción propia de Configuración. Añade las pestañas Consulta y Cotejo: recuento manual con sumar/restar, entrada por CN o código de barras, observaciones, guardado compartido e historial de la farmacia.
+Tenencia incorpora Consulta, Cotejo y Caducidades. Caducidades contiene los meses de aviso y el tratamiento del stock caducado. Cotejo funciona aunque Oracle no haya terminado una consulta: muestra una tabla de grupos con mínimo, cotejado y pendiente, y otra de artículos del grupo. La entrada por CN o código de barras actualiza todos los grupos a los que pertenezca el artículo.
 
 Completa la ficha del artículo con stock mínimo, FUC, FUV y último proveedor desde APADMIN_AC_EXISTENCIAS; resuelve el nombre en APADMIN_AD_PROVEEDORES. Obtiene el laboratorio cruzando ART_CLASE y ART_LAB_CODIGO con DW_AB_LABORATORIOS. Añade clasificación ABC, PVP, agrupación homogénea, código de barras y estado de baja cuando las tablas están disponibles. Conserva compatibilidad con AC1_EXISTENCIAS.
 
