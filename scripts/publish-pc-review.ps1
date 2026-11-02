@@ -51,6 +51,10 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
+La documentación desplegada se organiza en dos columnas: el editor de observaciones ocupa dos tercios y el tercio restante reúne archivos, estado y acciones. Esta distribución mantiene visibles las herramientas de escritura y concentra el guardado sin alargar la pantalla.
+
+El historial utiliza tarjetas más compactas. Abrir, exportar y eliminar se representan mediante iconos con nombre accesible y ayuda al pasar el cursor; el selector de formatos amplía temporalmente la tarjeta para mantener todas las opciones visibles.
+
 El título del cotejo se edita directamente en la cabecera y comienza como «Sin título». Elimina el campo duplicado de la zona inferior y utiliza ese mismo título al guardar, imprimir, exportar o consultar el historial.
 
 La documentación del cotejo ocupa todo el ancho y se puede contraer. Al desplegarla presenta una barra horizontal de formato y adjuntos, observaciones a ancho completo y acciones diferenciadas para historial, descarte, borrador y finalización.

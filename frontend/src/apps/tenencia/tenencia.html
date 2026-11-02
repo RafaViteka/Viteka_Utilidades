@@ -141,17 +141,23 @@
         </button>
         @if (documentationOpen()) {
           <div class="documentation-body">
-            <div class="observation-label">Observaciones</div>
-            <div class="rich-toolbar" role="toolbar" aria-label="Formato de observaciones">
-              <button type="button" title="Negrita" (click)="formatObservation('bold')"><strong>N</strong></button><button type="button" title="Cursiva" (click)="formatObservation('italic')"><em>C</em></button><button type="button" title="Lista numerada" (click)="formatObservation('insertOrderedList')">1.</button><button type="button" title="Lista con viñetas" (click)="formatObservation('insertUnorderedList')">•</button>
-              <span class="toolbar-spacer"></span><label title="Color del texto">Texto <input type="color" value="#153b35" (input)="formatObservation('foreColor', $any($event.target).value)" /></label><label title="Color de fondo">Fondo <input type="color" value="#fff1c2" (input)="formatObservation('hiliteColor', $any($event.target).value)" /></label>
-              <label class="toolbar-attachment"><v-icon name="upload" />Insertar o adjuntar<input type="file" multiple (change)="addCotejoFiles($event)" /></label>
-            </div>
-            <div class="rich-observation" contenteditable="true" role="textbox" aria-label="Observaciones" aria-multiline="true" (input)="syncObservation($event)" data-placeholder="Anota incidencias observadas durante el recuento"></div>
-            <div class="cotejo-attachments"><small>Hasta 8 archivos de 2 MB.</small>
-              @if (cotejoAttachments.length) { <div class="attachment-list">@for (file of cotejoAttachments; track file.id) { <span><v-icon [name]="file.mime.startsWith('image/') ? 'file' : 'sheet'" />{{ file.name }}<button type="button" (click)="removeCotejoFile(file.id)" [attr.aria-label]="'Quitar ' + file.name">×</button></span> }</div> }
-            </div>
-            <div class="cotejo-footer-bar"><span class="cotejo-saved">@if (cotejo()?.checkedAt) { Guardado: {{ stamp(cotejo()?.checkedAt ?? undefined) }} · {{ cotejo()?.userName }} } @else if (cotejoDirty()) { Cambios pendientes de guardar. } @else { Borrador preparado. }</span><span class="cotejo-actions"><button class="text-button" (click)="toggleCotejoHistory()">Historial</button><button class="text-button" (click)="clearCotejo()" [disabled]="cotejoBusy()">Descartar</button><button class="text-button" (click)="saveCotejoDraft()" [disabled]="cotejoBusy()">Guardar borrador</button><button class="primary" (click)="saveCotejo()" [disabled]="cotejoBusy()">{{ cotejoBusy() ? 'Guardando…' : 'Finalizar y guardar' }}</button></span></div>
+            <section class="observation-pane" aria-label="Edición de observaciones">
+              <div class="observation-label">Observaciones</div>
+              <div class="rich-toolbar" role="toolbar" aria-label="Formato de observaciones">
+                <button type="button" title="Negrita" (click)="formatObservation('bold')"><strong>N</strong></button><button type="button" title="Cursiva" (click)="formatObservation('italic')"><em>C</em></button><button type="button" title="Lista numerada" (click)="formatObservation('insertOrderedList')">1.</button><button type="button" title="Lista con viñetas" (click)="formatObservation('insertUnorderedList')">•</button>
+                <span class="toolbar-spacer"></span><label title="Color del texto">Texto <input type="color" value="#153b35" (input)="formatObservation('foreColor', $any($event.target).value)" /></label><label title="Color de fondo">Fondo <input type="color" value="#fff1c2" (input)="formatObservation('hiliteColor', $any($event.target).value)" /></label>
+              </div>
+              <div class="rich-observation" contenteditable="true" role="textbox" aria-label="Observaciones" aria-multiline="true" (input)="syncObservation($event)" data-placeholder="Anota incidencias observadas durante el recuento"></div>
+            </section>
+            <aside class="documentation-side" aria-label="Documentación y acciones del cotejo">
+              <div class="documentation-side-head"><div><strong>Documentación</strong><small>Imágenes y archivos del recuento</small></div><span>{{ cotejoAttachments.length }}/8</span></div>
+              <label class="attachment-button"><v-icon name="upload" />Añadir imágenes o archivos<input type="file" multiple (change)="addCotejoFiles($event)" /></label>
+              <div class="cotejo-attachments"><small>Máximo 2 MB por archivo.</small>
+                @if (cotejoAttachments.length) { <div class="attachment-list">@for (file of cotejoAttachments; track file.id) { <span><v-icon [name]="file.mime.startsWith('image/') ? 'file' : 'sheet'" />{{ file.name }}<button type="button" (click)="removeCotejoFile(file.id)" [attr.aria-label]="'Quitar ' + file.name">×</button></span> }</div> }
+              </div>
+              <div class="cotejo-save-state">@if (cotejo()?.checkedAt) { <strong>Guardado</strong><span>{{ stamp(cotejo()?.checkedAt ?? undefined) }} · {{ cotejo()?.userName }}</span> } @else if (cotejoDirty()) { <strong>Cambios pendientes</strong><span>Guarda un borrador o finaliza el cotejo.</span> } @else { <strong>Borrador preparado</strong><span>Sin cambios pendientes.</span> }</div>
+              <div class="cotejo-actions"><button class="text-button" (click)="toggleCotejoHistory()">Historial</button><button class="text-button" (click)="clearCotejo()" [disabled]="cotejoBusy()">Descartar</button><button class="text-button" (click)="saveCotejoDraft()" [disabled]="cotejoBusy()">Guardar borrador</button><button class="primary" (click)="saveCotejo()" [disabled]="cotejoBusy()">{{ cotejoBusy() ? 'Guardando…' : 'Finalizar y guardar' }}</button></div>
+            </aside>
           </div>
         }
       </footer>
@@ -618,7 +624,7 @@
             <div class="history-kpis"><span><strong>{{ cotejoCompletedGroups(item) }}</strong> de {{ rows().length }} grupos</span><span><strong>{{ cotejoMissingUnits(item) }}</strong> unidades pendientes</span><span><strong>{{ cotejoUnits(item) }}</strong> unidades cotejadas</span></div>
             @if (item.observationHtml || item.observation) { <div class="history-observation" [innerHTML]="trustedObservation(item.observationHtml || item.observation)"></div> }
             @if (item.attachments?.length) { <small>{{ item.attachments.length }} archivos adjuntos</small> }
-            <div class="history-actions"><button (click)="openHistoryItem(item)"><v-icon name="edit" />Abrir y editar</button><details class="history-export"><summary><v-icon name="download" />Exportar</summary><div><button (click)="exportHistoryItem(item,'xlsx')">Excel</button><button (click)="exportHistoryItem(item,'csv')">CSV</button><button (click)="exportHistoryItem(item,'pdf')">PDF</button><button (click)="exportHistoryItem(item,'doc')">Word</button><button (click)="exportHistoryItem(item,'txt')">TXT</button><button (click)="exportHistoryItem(item,'print')">Imprimir</button></div></details><button class="danger-text" (click)="historyDelete.set(item)"><v-icon name="trash" />Eliminar</button></div>
+            <div class="history-actions"><button class="icon-action" aria-label="Abrir y editar cotejo" title="Abrir y editar" (click)="openHistoryItem(item)"><v-icon name="edit" /></button><details class="history-export"><summary aria-label="Exportar cotejo" title="Exportar"><v-icon name="download" /></summary><div><button (click)="exportHistoryItem(item,'xlsx')">Excel</button><button (click)="exportHistoryItem(item,'csv')">CSV</button><button (click)="exportHistoryItem(item,'pdf')">PDF</button><button (click)="exportHistoryItem(item,'doc')">Word</button><button (click)="exportHistoryItem(item,'txt')">TXT</button><button (click)="exportHistoryItem(item,'print')">Imprimir</button></div></details><button class="icon-action danger-text" aria-label="Eliminar cotejo" title="Eliminar" (click)="historyDelete.set(item)"><v-icon name="trash" /></button></div>
           </article>
         } @empty { <div class="empty-history"><v-icon name="clock" /><p>No hay cotejos que coincidan con los filtros.</p></div> }
       </div>
