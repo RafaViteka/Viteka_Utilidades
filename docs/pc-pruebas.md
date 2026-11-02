@@ -1,6 +1,6 @@
 # Revisión únicamente en el PC de pruebas
 
-La edición `Viteka Utilidades - Pruebas` es un producto aislado a efectos de instalación. No identifica automáticamente a una persona que pulse un enlace ni utiliza su cuenta GitHub como licencia. No existe todavía un servicio de licencias comerciales.
+La edición `Viteka Conecta - Pruebas` es un producto aislado a efectos de instalación. No identifica automáticamente a una persona que pulse un enlace ni utiliza su cuenta GitHub como licencia. No existe todavía un servicio de licencias comerciales.
 
 | Recurso | Edición normal | PC de pruebas |
 |---|---|---|
@@ -17,7 +17,7 @@ AppId de Inno Setup, identidad de barra de tareas, accesos directos y exclusión
 
 1. Descargar el artefacto **Viteka-PC-Pruebas-instalador** desde la ejecución de GitHub Actions correspondiente. Es necesario iniciar sesión en GitHub para descargar artefactos. No utilizar el instalador normal anterior para esta prueba.
 2. Extraer y ejecutar `VitekaUtilidades-Test-Setup-0.18.0-win-x64.exe` en el PC de pruebas. Se crea una instalación independiente. No copiar carpetas Private ni certificados de una farmacia.
-3. Abrir **Viteka Utilidades - Pruebas**. Las cuentas de arranque son nuevas y exigen cambiar su contraseña, con las reglas habituales.
+3. Abrir **Viteka Conecta - Pruebas**. Las cuentas de arranque son nuevas y exigen cambiar su contraseña, con las reglas habituales.
 4. Configuración muestra **PC de pruebas → ID de este PC → Copiar identificador**. Compartir ese ID para dirigir futuras revisiones; no enviar contraseñas ni claves.
 
 El ID es aleatorio y no contiene número de serie, nombre del equipo ni credenciales. El servicio lo guarda cifrado con DPAPI LocalMachine. Permanece al actualizar o desinstalar (los datos se conservan); una identidad dañada no se regenera silenciosamente. No copiarla a otro PC.

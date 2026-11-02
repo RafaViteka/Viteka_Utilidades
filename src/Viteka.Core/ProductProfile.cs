@@ -3,7 +3,7 @@ namespace Viteka.Core;
 // Set at build time. A missing/edited configuration file can never turn a test build into production.
 public static class ProductProfile
 {
-    public const string ReviewInstallerProductName="Viteka Utilidades - Pruebas";
+    public const string ReviewInstallerProductName="Viteka Conecta - Pruebas";
     // Inno pads version-resource strings. Only discard resource padding, never accept a different product.
     public static bool IsReviewInstallerProduct(string? name)=>name?.TrimEnd(' ', '\0')==ReviewInstallerProductName;
 #if VITEKA_REVIEW

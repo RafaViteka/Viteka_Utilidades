@@ -40,7 +40,7 @@ internal static class AccessServiceManagement
             new DirectoryInfo(AppContext.BaseDirectory).SetAccessControl(permissions);
             var binary = "\"" + server + "\" --access-service";
             Console.WriteLine("Registrando servicio.");
-            if (existing is null) Sc("create", AccessHost.ServiceName, "binPath=", binary, "start=", "auto", "obj=", "NT AUTHORITY\\LocalService", "DisplayName=", ProductProfile.IsReview?"Viteka Utilidades - Pruebas (solo este PC)":"Viteka Utilidades - Acceso de usuarios");
+            if (existing is null) Sc("create", AccessHost.ServiceName, "binPath=", binary, "start=", "auto", "obj=", "NT AUTHORITY\\LocalService", "DisplayName=", ProductProfile.IsReview?"Viteka Conecta - Pruebas (solo este PC)":"Viteka Conecta - Acceso de usuarios");
             else Sc("config", AccessHost.ServiceName, "binPath=", binary, "start=", "auto", "obj=", "NT AUTHORITY\\LocalService");
             Sc("failure", AccessHost.ServiceName, "reset=", "86400", "actions=", "restart/60000/restart/60000/restart/60000");
             using var service = new ServiceController(AccessHost.ServiceName);

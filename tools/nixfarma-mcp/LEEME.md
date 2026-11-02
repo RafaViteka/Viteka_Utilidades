@@ -1,6 +1,6 @@
 # Viteka NixFarma MCP local · 0.1.1
 
-Complemento STDIO local para Windows x64. No modifica ni actualiza Viteka Utilidades. Herramientas de lectura: probar_conexion, listar_tablas, describir_tabla, consultar_cn y buscar_articulos_por_atc. No ofrece SQL libre ni HTTP, no lee pacientes y no escribe en Oracle.
+Complemento STDIO local para Windows x64. No modifica ni actualiza Viteka Conecta. Herramientas de lectura: probar_conexion, listar_tablas, describir_tabla, consultar_cn y buscar_articulos_por_atc. No ofrece SQL libre ni HTTP, no lee pacientes y no escribe en Oracle.
 
 ## Equipo necesario
 

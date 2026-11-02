@@ -7,24 +7,28 @@
 
 #ifdef ReviewBuild
 #define IdentityGuid "8817D5EC-91E7-4C88-88C9-27C66C565B8D"
-#define ProductTitle "Viteka Utilidades - Pruebas"
-#define ShortcutTitle "Viteka Utilidades - Pruebas"
-#define GroupTitle "Viteka Utilidades - Pruebas"
+#define ProductTitle "Viteka Conecta - Pruebas"
+#define ShortcutTitle "Viteka Conecta - Pruebas"
+#define GroupTitle "Viteka Conecta - Pruebas"
 #define InstallFolder "UtilidadesPruebas"
 #define AccessService "VitekaUtilidadesReviewAccess"
 #define ShellIdentity "Viteka.Utilidades.Pruebas"
 #define SetupFile "VitekaUtilidades-Test-Setup-" + AppVersion + "-win-x64"
 #define ReviewMode "True"
+#define PreviousGroupTitle "Viteka Utilidades - Pruebas"
+#define PreviousShortcutTitle "Viteka Utilidades - Pruebas"
 #else
 #define IdentityGuid "AAC03BF6-8845-4E96-AFC1-73AF54176983"
-#define ProductTitle "Viteka Utilidades - Vista previa local"
-#define ShortcutTitle "Viteka Utilidades"
-#define GroupTitle "Viteka Utilidades - Vista previa"
+#define ProductTitle "Viteka Conecta"
+#define ShortcutTitle "Viteka Conecta"
+#define GroupTitle "Viteka Conecta"
 #define InstallFolder "UtilidadesVistaPrevia"
 #define AccessService "VitekaUtilidadesAccess"
 #define ShellIdentity "Viteka.Utilidades"
 #define SetupFile "VitekaUtilidades-Setup-" + AppVersion + "-win-x64-preview"
 #define ReviewMode "False"
+#define PreviousGroupTitle "Viteka Utilidades - Vista previa"
+#define PreviousShortcutTitle "Viteka Utilidades"
 #endif
 [Setup]
 AppId={{{#IdentityGuid}}
@@ -33,7 +37,10 @@ VersionInfoProductName={#ProductTitle}
 VersionInfoVersion={#AppVersion}
 VersionInfoProductVersion={#AppVersion}
 AppVersion={#AppVersion}
-AppPublisher=Viteka
+AppPublisher=Dinaro Partners, S.L.
+AppPublisherURL=mailto:conecta@viteka.es
+AppSupportURL=mailto:conecta@viteka.es
+AppComments=Herramientas y servicios para tu farmacia
 ChangesAssociations=yes
 DefaultDirName={autopf}\Viteka\{#InstallFolder}
 DefaultGroupName={#GroupTitle}
@@ -65,14 +72,16 @@ Source: "LEEME.txt"; DestDir: "{app}"; Flags: ignoreversion
 
 [Icons]
 Name: "{group}\{#ShortcutTitle}"; Filename: "{app}\Cliente\Viteka.Desktop.exe"; WorkingDir: "{app}\Cliente"; IconFilename: "{app}\Cliente\viteka.ico"; AppUserModelID: "{#ShellIdentity}"
-Name: "{group}\Leer antes de probar"; Filename: "{app}\LEEME.txt"
+Name: "{group}\Información de uso y asistencia"; Filename: "{app}\LEEME.txt"
 
 [InstallDelete]
 Type: files; Name: "{app}\Servidor\Catalogs\tenencia\*.json"
 Type: files; Name: "{group}\Iniciar servidor de demostración.lnk"
+Type: files; Name: "{autoprograms}\{#PreviousGroupTitle}\{#PreviousShortcutTitle}.lnk"
+Type: files; Name: "{autoprograms}\{#PreviousGroupTitle}\Leer antes de probar.lnk"
 
 [Run]
-Filename: "{app}\Cliente\Viteka.Desktop.exe"; Description: "Abrir Viteka Utilidades"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: not IsUpgrade
+Filename: "{app}\Cliente\Viteka.Desktop.exe"; Description: "Iniciar Viteka Conecta"; Flags: nowait postinstall skipifsilent runasoriginaluser; Check: not IsUpgrade
 
 [Code]
 var
@@ -85,6 +94,23 @@ function InitializeSetup(): Boolean;
 begin
   Upgrade := RegKeyExists(HKLM, 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\{{#IdentityGuid}}_is1');
   Result := True;
+end;
+
+procedure InitializeWizard();
+begin
+  WizardForm.Caption := 'Instalación de Viteka Conecta';
+  WizardForm.WelcomeLabel1.Caption := 'Bienvenido a Viteka Conecta';
+  WizardForm.WelcomeLabel2.Caption := 'Viteka Conecta reúne en un único entorno las herramientas y servicios de Viteka para facilitar el trabajo diario de tu farmacia.' + #13#10 + #13#10 +
+    'Este asistente instalará la aplicación en este equipo.' + #13#10 + #13#10 +
+    'Si vas a actualizar una instalación existente, cierra Viteka Conecta en el servidor y en los puestos de la farmacia antes de continuar.' + #13#10 + #13#10 +
+    'Pulsa «Siguiente» para continuar o «Cancelar» para salir del asistente.';
+  WizardForm.InfoBeforePage.Caption := 'Información importante antes de instalar';
+  WizardForm.InstallingPage.Caption := 'Instalando Viteka Conecta';
+  WizardForm.InstallingLabel.Caption := 'Espera mientras se preparan los componentes de la aplicación.';
+  WizardForm.FinishedHeadingLabel.Caption := 'Instalación completada';
+  WizardForm.FinishedLabel.Caption := 'La instalación de Viteka Conecta ha finalizado.' + #13#10 + #13#10 +
+    'Antes de comenzar a trabajar, comprueba la configuración de la farmacia, la conexión con el programa de gestión y los permisos de acceso.' + #13#10 + #13#10 +
+    'Pulsa «Finalizar» para cerrar el asistente.';
 end;
 
 function IsUpgrade(): Boolean;
@@ -102,7 +128,7 @@ var Code: Integer;
 begin
   if RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\{#AccessService}') then
     if (not Exec(ExpandConstant('{app}\Servidor\Viteka.Server.exe'), '--access-manage stop', '', SW_HIDE, ewWaitUntilTerminated, Code)) or (Code <> 0) then
-      RaiseException('No se pudo detener el servicio de usuarios. No se reemplazarán sus archivos.');
+      RaiseException('No se ha podido detener el servicio de acceso de Viteka Conecta. La instalación no puede continuar con la sustitución de sus archivos. Si el problema persiste, contacta con conecta@viteka.es.');
 end;
 
 procedure CurStepChanged(CurStep: TSetupStep);
@@ -110,7 +136,7 @@ var Code: Integer;
 begin
   if CurStep = ssPostInstall then begin
     if (not Exec(ExpandConstant('{app}\Servidor\Viteka.Server.exe'), '--access-manage install "' + ExpandConstant('{app}\Cliente') + '"', '', SW_HIDE, ewWaitUntilTerminated, Code)) or (Code <> 0) then
-      RaiseException('El servicio de usuarios no está disponible. Las cuentas se han conservado. Contacta con Viteka para revisar la instalación.');
+      RaiseException('No se ha podido completar la configuración del servicio de acceso. No inicies el uso de la aplicación hasta resolver la incidencia. Contacta con conecta@viteka.es.');
   end;
 end;
 
@@ -154,13 +180,13 @@ begin
   Result := '';
   StopAccessService();
   if (not {#ReviewMode}) and RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\VitekaUtilidadesPreview') then
-    Result := 'Desinstala primero el servicio de vista previa con manage-service.ps1 -Action Uninstall. Sus datos se conservarán. No se reemplazarán archivos del servicio mientras esté registrado.';
+    Result := 'Se ha detectado un servicio de una instalación anterior que debe retirarse antes de continuar. Contacta con Viteka para revisar la instalación. No elimines archivos ni servicios manualmente.';
   if (Result = '') and not WebViewInstalled() then begin
     ExtractTemporaryFile('MicrosoftEdgeWebview2Setup.exe');
     if not Exec(ExpandConstant('{tmp}\MicrosoftEdgeWebview2Setup.exe'), '/silent /install', '', SW_HIDE, ewWaitUntilTerminated, Code) then
-      Result := 'No se pudo iniciar la instalación de Microsoft Edge WebView2.'
+      Result := 'No se ha podido iniciar la instalación de Microsoft Edge WebView2, un componente necesario para ejecutar Viteka Conecta. Vuelve a intentarlo. Si el problema persiste, contacta con conecta@viteka.es.'
     else if (Code <> 0) and (Code <> 3010) then
-      Result := 'No se pudo instalar Microsoft Edge WebView2. Comprueba tu conexión a internet y vuelve a intentarlo.';
+      Result := 'No se ha podido completar la instalación de Microsoft Edge WebView2. Comprueba la conexión a internet y los permisos del equipo antes de volver a intentarlo.';
   end;
 end;
 
@@ -171,5 +197,5 @@ begin
   if Result and RegKeyExists(HKLM, 'SYSTEM\CurrentControlSet\Services\{#AccessService}') then
     Result := Exec(ExpandConstant('{app}\Servidor\Viteka.Server.exe'), '--access-manage uninstall', '', SW_HIDE, ewWaitUntilTerminated, Code) and (Code = 0);
   if not Result then
-    MsgBox('Desinstala primero el servicio de vista previa con manage-service.ps1 -Action Uninstall. Después podrás desinstalar la aplicación.', mbError, MB_OK);
+    MsgBox('No se ha podido completar la preparación de la desinstalación. Contacta con conecta@viteka.es antes de eliminar archivos o servicios manualmente.', mbError, MB_OK);
 end;

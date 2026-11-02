@@ -1,4 +1,4 @@
-# Viteka Utilidades · Desarrollo 0.18.16
+# Viteka Conecta · Desarrollo 0.18.16
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
@@ -96,4 +96,4 @@ El diagnóstico de tablas y la prueba de conexión limpian resultados anteriores
 
 ## Conector MCP local opcional
 
-Puente STDIO Windows x64 para consultar el DSN NIXFARMA desde un cliente compatible ejecutado en el mismo servidor y usuario Windows. [Descargar ZIP](downloads/Viteka-NixFarma-MCP-0.1.1.zip) y [pasos de instalación](tools/nixfarma-mcp/LEEME.md). Credenciales en Windows Credential Manager; consultas fijas, parametrizadas y en transacción de solo lectura. No instala un servicio HTTP ni cambia Viteka Utilidades. La relación CN–ATC se devuelve como candidata para verificar clase/tipo/nivel; no calcula cumplimiento. La configuración del cliente MCP no conecta por sí sola una sesión cloud.
+Puente STDIO Windows x64 para consultar el DSN NIXFARMA desde un cliente compatible ejecutado en el mismo servidor y usuario Windows. [Descargar ZIP](downloads/Viteka-NixFarma-MCP-0.1.1.zip) y [pasos de instalación](tools/nixfarma-mcp/LEEME.md). Credenciales en Windows Credential Manager; consultas fijas, parametrizadas y en transacción de solo lectura. No instala un servicio HTTP ni cambia Viteka Conecta. La relación CN–ATC se devuelve como candidata para verificar clase/tipo/nivel; no calcula cumplimiento. La configuración del cliente MCP no conecta por sí sola una sesión cloud.

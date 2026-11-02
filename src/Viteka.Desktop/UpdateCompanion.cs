@@ -43,7 +43,7 @@ internal static class UpdateCompanion
     {
         var text=new TextBlock{Text="Preparando instalación…",TextWrapping=TextWrapping.Wrap,Margin=new Thickness(0,14,0,14)};
         var progress=new ProgressBar{IsIndeterminate=true,Height=8};var close=new Button{Content="Cerrar",Visibility=Visibility.Collapsed,Margin=new Thickness(0,18,0,0)};
-        var panel=new StackPanel{Margin=new Thickness(28)};panel.Children.Add(new TextBlock{Text="Actualizar Viteka Utilidades",FontSize=21,FontWeight=FontWeights.Bold});panel.Children.Add(text);panel.Children.Add(progress);panel.Children.Add(close);
+        var panel=new StackPanel{Margin=new Thickness(28)};panel.Children.Add(new TextBlock{Text="Actualizar Viteka Conecta",FontSize=21,FontWeight=FontWeights.Bold});panel.Children.Add(text);panel.Children.Add(progress);panel.Children.Add(close);
         var window=new Window{Title="Actualización de Viteka",Width=520,Height=250,ResizeMode=ResizeMode.NoResize,WindowStartupLocation=WindowStartupLocation.CenterScreen,Background=new SolidColorBrush(Color.FromRgb(250,246,236)),Content=panel};
         bool active=true;window.Closing+=(_,e)=>{if(active)e.Cancel=true;};close.Click+=(_,_)=>window.Close();
         window.Loaded+=async(_,_)=>{

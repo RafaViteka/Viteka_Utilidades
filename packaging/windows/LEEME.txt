@@ -1,56 +1,52 @@
-VITEKA UTILIDADES 0.13.1 - CANAL DE PRUEBAS
+Viteka Conecta
+Herramientas y servicios para tu farmacia
 
-INSTALACION
-Instalar o actualizar en el servidor de Nixfarma, sobre la version anterior.
-No hace falta desinstalar. El paquete incluye .NET; WebView2 se prepara si falta.
-El instalador registra VitekaUtilidadesAccess como servicio de Windows bajo
-LocalService y prepara su identidad HTTPS. No se modifica el DSN ni Oracle.
+INFORMACIÓN IMPORTANTE ANTES DE INSTALAR
 
-USUARIOS DE LA FARMACIA
-Las cuentas son compartidas por el servidor y los puestos. Solo al crear el
-registro por primera vez se preparan estas credenciales iniciales:
-  Viteka     / jupiter : superadministrador, incluida Configuracion tecnica.
-  F. titular / 1234    : administrador, todo salvo Configuracion tecnica.
-  usuario    / 0000    : Inicio y aplicaciones que tenga autorizadas.
-Se exige cambiar la contrasena inicial, con un minimo de 3 caracteres.
-Los usuarios solo cambian su contrasena. El titular crea y gestiona usuarios
-normales. Viteka gestiona todos los roles. Los cambios revocan sesiones previas.
-Los puestos seguiran bloqueados mientras haya cuentas activas con la contrasena
-inicial de instalacion. Cambiarlas o restablecerlas desde el servidor primero.
-No se restauran las contrasenas iniciales al actualizar ni ante un registro danado.
+INSTALACIÓN EN EL SERVIDOR
 
-CONFIGURACION Y CONEXION ORACLE
-Configuracion agrupa Mi cuenta para todos, Usuarios para titular/Viteka y
-conexion tecnica solo para Viteka. La conexion previa del usuario Windows
-original se migra al servicio al entrar Viteka en ese mismo servidor.
-Probar la conexion despues de actualizar: LocalService debe poder utilizar
-el DSN de sistema Oracle de 64 bits y resolver su TNS. La prueba es solo lectura.
-Las credenciales se protegen en el servidor; no se copian a los puestos.
-Primera utilidad: Tenencia obligatoria. Configurar Datos de la farmacia y provincia.
-La lista de Malaga incorpora83 grupos del Excel aportado. Se buscan coincidencias
-por ATC; las restricciones de via/dosis/tamano y codigos sanitarios se revisan
-por separado. No se acreditan por sumar presentaciones incorrectas. Viteka puede Comprobar tablas de tenencia
-dentro de Conexion a Nixfarma. Ver las notas de version.
+Instala Viteka Conecta en el servidor de la farmacia. El acceso desde los demás
+puestos se configura a partir de esta instalación; no es necesario instalar el
+componente servidor en cada puesto.
 
-PUESTOS
-Distribuir Cliente completo con access-server.json y access-root.cer en un
-compartido con lectura/ejecucion para usuarios y escritura solo para mantenimiento.
-Abrir ese cliente desde los puestos; no instalar el servidor en cada puesto.
-No copiar datos de ProgramData ni claves privadas. El cliente verifica la identidad
-HTTPS del servidor. El puerto 7447 solo se habilita para red local Privada/Dominio.
-Las preferencias de cada cuenta se conservan localmente, separadas entre usuarios.
+ACTUALIZACIÓN DE UNA INSTALACIÓN EXISTENTE
+
+Puedes actualizar la instalación existente sin desinstalar previamente la
+aplicación. Antes de comenzar, cierra Viteka Conecta en el servidor y en todos
+los puestos que accedan a ella.
+
+La actualización está diseñada para conservar las cuentas y la configuración
+existentes. Mantén una copia de seguridad actualizada de los datos y de la
+configuración de la farmacia antes de realizar cambios en el servidor.
+
+COMPONENTES NECESARIOS
+
+El instalador incorpora los componentes de la aplicación y prepara los
+requisitos necesarios para su ejecución. Microsoft Edge WebView2 puede requerir
+conexión a internet. La instalación requiere permisos de administrador.
+
+CONFIGURACIÓN INICIAL
+
+Después de instalar, comprueba los datos de la farmacia, la conexión con el
+programa de gestión y los permisos de los usuarios antes de utilizar las
+herramientas.
+
+Los puestos acceden al servicio configurado en el servidor. No copies datos de
+ProgramData ni claves privadas. El cliente verifica la identidad HTTPS del
+servidor y utiliza el puerto configurado para la red local.
 
 ACTUALIZACIONES
-Actualizaciones se encuentra dentro de Configuracion. Busca cada 24 horas
-con la app abierta o al siguiente arranque si queda pendiente. Mantiene el boton
-Buscar actualizaciones, el aviso y un historial de publicaciones y ejecuciones.
-Solo titular/Viteka y desde el servidor pueden iniciar el instalador, con confirmacion.
-Antes de actualizar, cerrar Viteka en los puestos que usan archivos compartidos.
-Se reinicia el servicio, conservando cuentas y credenciales; los puestos vuelven a entrar.
-Las descargas conservan verificacion de HTTPS, destinos, tamano y SHA256.
-El instalador todavia no tiene firma digital del editor: es un canal de pruebas.
 
-VENTANA Y ZOOM
-El menu se puede plegar manualmente. Mi cuenta contiene contrasena y apariencia.
-Ctrl + rueda o Ctrl +/- cambia la escala; Ctrl + 0 vuelve al 100 %.
-La barra superior muestra el porcentaje y controles de zoom.
+Las actualizaciones ordinarias conservan las cuentas, los permisos, la
+configuración y las credenciales existentes. Antes de actualizar, cierra Viteka
+Conecta en los puestos que utilicen archivos compartidos.
+
+ASISTENCIA
+
+Si no sabes qué equipo actúa como servidor o tienes dudas sobre el procedimiento,
+contacta con Viteka en conecta@viteka.es antes de continuar.
+
+Proveedor: Dinaro Partners, S.L.
+NIF: B72798168
+Domicilio fiscal: Calle San Pedro, 35, 1.ª, 29200 Antequera (Málaga), España.
+Contacto: conecta@viteka.es

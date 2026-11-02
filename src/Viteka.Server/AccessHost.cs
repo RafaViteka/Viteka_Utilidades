@@ -91,8 +91,9 @@ internal static class AccessHost
         app.Use(async (context, next) =>
         {
             context.Response.Headers.CacheControl = "no-store";
-            if(context.Request.Path.StartsWithSegments("/access/catalog-data")){
+            if(context.Request.Path.StartsWithSegments("/access/catalog-data")||context.Request.Path.StartsWithSegments("/access/cotejo")){
                 var limit=context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>();if(limit is not null&&!limit.IsReadOnly)limit.MaxRequestBodySize=6*1024*1024;
+                if(context.Request.Path.StartsWithSegments("/access/cotejo")&&limit is not null&&!limit.IsReadOnly)limit.MaxRequestBodySize=24*1024*1024;
             }
             try
             {

@@ -116,9 +116,11 @@ export class TenenciaComponent implements OnInit {
   readonly documentationOpen = signal(true);
   readonly cotejoBusy = signal(false);
   readonly cotejoDirty = signal(false);
+  readonly cotejoDraftSaved = signal(false);
   readonly leaveCotejo = signal<'query' | 'expiry' | 'back' | null>(null);
   readonly scanCode = signal('');
   readonly scanError = signal('');
+  readonly overagePrompt = signal<{ row: Row; article: Article } | null>(null);
   readonly cotejoActiveId = signal<string | null>(null);
   readonly cotejoCompleted = signal<string | null>(null);
   readonly policyBusy = signal(false);
@@ -263,7 +265,7 @@ export class TenenciaComponent implements OnInit {
     };
   }
   readonly reportOpen = signal(false);
-  readonly reportMode = signal<'complete' | 'shortfalls' | 'expiry' | 'cotejo'>('shortfalls');
+  readonly reportMode = signal<'complete' | 'shortfalls' | 'expiry' | 'cotejo' | 'cotejo-shortfalls' | 'cotejo-all'>('shortfalls');
   readonly reportKind = signal<'xlsx' | 'csv' | 'txt' | 'doc' | 'pdf' | 'print'>('xlsx');
   readonly reportCotejo = signal<CotejoState | null>(null);
   readonly declarationGroups = signal<
@@ -284,14 +286,14 @@ export class TenenciaComponent implements OnInit {
     const mode = this.reportMode();
     if (mode === 'shortfalls') return this.shortfallsByMissing();
     if (mode === 'expiry') return this.rows().filter((row) => this.needsExpiryReview(row)).map((row) => ({ ...row, articles: row.articles.filter((article) => this.requiresExpiryAttention(article)) }));
-    if (mode === 'cotejo') {
+    if (mode === 'cotejo' || mode === 'cotejo-shortfalls' || mode === 'cotejo-all') {
       const state = this.reportCotejo() ?? this.cotejo();
       if (!state) return [];
       return this.rows().map((row) => {
         const articles = row.articles.filter((article) => (state.counts?.[row.id]?.[article.code] ?? 0) > 0);
         const counted = articles.reduce((sum, article) => sum + (state.counts?.[row.id]?.[article.code] ?? 0), 0);
         return { ...row, stock: counted, missing: Math.max(0, row.minimum - counted), status: counted >= row.minimum ? 'covered' : 'shortfall', articles };
-      }).filter((row) => row.articles.length > 0);
+      }).filter((row) => mode === 'cotejo-all' || (mode === 'cotejo-shortfalls' ? row.missing > 0 : row.articles.length > 0));
     }
     return this.rows();
   });
@@ -299,18 +301,26 @@ export class TenenciaComponent implements OnInit {
     () => this.reportRows().find((r) => r.id === this.declarationGroupId()) ?? this.reportRows()[0],
   );
   reportArticles(row: Row) {
-    return this.reportMode() === 'shortfalls' ? purchaseCandidates(row.articles) : row.articles;
+    if (this.reportMode() === 'shortfalls') return purchaseCandidates(row.articles);
+    if ((this.reportMode() === 'cotejo-all' || this.reportMode() === 'cotejo-shortfalls') && row.missing) {
+      const source = this.rows().find((item) => item.id === row.id) ?? row;
+      const suggestions = purchaseCandidates(source.articles).filter((a) => !row.articles.some((item) => item.code === a.code));
+      return this.reportMode() === 'cotejo-shortfalls' ? suggestions : [...row.articles, ...suggestions];
+    }
+    return row.articles;
   }
   reportTitle() {
     return this.reportMode() === 'shortfalls' ? 'Tenencia obligatoria · Solo faltas'
       : this.reportMode() === 'expiry' ? 'Tenencia obligatoria · Revisar caducidad'
-      : this.reportMode() === 'cotejo' ? (this.reportCotejo()?.title || this.cotejoTitle || 'Cotejo de existencias mínimas')
+      : ['cotejo','cotejo-shortfalls','cotejo-all'].includes(this.reportMode()) ? (this.reportCotejo()?.title || this.cotejoTitle || 'Cotejo de existencias mínimas')
       : 'Tenencia obligatoria · Listado completo';
   }
   reportCriteria() {
     return this.reportMode() === 'shortfalls' ? 'Grupos con unidades pendientes y candidatos de reposición.'
       : this.reportMode() === 'expiry' ? `Artículos con stock caducados o que caducan en ${this.expiryReviewMonths()} meses o menos.`
-      : this.reportMode() === 'cotejo' ? `${this.cotejoCompletedGroups(this.reportCotejo() ?? this.cotejo())} de ${this.rows().length} grupos completos · ${this.cotejoMissingUnits(this.reportCotejo() ?? this.cotejo())} unidades pendientes.`
+      : this.reportMode() === 'cotejo' ? 'Solo artículos y unidades cotejadas.'
+      : this.reportMode() === 'cotejo-shortfalls' ? `${this.cotejoMissingUnits(this.reportCotejo() ?? this.cotejo())} unidades pendientes, con artículos sugeridos para pedir.`
+      : this.reportMode() === 'cotejo-all' ? `Cotejados y ${this.cotejoMissingUnits(this.reportCotejo() ?? this.cotejo())} unidades pendientes, con artículos sugeridos para pedir.`
       : 'Listado completo de grupos y artículos de tenencia.';
   }
   chosenForDeclaration(row: Row, a: Article) {
@@ -326,15 +336,22 @@ export class TenenciaComponent implements OnInit {
     this.closeMenus();
     this.reportKind.set(kind);
     if (this.view() === 'cotejo' && !this.reportCotejo()) this.reportCotejo.set(this.cotejo());
-    this.reportMode.set(this.view() === 'cotejo' ? 'cotejo' : this.reportMode() === 'cotejo' ? 'shortfalls' : this.reportMode());
+    this.reportMode.set(this.view() === 'cotejo' ? 'cotejo' : this.reportMode().startsWith('cotejo') ? 'shortfalls' : this.reportMode());
     this.error.set('');
     this.reportOpen.set(true);
   }
   private reportLines(): unknown[][] {
-    if (this.reportMode() === 'cotejo') {
+    if (['cotejo','cotejo-shortfalls','cotejo-all'].includes(this.reportMode())) {
       const state=this.reportCotejo()??this.cotejo();
       const lines:unknown[][]=[['Código grupo','Grupo','Mínimo','Cotejado','Faltan','Estado','CN','Descripción','Unidades cotejadas']];
-      for(const row of this.reportRows()) for(const article of this.reportArticles(row)) lines.push([row.classification??'',row.name,row.minimum,row.stock??0,row.missing??0,row.status==='covered'?'Correcto':'Pendiente',article.code,article.description,state?.counts?.[row.id]?.[article.code]??0]);
+      for(const row of this.reportRows()) {
+        const articles=this.reportArticles(row);
+        if (!articles.length) lines.push([row.classification??'',row.name,row.minimum,row.stock??0,row.missing??0,'Pendiente','','Sin sugerencias disponibles',0]);
+        for(const article of articles) {
+          const count=state?.counts?.[row.id]?.[article.code]??0;
+          lines.push([row.classification??'',row.name,row.minimum,row.stock??0,row.missing??0,count>0?'Cotejado':'Sugerencia de pedido',article.code,article.description,count]);
+        }
+      }
       return lines;
     }
     const lines: unknown[][] = [
@@ -366,10 +383,10 @@ export class TenenciaComponent implements OnInit {
     return lines;
   }
   async generateReport() {
-    if ((!this.hasStock() && this.reportMode() !== 'cotejo') || this.exporting()) return;
+    if ((!this.hasStock() && !['cotejo','cotejo-shortfalls','cotejo-all'].includes(this.reportMode())) || this.exporting()) return;
     return this.run(async () => {
       this.reportOpen.set(false);
-      const kind = this.reportKind(), modeName={shortfalls:'faltas',complete:'completo',expiry:'caducidades',cotejo:'cotejo'}[this.reportMode()],
+      const kind = this.reportKind(), modeName={shortfalls:'faltas',complete:'completo',expiry:'caducidades',cotejo:'cotejados','cotejo-shortfalls':'faltas-cotejo','cotejo-all':'cotejo-completo'}[this.reportMode()],
         name = 'tenencia-' + modeName + '-' + this.fileDay();
       if (kind === 'csv') {
         const text =
@@ -714,6 +731,10 @@ export class TenenciaComponent implements OnInit {
   }
   private async prepareCotejoExit(target: 'query' | 'expiry' | 'back') {
     if (!this.hasCotejoWork()) return false;
+    if (this.cotejoDraftSaved() && !this.cotejoDirty()) {
+      await this.clearCotejo();
+      return false;
+    }
     if (this.cotejo()?.checkedAt && !this.cotejoDirty()) {
       await this.clearCotejo();
       return false;
@@ -740,7 +761,7 @@ export class TenenciaComponent implements OnInit {
       this.cotejoObservationHtml = state.observationHtml || this.escapeHtml(state.observation ?? '');
       this.cotejoAttachments = [...(state.attachments ?? [])];
       this.cotejoDirty.set(false);
-      this.applyObservation();
+      this.cotejoDraftSaved.set(!state.checkedAt && this.hasCotejoWork());
     } catch (e) {
       this.error.set(this.message(e));
     } finally {
@@ -771,6 +792,19 @@ export class TenenciaComponent implements OnInit {
     }, 0);
   }
   adjustCotejo(row: Row, article: Article, change: number) {
+    if (change > 0 && this.cotejoTotal(row) >= row.minimum) {
+      this.overagePrompt.set({ row, article });
+      return;
+    }
+    this.applyCotejoChange(row, article, change);
+  }
+  confirmCotejoOverage() {
+    const pending = this.overagePrompt();
+    if (!pending) return;
+    this.overagePrompt.set(null);
+    this.applyCotejoChange(pending.row, pending.article, 1);
+  }
+  private applyCotejoChange(row: Row, article: Article, change: number) {
     const state = this.cotejo();
     if (!state) return;
     const wasMissing = this.cotejoMissing(row);
@@ -780,6 +814,7 @@ export class TenenciaComponent implements OnInit {
     if (!counts[row.id][article.code]) delete counts[row.id][article.code];
     this.cotejo.set({ ...state, counts });
     this.cotejoDirty.set(true);
+    this.cotejoDraftSaved.set(false);
     if (wasMissing > 0 && this.cotejoMissing(row) === 0) {
       this.cotejoCompleted.set(row.id);
       window.setTimeout(() => {
@@ -790,14 +825,13 @@ export class TenenciaComponent implements OnInit {
   private escapeHtml(value: string) {
     const div = document.createElement('div'); div.textContent = value; return div.innerHTML;
   }
-  private applyObservation() { window.setTimeout(() => { const editor=document.querySelector<HTMLElement>('.rich-observation'); if(editor) editor.innerHTML=this.cotejoObservationHtml; }); }
-  trustedObservation(html: string): SafeHtml { return this.sanitizer.bypassSecurityTrustHtml(this.cleanObservation(html)); }
-  syncObservation(event: Event) {
-    const editor = event.currentTarget as HTMLElement;
-    this.cotejoObservationHtml = this.cleanObservation(editor.innerHTML);
-    this.cotejoObservation = editor.innerText.trim();
+  updateObservation(value: string) {
+    this.cotejoObservation = value;
+    this.cotejoObservationHtml = this.escapeHtml(value).replaceAll('\n', '<br>');
     this.cotejoDirty.set(true);
+    this.cotejoDraftSaved.set(false);
   }
+  trustedObservation(html: string): SafeHtml { return this.sanitizer.bypassSecurityTrustHtml(this.cleanObservation(html)); }
   private cleanObservation(html: string) {
     const doc = new DOMParser().parseFromString('<div>' + html + '</div>', 'text/html');
     const allowed = new Set(['DIV','P','BR','B','STRONG','I','EM','U','OL','UL','LI','SPAN']);
@@ -819,24 +853,25 @@ export class TenenciaComponent implements OnInit {
     }
     return doc.body.firstElementChild?.innerHTML.slice(0, 20000) ?? '';
   }
-  formatObservation(command: string, value?: string) {
-    document.querySelector<HTMLElement>('.rich-observation')?.focus();
-    document.execCommand(command, false, value);
-    const editor = document.querySelector<HTMLElement>('.rich-observation');
-    if (editor) this.syncObservation({ currentTarget: editor } as unknown as Event);
-  }
   async addCotejoFiles(event: Event) {
     const input = event.currentTarget as HTMLInputElement;
     const files = Array.from(input.files ?? []);
     if (this.cotejoAttachments.length + files.length > 8) { this.error.set('Se permiten hasta 8 adjuntos.'); input.value=''; return; }
-    for (const file of files) {
-      if (file.size > 2 * 1024 * 1024) { this.error.set(`${file.name}: el máximo por archivo es 2 MB.`); continue; }
-      const bytes = new Uint8Array(await file.arrayBuffer());
-      this.cotejoAttachments.push({ id: crypto.randomUUID().replaceAll('-',''), name: file.name.slice(0,120), mime: file.type.slice(0,100), size: file.size, base64: toBase64(bytes) });
+    this.error.set('');
+    try {
+      for (const file of files) {
+        if (!file.size) { this.error.set(`${file.name}: el archivo está vacío.`); continue; }
+        if (file.size > 2 * 1024 * 1024) { this.error.set(`${file.name}: el máximo por archivo es 2 MB.`); continue; }
+        const bytes = new Uint8Array(await file.arrayBuffer());
+        this.cotejoAttachments.push({ id: crypto.randomUUID().replaceAll('-',''), name: file.name.slice(0,120), mime: (file.type || 'application/octet-stream').slice(0,100), size: file.size, base64: toBase64(bytes) });
+      }
+    } catch (e) {
+      this.error.set(`No se pudo leer el archivo. ${this.message(e)}`);
     }
-    input.value=''; this.cotejoAttachments = [...this.cotejoAttachments]; this.cotejoDirty.set(true);
+    input.value=''; this.cotejoAttachments = [...this.cotejoAttachments];
+    if (files.length) { this.cotejoDirty.set(true); this.cotejoDraftSaved.set(false); }
   }
-  removeCotejoFile(id: string) { this.cotejoAttachments = this.cotejoAttachments.filter((file) => file.id !== id); this.cotejoDirty.set(true); }
+  removeCotejoFile(id: string) { this.cotejoAttachments = this.cotejoAttachments.filter((file) => file.id !== id); this.cotejoDirty.set(true); this.cotejoDraftSaved.set(false); }
   attachmentUrl(file: CotejoAttachment) { return `data:${file.mime || 'application/octet-stream'};base64,${file.base64}`; }
   viewCurrentAttachments() { if (this.cotejoAttachments.length) this.attachmentViewer.set({ title: this.cotejoTitle || 'Sin título', attachments: this.cotejoAttachments }); }
   viewAttachments(item: CotejoState) { if (item.attachments?.length) this.attachmentViewer.set({ title: item.title || 'Sin título', attachments: item.attachments }); }
@@ -863,6 +898,7 @@ export class TenenciaComponent implements OnInit {
       );
       return;
     }
+    this.scanCode.set('');
     this.scanError.set('El código no pertenece a los artículos del listado actual.');
   }
   async loadPolicy() {
@@ -927,6 +963,7 @@ export class TenenciaComponent implements OnInit {
       this.cotejo.set(saved);
       this.cotejoTitle = saved.title ?? this.cotejoTitle;
       this.cotejoDirty.set(false);
+      this.cotejoDraftSaved.set(false);
       this.toast.emit('Cotejo guardado en el historial de la farmacia.');
     } catch (e) {
       this.error.set(this.message(e));
@@ -955,19 +992,24 @@ export class TenenciaComponent implements OnInit {
   async saveCotejoDraft() {
     const payload = this.cotejoPayload(); if (!payload) return;
     this.cotejoBusy.set(true);
-    try { const saved = await this.bridge.call<CotejoState>('cotejo.draft', payload); this.cotejo.set(saved); this.cotejoDirty.set(false); this.toast.emit('Borrador guardado para continuar más tarde.'); this.finishCotejoExit(); }
+    try {
+      const saved = await this.bridge.call<CotejoState>('cotejo.draft', payload);
+      this.cotejo.set(saved); this.cotejoDirty.set(false); this.cotejoDraftSaved.set(true);
+      this.toast.emit('Borrador guardado para continuar más tarde.');
+      if (this.leaveCotejo()) { await this.clearCotejo(); this.finishCotejoExit(); }
+    }
     catch (e) { this.error.set(this.message(e)); }
     finally { this.cotejoBusy.set(false); }
   }
   async clearCotejo() {
     try {
       const empty = await this.bridge.call<CotejoState>('cotejo.clear');
-      this.cotejo.set(empty); this.cotejoTitle='Sin título'; this.cotejoObservation=''; this.cotejoObservationHtml=''; this.cotejoAttachments=[]; this.cotejoDirty.set(false);
+      this.cotejo.set(empty); this.cotejoTitle='Sin título'; this.cotejoObservation=''; this.cotejoObservationHtml=''; this.cotejoAttachments=[]; this.cotejoDirty.set(false); this.cotejoDraftSaved.set(false);
     } catch (e) { this.error.set(this.message(e)); }
   }
   async discardAndLeave() { await this.clearCotejo(); this.finishCotejoExit(); }
   openHistoryItem(item: CotejoState) {
-    this.cotejo.set(structuredClone(item)); this.cotejoTitle=item.title?.trim()||'Sin título'; this.cotejoObservation=item.observation??''; this.cotejoObservationHtml=item.observationHtml||this.escapeHtml(item.observation??''); this.cotejoAttachments=[...(item.attachments??[])]; this.cotejoDirty.set(false); this.historyOpen.set(false); this.applyObservation();
+    this.cotejo.set(structuredClone(item)); this.cotejoTitle=item.title?.trim()||'Sin título'; this.cotejoObservation=item.observation??''; this.cotejoObservationHtml=item.observationHtml||this.escapeHtml(item.observation??''); this.cotejoAttachments=[...(item.attachments??[])]; this.cotejoDirty.set(false); this.cotejoDraftSaved.set(!item.checkedAt); this.historyOpen.set(false);
   }
   async deleteHistoryItem() {
     const item=this.historyDelete(); if (!item?.id) return;

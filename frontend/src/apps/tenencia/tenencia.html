@@ -106,7 +106,7 @@
 } @else if (view() === 'cotejo') {
   <section class="cotejo" aria-label="Cotejo de existencias mínimas">
     <header class="cotejo-toolbar">
-      <div class="cotejo-heading"><div class="cotejo-heading-line"><h2>Cotejo</h2><input class="cotejo-inline-title" aria-label="Título del cotejo" [(ngModel)]="cotejoTitle" (focus)="$any($event.target).select()" (blur)="cotejoTitle = cotejoTitle.trim() || 'Sin título'" (ngModelChange)="cotejoDirty.set(true)" maxlength="120" /></div><p>{{ cotejoCompletedGroups() }} de {{ rows().length }} grupos completos · {{ cotejoMissingUnits() }} unidades pendientes</p></div>
+      <div class="cotejo-heading"><div class="cotejo-heading-line"><h2>Cotejo</h2><input class="cotejo-inline-title" aria-label="Título del cotejo" [(ngModel)]="cotejoTitle" (focus)="$any($event.target).select()" (blur)="cotejoTitle = cotejoTitle.trim() || 'Sin título'" (ngModelChange)="cotejoDirty.set(true); cotejoDraftSaved.set(false)" maxlength="120" /></div><p>{{ cotejoCompletedGroups() }} de {{ rows().length }} grupos completos · {{ cotejoMissingUnits() }} unidades pendientes</p></div>
       <label class="cotejo-scan"><span class="scan-field"><v-icon name="search" /><input type="search" aria-label="CN o código de barras" [ngModel]="scanCode()" (ngModelChange)="scanCode.set($event)" (keydown.enter)="scanCotejo()" placeholder="Escanea o escribe el CN o código de barras" autocomplete="off" /><button type="button" (click)="scanCotejo()" aria-label="Añadir código al cotejo" title="Añadir código"><v-icon name="enter" /></button></span></label>
     </header>
     @if (cotejoBusy() && !cotejo()) {
@@ -142,11 +142,7 @@
           <div class="documentation-body">
             <section class="observation-pane" aria-label="Edición de observaciones">
               <div class="observation-label">Observaciones</div>
-              <div class="rich-toolbar" role="toolbar" aria-label="Formato de observaciones">
-                <button type="button" title="Negrita" (click)="formatObservation('bold')"><strong>N</strong></button><button type="button" title="Cursiva" (click)="formatObservation('italic')"><em>C</em></button><button type="button" title="Lista numerada" (click)="formatObservation('insertOrderedList')">1.</button><button type="button" title="Lista con viñetas" (click)="formatObservation('insertUnorderedList')">•</button>
-                <span class="toolbar-spacer"></span><label title="Color del texto">Texto <input type="color" value="#153b35" (input)="formatObservation('foreColor', $any($event.target).value)" /></label><label title="Color de fondo">Fondo <input type="color" value="#fff1c2" (input)="formatObservation('hiliteColor', $any($event.target).value)" /></label>
-              </div>
-              <div class="rich-observation" contenteditable="true" role="textbox" aria-label="Observaciones" aria-multiline="true" (input)="syncObservation($event)" data-placeholder="Anota incidencias observadas durante el recuento"></div>
+              <textarea class="plain-observation" aria-label="Observaciones" [ngModel]="cotejoObservation" (ngModelChange)="updateObservation($event)" maxlength="20000" placeholder="Anota incidencias observadas durante el recuento"></textarea>
             </section>
             <aside class="documentation-side" aria-label="Documentación y acciones del cotejo">
               <div class="documentation-side-head"><div><strong>Documentación</strong><small>{{ cotejoAttachments.length }} de 8 archivos</small></div>@if (cotejoAttachments.length) { <button type="button" class="view-attachments" (click)="viewCurrentAttachments()" aria-label="Visualizar adjuntos" title="Visualizar adjuntos"><v-icon name="eye" /></button> }</div>
@@ -523,7 +519,7 @@
   </div>
 }
 
-@if ((hasStock() || reportMode() === 'cotejo') && !editing()) {
+@if ((hasStock() || reportMode().startsWith('cotejo')) && !editing()) {
   <section class="tenencia-print" aria-hidden="true">
     <header class="print-head">
       <img src="logotipo.png" alt="Viteka" />
@@ -575,7 +571,7 @@
               <td>{{ a.code }}</td>
               <td>
                 {{ a.description }}
-                @if (reportMode() === 'cotejo') {
+                @if (reportMode().startsWith('cotejo')) {
                   <strong> · {{ (reportCotejo() || cotejo())?.counts?.[r.id]?.[a.code] || 0 }} cotejadas</strong>
                 }
                 <small> · Última compra: {{ movementDate(a.lastPurchase) }}</small>
@@ -600,12 +596,12 @@
       }
     </table>
     <p>{{ reportCriteria() }}</p>
-    @if (reportMode() === 'cotejo' && (reportCotejo() || cotejo()); as document) {
+    @if (reportMode().startsWith('cotejo') && (reportCotejo() || cotejo()); as document) {
       @if (document.observationHtml || document.observation) { <section class="print-observation"><h2>Observaciones</h2><div [innerHTML]="trustedObservation(document.observationHtml || document.observation)"></div></section> }
       @if (document.attachments; as attachments) { @if (attachments.length) { <section class="print-attachments"><h2>Adjuntos</h2>@for (file of attachments; track file.id) { @if (file.mime.startsWith('image/')) { <figure><img [src]="attachmentUrl(file)" [alt]="file.name" /><figcaption>{{ file.name }}</figcaption></figure> } @else { <p>{{ file.name }}</p> } }</section> } }
     }
     <footer>
-      Viteka Utilidades · {{ checkedTime() }} · Caducidad: verde más de 6 meses, amarillo 6 meses o menos, rojo
+      Viteka Conecta · {{ checkedTime() }} · Caducidad: verde más de 6 meses, amarillo 6 meses o menos, rojo
       caducado, gris sin fecha.
     </footer>
   </section>
@@ -631,7 +627,10 @@
   </div>
 }
 @if (scanError()) {
-  <div class="modal-overlay scan-error-overlay"><section class="dialog scan-error-dialog" role="alertdialog" aria-modal="true" aria-label="Código no encontrado"><div class="scan-error-icon"><v-icon name="warning" /></div><h2>Código no encontrado</h2><p>{{ scanError() }}</p><div class="dialog-actions"><button class="primary" (click)="scanError.set('')" autofocus>Aceptar</button></div></section></div>
+  <div class="modal-overlay scan-error-overlay" (document:keydown.enter)="scanError.set('')"><section class="dialog scan-error-dialog" role="alertdialog" aria-modal="true" aria-label="Código no encontrado"><div class="scan-error-icon"><v-icon name="warning" /></div><h2>Código no encontrado</h2><p>{{ scanError() }}</p><div class="dialog-actions"><button class="primary" (click)="scanError.set('')" autofocus>Aceptar</button></div></section></div>
+}
+@if (overagePrompt(); as pending) {
+  <div class="modal-overlay"><section class="dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-label="Superar existencias mínimas"><h2>El grupo ya está completo</h2><p>{{ pending.row.name }} ya alcanza sus {{ pending.row.minimum }} unidades mínimas. ¿Quieres incluir una unidad adicional de {{ pending.article.description }}?</p><div class="dialog-actions"><button (click)="overagePrompt.set(null)" autofocus>Cancelar</button><button class="primary" (click)="confirmCotejoOverage()">Incluir unidad</button></div></section></div>
 }
 @if (attachmentViewer(); as viewer) {
   <div class="modal-overlay" (click)="attachmentViewer.set(null)"><section class="dialog attachment-viewer" role="dialog" aria-modal="true" aria-label="Adjuntos del cotejo" (click)="$event.stopPropagation()"><div class="dialog-top"><div><h2>Adjuntos</h2><p>{{ viewer.title }} · {{ viewer.attachments.length }} archivos</p></div><button aria-label="Cerrar adjuntos" (click)="attachmentViewer.set(null)"><v-icon name="close" /></button></div><div class="attachment-gallery">@for (file of viewer.attachments; track file.id) { <a [href]="attachmentUrl(file)" [download]="file.name" [title]="'Descargar ' + file.name">@if (file.mime.startsWith('image/')) { <img [src]="attachmentUrl(file)" [alt]="file.name" /> } @else { <v-icon name="file" /> }<span>{{ file.name }}</span><small>{{ number(file.size / 1024) }} KB</small></a> }</div></section></div>
@@ -670,9 +669,10 @@
           [ngModel]="reportMode()"
           (ngModelChange)="reportMode.set($event)"
         >
-          @if (view() === 'cotejo' || reportMode() === 'cotejo') {
-            <option value="cotejo">Artículos cotejados por grupo</option>
-            <option value="shortfalls">Solo faltas</option>
+          @if (view() === 'cotejo' || reportMode().startsWith('cotejo')) {
+            <option value="cotejo">Solo cotejados</option>
+            <option value="cotejo-shortfalls">Solo faltas y sugerencias</option>
+            <option value="cotejo-all">Todos: cotejados, faltas y sugerencias</option>
           } @else {
             <option value="complete">Listado completo</option>
             <option value="shortfalls">Solo faltas</option>

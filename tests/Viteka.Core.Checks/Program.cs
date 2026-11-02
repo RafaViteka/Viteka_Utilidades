@@ -211,11 +211,11 @@ try
         Require(new PreviewUpdater(http,other).GetHistoryAsync().GetAwaiter().GetResult().Length==0);
     });
     Check("Review installer identity accepts Inno padding but never another product",()=>{
-        Require(ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas"));
-        Require(ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas                         "));
-        Require(ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas\0\0"));
-        Require(!ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Vista previa local"));
-        Require(!ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas modified"));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas"));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas                         "));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas\0\0"));
+        Require(!ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Vista previa local"));
+        Require(!ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas modified"));
         Require(!ProductProfile.IsReviewInstallerProduct(null));
     });
     Check("Review identity persists and corrupted identity is never replaced",()=>{

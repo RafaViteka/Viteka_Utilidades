@@ -27,7 +27,7 @@ if ($files.Count -ne 1 -or $files[0].Name -cne $name) { throw 'Expected exactly 
 $file = $files[0]
 $metadata = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($file.FullName)
 $productVersion = [Version]::new($metadata.ProductMajorPart, $metadata.ProductMinorPart, $metadata.ProductBuildPart, $metadata.ProductPrivatePart)
-if ($metadata.ProductName.TrimEnd([char[]]@(32, 0)) -cne 'Viteka Utilidades - Pruebas' -or
+if ($metadata.ProductName.TrimEnd([char[]]@(32, 0)) -cne 'Viteka Conecta - Pruebas' -or
     $productVersion -ne [Version]"$version.0") {
     throw "Unexpected review metadata: product=[$($metadata.ProductName)] numericVersion=[$productVersion] expected=[$version.0]."
 }
@@ -49,7 +49,7 @@ $release = Get-ReviewRelease
 # only after its target, sole asset, size and digest all match this tested file.
 if ($null -ne $release -and -not $release.draft) { throw 'This PC review is already published; use a new version.' }
 $notes = @"
-Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
+Revisión técnica $version de Viteka Conecta - Pruebas, dirigida a un único identificador de PC.
 
 Los códigos que no pertenecen al listado se muestran en una ventana emergente con una explicación y un botón Aceptar. La incidencia deja de ocupar espacio permanente en la pantalla.
 
@@ -104,7 +104,7 @@ Set-Content -LiteralPath $notesPath -Value $notes -Encoding utf8
 if ($null -eq $release) {
     & gh api "repos/$($env:GITHUB_REPOSITORY)/git/ref/tags/$tag" *> $null
     if ($LASTEXITCODE -eq 0) { throw 'This PC review tag already exists; use a new version.' }
-    & gh release create $tag --repo $env:GITHUB_REPOSITORY --target $sourceCommit --draft --prerelease --latest=false --title "Viteka Utilidades - Pruebas $version" --notes-file $notesPath
+    & gh release create $tag --repo $env:GITHUB_REPOSITORY --target $sourceCommit --draft --prerelease --latest=false --title "Viteka Conecta - Pruebas $version" --notes-file $notesPath
     if ($LASTEXITCODE -ne 0) { throw 'Could not create the isolated draft release.' }
     & gh release upload $tag $file.FullName --repo $env:GITHUB_REPOSITORY
     if ($LASTEXITCODE -ne 0) { throw 'Could not upload the isolated installer; release remains a draft.' }

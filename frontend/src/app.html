@@ -9,7 +9,7 @@
       @if (reviewMode()) {
         <p class="chip">PC de pruebas · Instalación independiente</p>
       }
-      <p>Accede con tu cuenta de Viteka Utilidades.</p>
+      <p>Accede con tu cuenta de Viteka Conecta.</p>
       <form (ngSubmit)="login()" class="account-form">
         <label
           >Usuario<input
@@ -37,7 +37,7 @@
       @if (!bridge.native) {
         <p class="connection-help">El acceso con contraseña está disponible en la aplicación Windows.</p>
       }
-      <small class="auth-version">Viteka Utilidades · {{ version() }}</small>
+      <small class="auth-version">Viteka Conecta · {{ version() }}</small>
     </section>
   </div>
 } @else if (user()?.mustChangePassword) {
@@ -625,14 +625,16 @@
             </section>
             <details>
               <summary>Información de la aplicación</summary>
-              <p>Viteka Utilidades · {{ version() }}</p>
+              <p><strong>Viteka Conecta</strong><br />Herramientas y servicios para tu farmacia</p>
+              <p>Versión {{ version() }}</p>
+              <p>Proveedor: Dinaro Partners, S.L. · NIF B72798168<br />Calle San Pedro, 35, 1.ª, 29200 Antequera (Málaga), España.<br />Contacto: conecta@viteka.es</p>
             </details>
           }
         }
       </main>
       @if (!inTenencia()) {
         <footer>
-          <span>Centro de atención y recursos</span><span>Viteka Utilidades · {{ version() }}</span>
+          <span>Centro de atención y recursos</span><span>Viteka Conecta · {{ version() }}</span>
         </footer>
       }
     </div>

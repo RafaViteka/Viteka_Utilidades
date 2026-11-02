@@ -28,7 +28,7 @@ public partial class MainWindow : Window
     public MainWindow()
     {
         InitializeComponent();
-        if(ProductProfile.IsReview){Title="Viteka Utilidades · Pruebas";ProductCaption.Text="Utilidades · Pruebas";}
+        if(ProductProfile.IsReview){Title="Viteka Conecta · Pruebas";ProductCaption.Text="Conecta · Pruebas";}
         shell = new WindowsShellIntegration(this);
         StateChanged += (_, _) => MaximizeButton.Content = WindowState == WindowState.Maximized ? "\uE923" : "\uE922";
         // Install the monitor work-area hook before maximizing; keep restore/minimize controls available.
@@ -495,7 +495,7 @@ public partial class MainWindow : Window
     private void ChangeZoom(int percent)
     {
         try { SetZoom(percent); }
-        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException) { MessageBox.Show(this, "El zoom se ha aplicado, pero no se pudo guardar la preferencia.", "Viteka Utilidades"); }
+        catch (Exception ex) when (ex is IOException or InvalidDataException or UnauthorizedAccessException or JsonException) { MessageBox.Show(this, "El zoom se ha aplicado, pero no se pudo guardar la preferencia.", "Viteka Conecta"); }
     }
     private void ZoomIn(object sender, RoutedEventArgs e) => ChangeZoom((int)Math.Round(Browser.ZoomFactor * 100) + 10);
     private void ZoomOut(object sender, RoutedEventArgs e) => ChangeZoom((int)Math.Round(Browser.ZoomFactor * 100) - 10);

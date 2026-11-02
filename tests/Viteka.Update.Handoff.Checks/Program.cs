@@ -20,7 +20,7 @@ try
     var hash = Convert.ToHexString(await SHA256.HashDataAsync(guard)).ToLowerInvariant();
     stage = "product-metadata";
     var metadata = FileVersionInfo.GetVersionInfo(installer);
-    if (metadata.ProductName?.TrimEnd(' ', '\0') != "Viteka Utilidades - Pruebas") throw new InvalidDataException("Wrong fixture product.");
+    if (metadata.ProductName?.TrimEnd(' ', '\0') != "Viteka Conecta - Pruebas") throw new InvalidDataException("Wrong fixture product.");
     stage = "prepare-handoff";
     var assembly = Assembly.LoadFrom(Path.Combine(client, "Viteka.Desktop.dll"));
     var method = assembly.GetType("Viteka.Desktop.UpdateCompanion", throwOnError: true)!
