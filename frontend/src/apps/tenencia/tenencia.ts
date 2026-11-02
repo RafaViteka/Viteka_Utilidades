@@ -104,6 +104,7 @@ export class TenenciaComponent implements OnInit {
   readonly cotejoBusy = signal(false);
   readonly scanCode = signal('');
   readonly cotejoActiveId = signal<string | null>(null);
+  readonly cotejoCompleted = signal<string | null>(null);
   readonly policyBusy = signal(false);
   readonly policy = signal<TenenciaPolicySettings | null>(null);
   cotejoObservation = '';
@@ -114,6 +115,7 @@ export class TenenciaComponent implements OnInit {
     this.rows().reduce((n, r) => n + (r.status === 'shortfall' ? (r.missing ?? 0) : 0), 0),
   );
   readonly busy = signal(false);
+  readonly queryProgress = signal<number | null>(null);
   readonly result = signal<Result | null>(null);
   readonly error = signal('');
   readonly search = signal('');
@@ -628,11 +630,22 @@ export class TenenciaComponent implements OnInit {
   async query() {
     if (!this.canQuery()) return;
     this.busy.set(true);
+    this.queryProgress.set(0);
     this.error.set('');
     this.selected.set(null);
+    const started = Date.now();
+    const timer = window.setInterval(() => {
+      const elapsed = Date.now() - started;
+      this.queryProgress.set(Math.min(92, Math.round(8 + 84 * (1 - Math.exp(-elapsed / 1800)))));
+    }, 120);
     try {
-      const r = await this.bridge.call<Result>('tenencia.query');
+      const [r] = await Promise.all([
+        this.bridge.call<Result>('tenencia.query'),
+        new Promise<void>((resolve) => window.setTimeout(resolve, 650)),
+      ]);
+      window.clearInterval(timer);
       if (r.code === 'ok') {
+        this.queryProgress.set(100);
         this.result.set(r);
         this.emitSummary(r);
         this.toast.emit('Consulta completada · ' + this.stamp(r.checkedAt));
@@ -641,9 +654,12 @@ export class TenenciaComponent implements OnInit {
         this.status.set('all');
       }
     } catch (e) {
+      window.clearInterval(timer);
       this.status.set('all');
       this.error.set(this.message(e));
     } finally {
+      await new Promise<void>((resolve) => window.setTimeout(resolve, this.queryProgress() === 100 ? 320 : 80));
+      this.queryProgress.set(null);
       this.busy.set(false);
     }
   }
@@ -714,11 +730,18 @@ export class TenenciaComponent implements OnInit {
   adjustCotejo(row: Row, article: Article, change: number) {
     const state = this.cotejo();
     if (!state) return;
+    const wasMissing = this.cotejoMissing(row);
     const counts = structuredClone(state.counts ?? {});
     counts[row.id] ??= {};
     counts[row.id][article.code] = Math.max(0, Math.min(10000, (counts[row.id][article.code] ?? 0) + change));
     if (!counts[row.id][article.code]) delete counts[row.id][article.code];
     this.cotejo.set({ ...state, counts });
+    if (wasMissing > 0 && this.cotejoMissing(row) === 0) {
+      this.cotejoCompleted.set(row.id);
+      window.setTimeout(() => {
+        if (this.cotejoCompleted() === row.id) this.cotejoCompleted.set(null);
+      }, 1300);
+    }
   }
   scanCotejo() {
     const value = this.scanCode().trim();

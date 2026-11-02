@@ -1082,7 +1082,6 @@
         <progress max="100" [value]="bridge.progress()"></progress><strong>{{ bridge.progress() }} %</strong>
       } @else if (bridge.updatePhase() !== 'failed' && bridge.updatePhase() !== 'cancelled') {
         <progress></progress>
-        <p>Esta fase no ofrece un porcentaje medible.</p>
       }
       @if (['preparing', 'downloading', 'verifying'].includes(bridge.updatePhase())) {
         <button class="text-button" (click)="cancelUpdate()">Cancelar actualización</button>

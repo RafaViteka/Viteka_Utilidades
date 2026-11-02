@@ -752,6 +752,7 @@ details p {
   background: var(--overlay);
   backdrop-filter: blur(6px);
   padding: 25px;
+  animation: modal-overlay-in 0.16s ease-out;
 }
 .dialog {
   background: var(--paper);
@@ -762,6 +763,25 @@ details p {
   max-height: 90vh;
   overflow: auto;
   padding: 30px;
+  position: relative;
+  box-shadow: 0 24px 70px #0005;
+  animation: dialog-in 0.2s ease-out;
+}
+.dialog::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--green), var(--lime));
+}
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+}
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(10px) scale(.985); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay, .dialog { animation: none; }
 }
 .dialog-top {
   display: flex;

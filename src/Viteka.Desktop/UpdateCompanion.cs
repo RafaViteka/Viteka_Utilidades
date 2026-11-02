@@ -61,7 +61,7 @@ internal static class UpdateCompanion
                     var start=new ProcessStartInfo(handoff.Installer,DesktopUpdates.SilentArguments(handoff.Log)){UseShellExecute=true,Verb="runas"};
                     using var installer=Process.Start(start)??throw new IOException("No se pudo iniciar el instalador.");
                     await File.WriteAllTextAsync(handoff.ReadyFile,"ready");
-                    text.Text="Instalando "+handoff.Version+"… El instalador no ofrece un porcentaje medible. Viteka volverá a abrirse al finalizar.";
+                    text.Text="Instalando "+handoff.Version+"… Viteka volverá a abrirse al finalizar.";
                     await installer.WaitForExitAsync();
                     if(installer.ExitCode!=0)throw new IOException("La instalación no terminó correctamente (código "+installer.ExitCode+"). Reabre Viteka y consulta el historial y el registro de instalación.");
                     await File.WriteAllTextAsync(Path.Combine(AppContext.BaseDirectory,"result.json"),JsonSerializer.Serialize(new{success=true,exitCode=installer.ExitCode}));

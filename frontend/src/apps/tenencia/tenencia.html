@@ -105,7 +105,7 @@
   <section class="cotejo" aria-label="Cotejo de existencias mínimas">
     <header class="cotejo-toolbar">
       <div><h2>Cotejo físico</h2><p>Confirma una a una las unidades que has recontado físicamente.</p></div>
-      <label>CN o código de barras<input type="search" [ngModel]="scanCode()" (ngModelChange)="scanCode.set($event)" (keydown.enter)="scanCotejo()" placeholder="Escanea o escribe y pulsa Intro" /></label>
+      <label class="cotejo-scan"><span>CN o código de barras</span><span class="scan-field"><v-icon name="search" /><input type="search" aria-label="CN o código de barras" [ngModel]="scanCode()" (ngModelChange)="scanCode.set($event)" (keydown.enter)="scanCotejo()" placeholder="Escanea o escribe y pulsa Intro" autocomplete="off" /><kbd>Intro</kbd></span></label>
     </header>
     @if (cotejoBusy() && !cotejo()) {
       <p class="group-empty">Cargando el cotejo compartido…</p>
@@ -115,7 +115,7 @@
           <div class="panel-heading"><h2>Grupos de tenencia</h2><small>{{ rows().length }} grupos</small></div>
           <div class="cotejo-table-scroll"><table><thead><tr><th>Código</th><th>Grupo</th><th>Mín.</th><th>Cotejado</th><th>Faltan</th></tr></thead><tbody>
             @for (row of rows(); track row.id) {
-              <tr [class.chosen]="cotejoActiveRow().id === row.id">
+              <tr [class.chosen]="cotejoActiveRow().id === row.id" [class.complete]="cotejoMissing(row) === 0" [class.just-completed]="cotejoCompleted() === row.id">
                 <td>{{ row.classification || '—' }}</td><td><button class="cotejo-group-button" (click)="chooseCotejoGroup(row)">{{ row.name }}</button></td><td class="center">{{ row.minimum }}</td><td class="center">{{ cotejoTotal(row) }}</td><td class="center"><span class="cotejo-state" [attr.data-complete]="cotejoMissing(row) === 0">{{ cotejoMissing(row) }}</span></td>
               </tr>
             }
@@ -132,7 +132,7 @@
           }
         </section>
       </div>
-      <footer class="cotejo-footer"><label>Observaciones<textarea [(ngModel)]="cotejoObservation" maxlength="1000" rows="3" placeholder="Incidencias observadas durante el recuento"></textarea></label><div><span>@if (cotejo()?.checkedAt) { Último guardado: {{ stamp(cotejo()?.checkedAt ?? undefined) }} · {{ cotejo()?.userName }}}</span><span class="cotejo-actions"><button (click)="toggleCotejoHistory()">{{ historyOpen() ? 'Cerrar historial' : 'Historial' }}</button><button class="primary" (click)="saveCotejo()" [disabled]="cotejoBusy()">{{ cotejoBusy() ? 'Guardando…' : 'Guardar cotejo' }}</button></span></div>
+      <footer class="cotejo-footer"><label><span>Observaciones</span><textarea [(ngModel)]="cotejoObservation" maxlength="1000" rows="3" placeholder="Anota incidencias observadas durante el recuento"></textarea></label><div class="cotejo-footer-bar"><span class="cotejo-saved">@if (cotejo()?.checkedAt) { Último guardado: {{ stamp(cotejo()?.checkedAt ?? undefined) }} · {{ cotejo()?.userName }}} @else { El cotejo todavía no se ha guardado. }</span><span class="cotejo-actions"><button class="text-button" (click)="toggleCotejoHistory()">{{ historyOpen() ? 'Cerrar historial' : 'Ver historial' }}</button><button class="primary" (click)="saveCotejo()" [disabled]="cotejoBusy()">{{ cotejoBusy() ? 'Guardando…' : 'Guardar cotejo' }}</button></span></div>
       @if (historyOpen()) { <section class="cotejo-history" aria-label="Historial de cotejos"><h3>Historial de cotejos</h3>@for (item of cotejoHistory() ?? []; track item.checkedAt) { <article><strong>{{ stamp(item.checkedAt ?? undefined) }}</strong><span>{{ item.userName || 'Usuario' }} · {{ cotejoUnits(item) }} unidades</span><p>{{ item.observation || 'Sin observaciones' }}</p></article> } @empty { <p>No hay cotejos guardados.</p> }</section> }
       </footer>
     }
@@ -419,7 +419,7 @@
     </p>
   </section>
 }
-@if (result()?.listVersion) {
+@if (result()?.listVersion && view() === 'query') {
   <p class="tenencia-count-warning">
     Recuenta visualmente las unidades disponibles y confirma que alcanzan el mínimo exigido antes de dar por cumplida
     la tenencia obligatoria. Esta consulta sirve de apoyo y no sustituye la comprobación física del stock.
@@ -580,6 +580,20 @@
       caducado, gris sin fecha.
     </footer>
   </section>
+}
+
+@if (queryProgress() !== null) {
+  <div class="modal-overlay query-progress-overlay">
+    <section class="dialog query-progress-dialog" role="dialog" aria-modal="true" aria-label="Progreso de la consulta" aria-live="polite">
+      <div class="query-progress-icon"><v-icon name="search" /></div>
+      <h2>Consultando existencias</h2>
+      <p>{{ queryProgress() === 100 ? 'Consulta completada' : 'Leyendo y consolidando los datos de NixFarma…' }}</p>
+      <div class="query-progress-ring" role="progressbar" aria-label="Progreso de la consulta" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="queryProgress()" [style.--progress]="queryProgress() + '%'">
+        <strong>{{ queryProgress() }}</strong><span>%</span>
+      </div>
+      <small>{{ queryProgress() === 100 ? 'Los resultados ya están preparados.' : 'Mantén Viteka abierta hasta finalizar.' }}</small>
+    </section>
+  </div>
 }
 
 @if (reportOpen()) {

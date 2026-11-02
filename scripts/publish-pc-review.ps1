@@ -51,6 +51,10 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
+Rediseña el cotejo con un campo de escaneo amplio, observaciones y acciones alineadas. Al alcanzar el mínimo, la fila del grupo realiza una transición breve y permanece en verde. Las ventanas emergentes incorporan profundidad, entrada suave y una línea de marca; respetan la opción del sistema para reducir el movimiento.
+
+Consultar existencias muestra un indicador circular de 0 a 100 hasta que NixFarma devuelve y consolida el resultado. Los estados de instalación dejan de mostrar aclaraciones sobre fases sin porcentaje.
+
 El filtro Revisar caducidad incluye únicamente grupos con artículos que tengan stock y estén caducados o venzan dentro del plazo configurado. Dentro del grupo mantiene el resto de artículos como contexto con un 80 % de transparencia; los artículos sin fecha ya no se consideran por sí solos pendientes de caducidad.
 
 Corrige la detección de columnas cuando NixFarma expone simultáneamente nombres actuales e históricos: prioriza `CODIGO` para artículos y `ART_CODIGO` para existencias, y admite `EXI_ACTUALES` o `ACTUALES` para el stock. Esta última denominación corresponde a la vista `APADMIN.AC_EXISTENCIAS` diagnosticada en el servidor de pruebas. Los errores de estructura indican la tabla, el concepto y las columnas encontradas.
