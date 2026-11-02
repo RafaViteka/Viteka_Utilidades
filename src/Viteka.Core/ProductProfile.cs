@@ -4,8 +4,13 @@ namespace Viteka.Core;
 public static class ProductProfile
 {
     public const string ReviewInstallerProductName="Viteka Conecta - Pruebas";
+    public const string LegacyReviewInstallerProductName="Viteka Utilidades - Pruebas";
     // Inno pads version-resource strings. Only discard resource padding, never accept a different product.
-    public static bool IsReviewInstallerProduct(string? name)=>name?.TrimEnd(' ', '\0')==ReviewInstallerProductName;
+    public static bool IsReviewInstallerProduct(string? name)
+    {
+        var product=name?.TrimEnd(' ', '\0');
+        return product is ReviewInstallerProductName or LegacyReviewInstallerProductName;
+    }
 #if VITEKA_REVIEW
     public static bool IsReview => true;
     public const string StateFolder="UtilidadesReviewAccess";

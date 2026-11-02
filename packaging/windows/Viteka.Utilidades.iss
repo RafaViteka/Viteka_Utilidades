@@ -8,6 +8,7 @@
 #ifdef ReviewBuild
 #define IdentityGuid "8817D5EC-91E7-4C88-88C9-27C66C565B8D"
 #define ProductTitle "Viteka Conecta - Pruebas"
+#define InstallerProductIdentity "Viteka Utilidades - Pruebas"
 #define ShortcutTitle "Viteka Conecta - Pruebas"
 #define GroupTitle "Viteka Conecta - Pruebas"
 #define InstallFolder "UtilidadesPruebas"
@@ -20,6 +21,7 @@
 #else
 #define IdentityGuid "AAC03BF6-8845-4E96-AFC1-73AF54176983"
 #define ProductTitle "Viteka Conecta"
+#define InstallerProductIdentity "Viteka Conecta"
 #define ShortcutTitle "Viteka Conecta"
 #define GroupTitle "Viteka Conecta"
 #define InstallFolder "UtilidadesVistaPrevia"
@@ -33,7 +35,7 @@
 [Setup]
 AppId={{{#IdentityGuid}}
 AppName={#ProductTitle}
-VersionInfoProductName={#ProductTitle}
+VersionInfoProductName={#InstallerProductIdentity}
 VersionInfoVersion={#AppVersion}
 VersionInfoProductVersion={#AppVersion}
 AppVersion={#AppVersion}

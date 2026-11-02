@@ -214,6 +214,8 @@ try
         Require(ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas"));
         Require(ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas                         "));
         Require(ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas\0\0"));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas"));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas                         "));
         Require(!ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Vista previa local"));
         Require(!ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas modified"));
         Require(!ProductProfile.IsReviewInstallerProduct(null));
