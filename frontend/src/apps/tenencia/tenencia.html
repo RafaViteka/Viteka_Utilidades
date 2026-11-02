@@ -155,7 +155,7 @@
                 @if (cotejoAttachments.length) { <div class="attachment-list">@for (file of cotejoAttachments; track file.id) { <span><v-icon [name]="file.mime.startsWith('image/') ? 'file' : 'sheet'" />{{ file.name }}<button type="button" (click)="removeCotejoFile(file.id)" [attr.aria-label]="'Quitar ' + file.name">×</button></span> }</div> }
               </div>
               <div class="cotejo-save-state">@if (cotejo()?.checkedAt) { <strong>Guardado</strong><span>{{ stamp(cotejo()?.checkedAt ?? undefined) }} · {{ cotejo()?.userName }}</span> } @else if (cotejoDirty()) { <strong>Cambios pendientes</strong><span>Guarda un borrador o finaliza el cotejo.</span> } @else { <strong>Borrador preparado</strong><span>Sin cambios pendientes.</span> }</div>
-              <div class="cotejo-actions"><button class="text-button" (click)="toggleCotejoHistory()">Historial</button><button class="text-button" (click)="clearCotejo()" [disabled]="cotejoBusy()">Descartar</button><button class="text-button" (click)="saveCotejoDraft()" [disabled]="cotejoBusy()">Guardar borrador</button><button class="primary" (click)="saveCotejo()" [disabled]="cotejoBusy()">{{ cotejoBusy() ? 'Guardando…' : 'Finalizar y guardar' }}</button></div>
+              <div class="cotejo-actions"><button class="history-button" (click)="toggleCotejoHistory()"><v-icon name="clock" />Historial</button><button class="discard-button" (click)="clearCotejo()" [disabled]="cotejoBusy()">Descartar</button><button class="draft-button" (click)="saveCotejoDraft()" [disabled]="cotejoBusy()">Guardar borrador</button><button class="primary" (click)="saveCotejo()" [disabled]="cotejoBusy()">{{ cotejoBusy() ? 'Guardando…' : 'Finalizar y guardar' }}</button></div>
             </aside>
           </div>
         }
@@ -629,6 +629,9 @@
       </div>
     </section>
   </div>
+}
+@if (scanError()) {
+  <div class="modal-overlay scan-error-overlay"><section class="dialog scan-error-dialog" role="alertdialog" aria-modal="true" aria-label="Código no encontrado"><div class="scan-error-icon"><v-icon name="warning" /></div><h2>Código no encontrado</h2><p>{{ scanError() }}</p><div class="dialog-actions"><button class="primary" (click)="scanError.set('')" autofocus>Aceptar</button></div></section></div>
 }
 @if (attachmentViewer(); as viewer) {
   <div class="modal-overlay" (click)="attachmentViewer.set(null)"><section class="dialog attachment-viewer" role="dialog" aria-modal="true" aria-label="Adjuntos del cotejo" (click)="$event.stopPropagation()"><div class="dialog-top"><div><h2>Adjuntos</h2><p>{{ viewer.title }} · {{ viewer.attachments.length }} archivos</p></div><button aria-label="Cerrar adjuntos" (click)="attachmentViewer.set(null)"><v-icon name="close" /></button></div><div class="attachment-gallery">@for (file of viewer.attachments; track file.id) { <a [href]="attachmentUrl(file)" [download]="file.name" [title]="'Descargar ' + file.name">@if (file.mime.startsWith('image/')) { <img [src]="attachmentUrl(file)" [alt]="file.name" /> } @else { <v-icon name="file" /> }<span>{{ file.name }}</span><small>{{ number(file.size / 1024) }} KB</small></a> }</div></section></div>

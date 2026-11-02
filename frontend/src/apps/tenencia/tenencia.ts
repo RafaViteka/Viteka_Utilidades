@@ -118,6 +118,7 @@ export class TenenciaComponent implements OnInit {
   readonly cotejoDirty = signal(false);
   readonly leaveCotejo = signal<'query' | 'expiry' | 'back' | null>(null);
   readonly scanCode = signal('');
+  readonly scanError = signal('');
   readonly cotejoActiveId = signal<string | null>(null);
   readonly cotejoCompleted = signal<string | null>(null);
   readonly policyBusy = signal(false);
@@ -854,6 +855,7 @@ export class TenenciaComponent implements OnInit {
       this.activeArticleCode.set(matches[0].article.code);
       this.scanCode.set('');
       this.error.set('');
+      this.scanError.set('');
       this.toast.emit(
         matches.length === 1
           ? `${matches[0].article.code} · unidad añadida al cotejo`
@@ -861,7 +863,7 @@ export class TenenciaComponent implements OnInit {
       );
       return;
     }
-    this.error.set('El código no pertenece a los artículos del listado actual.');
+    this.scanError.set('El código no pertenece a los artículos del listado actual.');
   }
   async loadPolicy() {
     this.policyBusy.set(true);

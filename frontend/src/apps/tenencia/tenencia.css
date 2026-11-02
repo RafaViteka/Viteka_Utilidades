@@ -774,6 +774,12 @@ td.center .row-state {
 .cotejo-save-state strong { color: var(--ink); }
 .cotejo-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
 .cotejo-actions button { min-height: 31px; padding: 5px 7px; white-space: nowrap; }
+.cotejo-actions .history-button { display: inline-flex; align-items: center; justify-content: center; gap: 6px; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); }
+.history-button v-icon { width: 15px; height: 15px; }
+.cotejo-actions .discard-button { border: 1px solid #b73535; border-radius: 6px; background: #b73535; color: #fff; }
+.cotejo-actions .draft-button { border: 1px solid #096b55; border-radius: 6px; background: transparent; color: #096b55; font-weight: 650; }
+:host-context(html[data-theme='dark']) .cotejo-actions .discard-button { border-color: #e26862; background: #9f302f; color: #fff; }
+:host-context(html[data-theme='dark']) .cotejo-actions .draft-button { border-color: var(--lime); color: var(--lime); }
 .cotejo-history-dialog { width: min(1240px, 96vw); max-width: 1240px; max-height: 92vh; }
 .history-commandbar { display: grid; grid-template-columns: minmax(260px, 1fr) 220px; gap: 12px; padding: 2px 0 12px; }
 .history-commandbar label { display: grid; gap: 5px; color: var(--muted); font-size: var(--fs-xs); }
@@ -812,6 +818,13 @@ td.center .row-state {
 .attachment-gallery v-icon { place-self: center; width: 44px; height: 44px; }
 .attachment-gallery span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attachment-gallery small { color: var(--muted); }
+.scan-error-overlay { z-index: 150; }
+.scan-error-dialog { width: min(430px, 94vw); display: grid; justify-items: center; gap: 10px; text-align: center; }
+.scan-error-dialog h2, .scan-error-dialog p { margin: 0; }
+.scan-error-dialog p { color: var(--muted); }
+.scan-error-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: color-mix(in srgb, #d88a28 18%, var(--card)); color: #c87518; }
+.scan-error-icon v-icon { width: 24px; height: 24px; }
+.scan-error-dialog .dialog-actions { width: 100%; justify-content: center; margin-top: 5px; }
 .leave-cotejo-dialog { max-width: 520px; }
 .leave-options { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
 .tenencia-policy-page { width: 100%; min-height: 0; flex: 1; align-content: start; display: grid; gap: 14px; padding: 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
