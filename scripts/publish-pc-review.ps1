@@ -51,6 +51,8 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
+El filtro Revisar caducidad incluye únicamente grupos con artículos que tengan stock y estén caducados o venzan dentro del plazo configurado. Dentro del grupo mantiene el resto de artículos como contexto con un 80 % de transparencia; los artículos sin fecha ya no se consideran por sí solos pendientes de caducidad.
+
 Corrige la detección de columnas cuando NixFarma expone simultáneamente nombres actuales e históricos: prioriza `CODIGO` para artículos y `ART_CODIGO` para existencias, y admite `EXI_ACTUALES` o `ACTUALES` para el stock. Esta última denominación corresponde a la vista `APADMIN.AC_EXISTENCIAS` diagnosticada en el servidor de pruebas. Los errores de estructura indican la tabla, el concepto y las columnas encontradas.
 
 Tenencia incorpora Consulta, Cotejo y Caducidades. Caducidades contiene los meses de aviso y el tratamiento del stock caducado. Cotejo funciona aunque Oracle no haya terminado una consulta: muestra una tabla de grupos con mínimo, cotejado y pendiente, y otra de artículos del grupo. La entrada por CN o código de barras actualiza todos los grupos a los que pertenezca el artículo.

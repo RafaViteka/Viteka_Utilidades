@@ -482,7 +482,11 @@ export class TenenciaComponent implements OnInit {
     return this.result()?.checkedAt ? new Date(this.result()!.checkedAt!) : new Date();
   }
   needsExpiryReview(row: Row) {
-    return row.articles.some((a) => (a.stock ?? 0) > 0 && this.expiryState(a) !== 'ok');
+    return row.articles.some((a) => this.requiresExpiryAttention(a));
+  }
+  requiresExpiryAttention(article: Article) {
+    const state = this.expiryState(article);
+    return state === 'soon' || state === 'expired';
   }
   groupStateLabel(row: Row) {
     if (row.status === 'covered') return 'Correcto';

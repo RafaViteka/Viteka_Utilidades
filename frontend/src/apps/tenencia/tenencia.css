@@ -369,6 +369,7 @@ thead th {
 .article-inactive td,
 .article-inactive .article-select { color: #c93838; }
 .article-inactive .article-select { font-weight: 650; }
+.tenencia-medications tr.expiry-muted { opacity: .2; }
 tbody tr:hover td {
   background: var(--surface);
 }

@@ -323,6 +323,7 @@
                 <tr
                   [class.article-chosen]="activeArticle()?.code === a.code"
                   [class.article-inactive]="a.inactive"
+                  [class.expiry-muted]="status() === 'expiry' && !requiresExpiryAttention(a)"
                   [title]="a.inactive ? 'Artículo de baja' + (a.inactiveOn ? ' desde ' + movementDate(a.inactiveOn) : '') : null"
                 >
                   <td class="article-code">{{ a.code }}</td>
