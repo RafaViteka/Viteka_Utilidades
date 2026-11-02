@@ -699,7 +699,8 @@ td.center .row-state {
 .scan-field:focus-within { border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
 .scan-field v-icon { width: 18px; height: 18px; }
 .scan-field input { min-width: 0; width: 100%; padding: 9px 0; border: 0; outline: 0; background: transparent; color: var(--ink); }
-.scan-field kbd { padding: 3px 7px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 5px; background: var(--surface); color: var(--muted); font-family: inherit; font-size: var(--fs-xs); font-weight: 600; line-height: 1.2; }
+.scan-field > button { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.scan-field > button v-icon { width: 17px; height: 17px; }
 .cotejo-workspace { min-height: 330px; flex: 1; display: grid; grid-template-columns: minmax(380px, 42%) minmax(480px, 58%); gap: 10px; }
 .cotejo-groups, .cotejo-articles { min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
 .cotejo-table-scroll { min-height: 0; overflow: auto; flex: 1; }
@@ -737,17 +738,16 @@ td.center .row-state {
 .cotejo-heading-line h2 { flex: 0 0 auto; }
 .cotejo-inline-title { width: min(620px, 55vw); min-width: 180px; padding: 6px 10px; border: 1px solid transparent; border-radius: 7px; background: color-mix(in srgb, var(--paper) 62%, transparent); color: var(--ink); font-size: var(--fs-md); font-weight: 700; }
 .cotejo-inline-title:hover, .cotejo-inline-title:focus { outline: 0; border-color: var(--green); background: var(--paper); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 16%, transparent); }
-.documentation-heading { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 11px 13px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); text-align: left; }
-.documentation-heading > span { display: grid; gap: 2px; }
-.documentation-heading small { color: var(--muted); font-weight: 400; }
+.documentation-heading { display: flex; justify-content: flex-end; align-items: center; width: 100%; min-height: 25px; padding: 3px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); text-align: left; }
 .documentation-heading v-icon { width: 20px; height: 20px; color: var(--green); }
-.documentation-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(270px, 1fr); align-items: stretch; gap: 14px; width: 100%; height: 260px; padding-top: 3px; }
+.documentation-body { display: grid; grid-template-columns: minmax(0, 2fr) minmax(270px, 1fr); align-items: stretch; gap: 12px; width: 100%; height: 208px; }
 .observation-pane { min-width: 0; display: grid; grid-template-rows: auto auto minmax(0, 1fr); align-content: stretch; }
-.documentation-side { position: static; top: auto; min-width: 0; height: auto; display: flex; flex-direction: column; gap: 10px; padding: 12px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
+.documentation-side { position: static; top: auto; min-width: 0; height: auto; display: flex; flex-direction: column; gap: 6px; padding: 8px 10px; overflow: hidden; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); }
 .documentation-side-head { display: flex; justify-content: space-between; align-items: start; gap: 10px; }
 .documentation-side-head > div { display: grid; gap: 2px; }
 .documentation-side-head small { color: var(--muted); }
-.documentation-side-head > span { padding: 4px 7px; border-radius: 999px; background: var(--card); color: var(--muted); font-size: var(--fs-xs); }
+.view-attachments { display: grid; place-items: center; width: 30px; height: 30px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--card); color: var(--ink); }
+.view-attachments v-icon { width: 16px; height: 16px; }
 .cotejo-footer label { display: grid; gap: 6px; width: 100%; color: var(--muted); font-size: var(--fs-xs); }
 .cotejo-title input { width: 100%; min-height: 40px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
 .observation-label { color: var(--muted); font-size: var(--fs-xs); }
@@ -763,17 +763,17 @@ td.center .row-state {
 .rich-observation:empty::before { content: attr(data-placeholder); color: var(--muted); }
 .rich-observation:focus { outline: 0; border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
 .cotejo-attachments { display: flex; align-items: flex-start; gap: 7px; flex-direction: column; min-height: 0; }
-.attachment-button { width: auto !important; display: inline-flex !important; grid-auto-flow: column; align-items: center; gap: 7px !important; padding: 8px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink) !important; cursor: pointer; }
+.attachment-button { width: auto !important; display: inline-flex !important; grid-auto-flow: column; align-items: center; gap: 7px !important; padding: 6px 9px; border: 1px solid var(--line); border-radius: 7px; background: var(--card); color: var(--ink) !important; cursor: pointer; }
 .attachment-button v-icon { width: 17px; height: 17px; }
 .attachment-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }
-.attachment-list { width: 100%; display: grid; gap: 5px; max-height: 92px; overflow: auto; }
+.attachment-list { width: 100%; display: grid; gap: 4px; max-height: 40px; overflow: auto; }
 .attachment-list span { display: flex; align-items: center; gap: 6px; min-width: 0; padding: 5px 8px; border-radius: 6px; background: var(--card); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .attachment-list v-icon { width: 15px; height: 15px; }
 .attachment-list button { border: 0; background: transparent; color: var(--muted); font-size: 18px; }
-.cotejo-save-state { display: grid; gap: 2px; margin-top: auto; padding-top: 9px; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--fs-xs); }
+.cotejo-save-state { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 4px 7px; margin-top: auto; padding-top: 6px; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--fs-xs); }
 .cotejo-save-state strong { color: var(--ink); }
-.cotejo-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; }
-.cotejo-actions button { min-height: 36px; padding-inline: 8px; white-space: nowrap; }
+.cotejo-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 5px; }
+.cotejo-actions button { min-height: 31px; padding: 5px 7px; white-space: nowrap; }
 .cotejo-history-dialog { width: min(1240px, 96vw); max-width: 1240px; max-height: 92vh; }
 .history-commandbar { display: grid; grid-template-columns: minmax(260px, 1fr) 220px; gap: 12px; padding: 2px 0 12px; }
 .history-commandbar label { display: grid; gap: 5px; color: var(--muted); font-size: var(--fs-xs); }
@@ -787,6 +787,7 @@ td.center .row-state {
 .history-card-head { display: flex; justify-content: space-between; align-items: start; gap: 16px; min-width: 0; }
 .history-status { padding: 5px 9px; border-radius: 999px; background: #fbd9d6; color: #9b1c12; font-size: var(--fs-xs); font-weight: 700; }
 .history-status.complete { background: color-mix(in srgb, #16865b 18%, var(--card)); color: #16865b; }
+.history-status.draft { background: color-mix(in srgb, #d89b20 20%, var(--card)); color: #a66a00; }
 .history-kpis { grid-column: 1 / -1; display: flex; gap: 6px; flex-wrap: wrap; }
 .history-kpis span { padding: 4px 8px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: var(--fs-xs); }
 .history-observation { grid-column: 1 / -1; width: 100%; box-sizing: border-box; max-height: 68px; overflow: auto; padding: 7px 9px; border-left: 3px solid var(--green); background: var(--surface); }
@@ -794,7 +795,7 @@ td.center .row-state {
 .history-actions { grid-column: 2; grid-row: 1; display: flex; gap: 6px; justify-content: flex-end; align-items: start; }
 .history-actions button { display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
 .history-actions v-icon { width: 15px; height: 15px; }
-.history-export { position: relative; }
+.history-export { position: relative; margin: 0; }
 .history-card:has(.history-export[open]) { padding-bottom: 132px !important; }
 .history-export summary { display: inline-grid; place-items: center; width: 34px; height: 34px; padding: 0; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); cursor: pointer; list-style: none; }
 .history-export summary::-webkit-details-marker { display: none; }
@@ -804,13 +805,20 @@ td.center .row-state {
 .danger-text { color: #c84a43 !important; }
 .danger { border: 1px solid #bd3e38; border-radius: 7px; background: #bd3e38; color: white; padding: 9px 14px; }
 .empty-history { display: grid; justify-items: center; gap: 8px; padding: 45px; color: var(--muted); }
+.attachment-viewer { width: min(900px, 94vw); max-width: 900px; }
+.attachment-gallery { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; max-height: 62vh; overflow: auto; }
+.attachment-gallery a { display: grid; grid-template-rows: 110px auto auto; gap: 5px; padding: 9px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink); text-decoration: none; }
+.attachment-gallery img { width: 100%; height: 110px; object-fit: contain; border-radius: 5px; background: var(--paper); }
+.attachment-gallery v-icon { place-self: center; width: 44px; height: 44px; }
+.attachment-gallery span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-gallery small { color: var(--muted); }
 .leave-cotejo-dialog { max-width: 520px; }
 .leave-options { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
 .tenencia-policy-page { width: 100%; min-height: 0; flex: 1; align-content: start; display: grid; gap: 14px; padding: 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
 .tenencia-policy-page header h2, .tenencia-policy-page header p { margin: 0; }
 .tenencia-policy-page header p { margin-top: 4px; color: var(--muted); }
 .tenencia-policy-page form { display: grid; gap: 16px; }
-.tenencia-policy-page form > label:not(.policy-check) { display: grid; grid-template-columns: minmax(0, 1fr) 110px; align-items: center; gap: 20px; }
+.tenencia-policy-page form > label:not(.policy-check) { display: grid; grid-template-columns: max-content 90px; justify-content: start; align-items: center; gap: 10px; }
 .tenencia-policy-page .policy-check { display: flex; align-items: center; gap: 9px; }
 .policy-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
 @media (max-width: 980px) { .cotejo-workspace { grid-template-columns: 1fr; grid-template-rows: minmax(240px, 1fr) minmax(260px, 1fr); } .cotejo-heading-line { align-items: stretch; flex-direction: column; gap: 5px; } .cotejo-inline-title { width: 100%; } .documentation-body { grid-template-columns: 1fr; height: auto; } .documentation-side { min-height: 250px; } .history-commandbar { grid-template-columns: 1fr; } }

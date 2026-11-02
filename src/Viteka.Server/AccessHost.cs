@@ -337,7 +337,7 @@ internal static class AccessHost
                         byte[] content;try{content=Convert.FromBase64String(file.Base64??"");}catch(FormatException){throw new ArgumentException("Adjunto no válido.");}
                         if(string.IsNullOrWhiteSpace(file.Name)||file.Name.Length>120||(file.Mime?.Length??0)>100||file.Size is <1 or >2097152||!Guid.TryParseExact(file.Id,"N",out _)||content.Length!=file.Size)throw new ArgumentException("Adjunto no válido.");
                     }
-                    return new(list.Version,clean,observation.Trim(),final?DateTimeOffset.UtcNow:null,profile.ExpiryReviewMonths,profile.CountExpiredStock,final?actor.Name:null,string.IsNullOrWhiteSpace(draft.Id)?Guid.NewGuid().ToString("N"):draft.Id,title.Trim(),observationHtml.Trim(),attachments);
+                    return new(list.Version,clean,observation.Trim(),final?DateTimeOffset.UtcNow:null,profile.ExpiryReviewMonths,profile.CountExpiredStock,actor.Name,string.IsNullOrWhiteSpace(draft.Id)?Guid.NewGuid().ToString("N"):draft.Id,title.Trim(),observationHtml.Trim(),attachments);
                 }
                 List<CotejoDraft> History(){var json=PharmacyDatabase.Get(c,tx,historyKey);var rows=json is null?new List<CotejoDraft>():JsonSerializer.Deserialize<List<CotejoDraft>>(json,PharmacyDatabase.Json)??new();var changed=false;for(var i=0;i<rows.Count;i++)if(string.IsNullOrWhiteSpace(rows[i].Id)){rows[i]=rows[i] with{Id=Guid.NewGuid().ToString("N")};changed=true;}if(changed)PharmacyDatabase.Set(c,tx,historyKey,rows);return rows;}
                 if(action=="save"){
@@ -346,6 +346,7 @@ internal static class AccessHost
                     PharmacyDatabase.Record(c,tx,new(actor.Id,actor.Name),"cotejo.save","ok",current.Counts.Sum(g=>g.Value.Values.Sum())+" unidades cotejadas",utility:UtilityCatalog.TenenciaId);
                 }else if(action=="draft"){
                     current=Clean(request.Deserialize<CotejoDraft>(PharmacyDatabase.Json)??throw new ArgumentException(),false);PharmacyDatabase.Set(c,tx,key,current);
+                    var history=History();history.RemoveAll(x=>x.Id==current.Id);history.Insert(0,current);if(history.Count>50)history.RemoveRange(50,history.Count-50);PharmacyDatabase.Set(c,tx,historyKey,history);
                     PharmacyDatabase.Record(c,tx,new(actor.Id,actor.Name),"cotejo.draft","ok","Borrador guardado",utility:UtilityCatalog.TenenciaId);
                 }else if(action=="clear"){
                     current=Empty();PharmacyDatabase.Set(c,tx,key,current);

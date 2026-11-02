@@ -51,6 +51,12 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
+Simplifica la cabecera y el escáner de Cotejo: elimina Revisar disponibilidad, integra la indicación del código dentro del campo y sustituye el texto Intro por un control con su símbolo que también ejecuta la lectura. Invierte el indicador de despliegue según el criterio solicitado.
+
+Reduce aproximadamente un 20 % la documentación del cotejo, iguala la altura de Observaciones y Documentación y elimina la cabecera duplicada. Alinea los iconos del historial e incorpora un visor de imágenes y archivos adjuntos.
+
+Los borradores pasan a formar parte del historial. Conservan su identificador y, cuando se recuperan y finalizan, el mismo registro se convierte en definitivo. La configuración de caducidad coloca el campo de meses inmediatamente después de la frase explicativa.
+
 La documentación desplegada se organiza en dos columnas: el editor de observaciones ocupa dos tercios y el tercio restante reúne archivos, estado y acciones. Esta distribución mantiene visibles las herramientas de escritura y concentra el guardado sin alargar la pantalla.
 
 El historial utiliza tarjetas más compactas. Abrir, exportar y eliminar se representan mediante iconos con nombre accesible y ayuda al pasar el cursor; el selector de formatos amplía temporalmente la tarjeta para mantener todas las opciones visibles.

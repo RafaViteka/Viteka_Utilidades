@@ -110,6 +110,7 @@ export class TenenciaComponent implements OnInit {
   readonly cotejoHistory = signal<CotejoState[] | null>(null);
   readonly historyOpen = signal(false);
   readonly historyDelete = signal<CotejoState | null>(null);
+  readonly attachmentViewer = signal<{ title: string; attachments: CotejoAttachment[] } | null>(null);
   readonly historySearch = signal('');
   readonly historyFilter = signal<'all' | 'complete' | 'pending' | 'draft'>('all');
   readonly documentationOpen = signal(true);
@@ -836,6 +837,8 @@ export class TenenciaComponent implements OnInit {
   }
   removeCotejoFile(id: string) { this.cotejoAttachments = this.cotejoAttachments.filter((file) => file.id !== id); this.cotejoDirty.set(true); }
   attachmentUrl(file: CotejoAttachment) { return `data:${file.mime || 'application/octet-stream'};base64,${file.base64}`; }
+  viewCurrentAttachments() { if (this.cotejoAttachments.length) this.attachmentViewer.set({ title: this.cotejoTitle || 'Sin título', attachments: this.cotejoAttachments }); }
+  viewAttachments(item: CotejoState) { if (item.attachments?.length) this.attachmentViewer.set({ title: item.title || 'Sin título', attachments: item.attachments }); }
   scanCotejo() {
     const value = this.scanCode().trim();
     if (!value) return;
