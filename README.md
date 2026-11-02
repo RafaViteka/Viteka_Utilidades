@@ -1,4 +1,4 @@
-# Viteka Conecta · Desarrollo 0.18.16
+# Viteka Conecta · Desarrollo 0.18.17
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
 
