@@ -110,6 +110,9 @@ export class TenenciaComponent implements OnInit {
   readonly cotejoHistory = signal<CotejoState[] | null>(null);
   readonly historyOpen = signal(false);
   readonly historyDelete = signal<CotejoState | null>(null);
+  readonly historySearch = signal('');
+  readonly historyFilter = signal<'all' | 'complete' | 'pending' | 'draft'>('all');
+  readonly documentationOpen = signal(true);
   readonly cotejoBusy = signal(false);
   readonly cotejoDirty = signal(false);
   readonly leaveCotejo = signal<'query' | 'expiry' | 'back' | null>(null);
@@ -119,7 +122,7 @@ export class TenenciaComponent implements OnInit {
   readonly policyBusy = signal(false);
   readonly policy = signal<TenenciaPolicySettings | null>(null);
   cotejoObservation = '';
-  cotejoTitle = '';
+  cotejoTitle = 'Sin título';
   cotejoObservationHtml = '';
   cotejoAttachments: CotejoAttachment[] = [];
   readonly exporting = signal(false);
@@ -704,7 +707,7 @@ export class TenenciaComponent implements OnInit {
     this.back.emit();
   }
   private hasCotejoWork() {
-    return !!this.cotejoTitle.trim() || !!this.cotejoObservationHtml.trim() || this.cotejoAttachments.length > 0 ||
+    return !!this.cotejoTitle.trim() && this.cotejoTitle.trim() !== 'Sin título' || !!this.cotejoObservationHtml.trim() || this.cotejoAttachments.length > 0 ||
       !!this.cotejo() && this.cotejoUnits(this.cotejo()!) > 0;
   }
   private async prepareCotejoExit(target: 'query' | 'expiry' | 'back') {
@@ -731,7 +734,7 @@ export class TenenciaComponent implements OnInit {
       const state = await this.bridge.call<CotejoState>('cotejo.state');
       this.cotejo.set({ ...state, counts: state.counts ?? {} });
       this.cotejoObservation = state.observation ?? '';
-      this.cotejoTitle = state.title ?? '';
+      this.cotejoTitle = state.title?.trim() || 'Sin título';
       this.cotejoObservationHtml = state.observationHtml || this.escapeHtml(state.observation ?? '');
       this.cotejoAttachments = [...(state.attachments ?? [])];
       this.cotejoDirty.set(false);
@@ -913,7 +916,7 @@ export class TenenciaComponent implements OnInit {
         listVersion: this.result()!.listVersion,
         observation: this.cotejoObservation,
         observationHtml: this.cotejoObservationHtml,
-        title: this.cotejoTitle || `Cotejo ${new Date().toLocaleDateString('es-ES')}`,
+        title: this.cotejoTitle.trim() || 'Sin título',
         attachments: this.cotejoAttachments,
       });
       this.cotejo.set(saved);
@@ -954,12 +957,12 @@ export class TenenciaComponent implements OnInit {
   async clearCotejo() {
     try {
       const empty = await this.bridge.call<CotejoState>('cotejo.clear');
-      this.cotejo.set(empty); this.cotejoTitle=''; this.cotejoObservation=''; this.cotejoObservationHtml=''; this.cotejoAttachments=[]; this.cotejoDirty.set(false);
+      this.cotejo.set(empty); this.cotejoTitle='Sin título'; this.cotejoObservation=''; this.cotejoObservationHtml=''; this.cotejoAttachments=[]; this.cotejoDirty.set(false);
     } catch (e) { this.error.set(this.message(e)); }
   }
   async discardAndLeave() { await this.clearCotejo(); this.finishCotejoExit(); }
   openHistoryItem(item: CotejoState) {
-    this.cotejo.set(structuredClone(item)); this.cotejoTitle=item.title??''; this.cotejoObservation=item.observation??''; this.cotejoObservationHtml=item.observationHtml||this.escapeHtml(item.observation??''); this.cotejoAttachments=[...(item.attachments??[])]; this.cotejoDirty.set(false); this.historyOpen.set(false); this.applyObservation();
+    this.cotejo.set(structuredClone(item)); this.cotejoTitle=item.title?.trim()||'Sin título'; this.cotejoObservation=item.observation??''; this.cotejoObservationHtml=item.observationHtml||this.escapeHtml(item.observation??''); this.cotejoAttachments=[...(item.attachments??[])]; this.cotejoDirty.set(false); this.historyOpen.set(false); this.applyObservation();
   }
   async deleteHistoryItem() {
     const item=this.historyDelete(); if (!item?.id) return;
@@ -968,7 +971,19 @@ export class TenenciaComponent implements OnInit {
     catch(e){this.error.set(this.message(e));}
     finally{this.cotejoBusy.set(false);}
   }
-  async printHistoryItem(item: CotejoState) { this.historyOpen.set(false); this.reportCotejo.set(item); this.reportMode.set('cotejo'); await this.openReport('print'); }
+  filteredCotejoHistory() {
+    const term=this.historySearch().trim().toLocaleLowerCase('es');
+    return (this.cotejoHistory()??[]).filter((item)=>{
+      const complete=this.cotejoMissingUnits(item)===0;
+      const matchesFilter=this.historyFilter()==='all'||(this.historyFilter()==='complete'&&complete)||(this.historyFilter()==='pending'&&!complete)||(this.historyFilter()==='draft'&&!item.checkedAt);
+      const haystack=`${item.title??''} ${item.userName??''} ${item.observation??''}`.toLocaleLowerCase('es');
+      return matchesFilter&&(!term||haystack.includes(term));
+    });
+  }
+  async exportHistoryItem(item: CotejoState, kind: 'xlsx'|'csv'|'txt'|'doc'|'pdf'|'print') {
+    this.reportCotejo.set(item); this.reportMode.set('cotejo'); this.historyOpen.set(false); await this.openReport(kind);
+  }
+  async printHistoryItem(item: CotejoState) { await this.exportHistoryItem(item,'print'); }
   move(e: Event, step: number) {
     const element = e.currentTarget as HTMLElement;
     const buttons = Array.from(

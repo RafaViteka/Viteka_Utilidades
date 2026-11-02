@@ -51,6 +51,12 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
+El título del cotejo se edita directamente en la cabecera y comienza como «Sin título». Elimina el campo duplicado de la zona inferior y utiliza ese mismo título al guardar, imprimir, exportar o consultar el historial.
+
+La documentación del cotejo ocupa todo el ancho y se puede contraer. Al desplegarla presenta una barra horizontal de formato y adjuntos, observaciones a ancho completo y acciones diferenciadas para historial, descarte, borrador y finalización.
+
+El historial incorpora búsqueda por título, usuario u observaciones y filtros por estado. Cada cotejo guardado se puede abrir, editar, eliminar o exportar individualmente a Excel, CSV, PDF, Word, TXT e impresión.
+
 El cotejo permite asignar un título, redactar observaciones con formato y adjuntar imágenes o documentos. Su historial se abre en una ventana independiente y permite recuperar, editar, imprimir o borrar revisiones; cada registro muestra los grupos completos y las unidades pendientes. Al salir de un cotejo en curso se puede conservar como borrador o descartarlo.
 
 Los informes de Consulta y Cotejo se pueden generar como Excel, CSV, PDF, Word, TXT o impresión. Consulta ofrece el listado completo, las faltas y la revisión de caducidad; Cotejo incluye únicamente los artículos contados por grupo y señala si cada grupo está completo. Configuración de caducidades ocupa el ancho disponible y pasa a llamarse Configuración.

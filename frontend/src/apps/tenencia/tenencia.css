@@ -730,13 +730,28 @@ td.center .row-state {
 :host-context(html[data-theme='dark']) .cotejo-state[data-complete='true'] { background: #3fbd82; color: #062c20; }
 .counter { display: inline-grid; grid-template-columns: 30px 42px 30px; align-items: center; text-align: center; }
 .counter button { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); }
-.cotejo-footer { display: grid; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.cotejo-footer { display: grid; justify-content: stretch; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
+.cotejo-footer.collapsed { padding: 0; }
+.cotejo-heading { min-width: 0; }
+.cotejo-heading-line { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.cotejo-heading-line h2 { flex: 0 0 auto; }
+.cotejo-inline-title { width: min(620px, 55vw); min-width: 180px; padding: 6px 10px; border: 1px solid transparent; border-radius: 7px; background: color-mix(in srgb, var(--paper) 62%, transparent); color: var(--ink); font-size: var(--fs-md); font-weight: 700; }
+.cotejo-inline-title:hover, .cotejo-inline-title:focus { outline: 0; border-color: var(--green); background: var(--paper); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 16%, transparent); }
+.documentation-heading { display: flex; justify-content: space-between; align-items: center; width: 100%; padding: 11px 13px; border: 0; border-radius: 8px; background: transparent; color: var(--ink); text-align: left; }
+.documentation-heading > span { display: grid; gap: 2px; }
+.documentation-heading small { color: var(--muted); font-weight: 400; }
+.documentation-heading v-icon { width: 20px; height: 20px; color: var(--green); }
+.documentation-body { display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; width: 100%; padding-top: 3px; }
 .cotejo-footer label { display: grid; gap: 6px; width: 100%; color: var(--muted); font-size: var(--fs-xs); }
 .cotejo-title input { width: 100%; min-height: 40px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
 .observation-label { color: var(--muted); font-size: var(--fs-xs); }
-.rich-toolbar { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 6px; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--surface); }
+.rich-toolbar { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; width: 100%; box-sizing: border-box; padding: 6px; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--surface); }
 .rich-toolbar button { min-width: 32px; height: 30px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--card); color: var(--ink); }
 .rich-toolbar label { width: auto; display: inline-flex; align-items: center; grid-auto-flow: column; gap: 5px; margin-left: 5px; }
+.rich-toolbar .toolbar-spacer { flex: 1; }
+.rich-toolbar .toolbar-attachment { margin-left: 8px; padding: 4px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--card); color: var(--ink); cursor: pointer; }
+.toolbar-attachment v-icon { width: 15px; height: 15px; }
+.toolbar-attachment input { position: absolute; width: 1px; height: 1px; opacity: 0; }
 .rich-toolbar input[type='color'] { width: 28px; height: 24px; padding: 1px; border: 1px solid var(--line); border-radius: 4px; background: var(--card); }
 .rich-observation { width: 100%; min-height: 100px; max-height: 260px; overflow: auto; padding: 12px; border: 1px solid var(--line); border-radius: 0 0 8px 8px; background: var(--paper); color: var(--ink); font-size: var(--fs-sm); line-height: 1.5; }
 .rich-observation:empty::before { content: attr(data-placeholder); color: var(--muted); }
@@ -753,17 +768,31 @@ td.center .row-state {
 .cotejo-saved { min-width: 0; overflow-wrap: anywhere; }
 .cotejo-actions { display: flex; gap: 8px; margin-left: auto; }
 .cotejo-actions button { min-height: 38px; white-space: nowrap; }
-.cotejo-history-dialog { width: min(1000px, 96vw); max-width: 1000px; }
+.cotejo-history-dialog { width: min(1240px, 96vw); max-width: 1240px; max-height: 92vh; }
+.history-commandbar { display: grid; grid-template-columns: minmax(260px, 1fr) 220px; gap: 12px; padding: 2px 0 12px; }
+.history-commandbar label { display: grid; gap: 5px; color: var(--muted); font-size: var(--fs-xs); }
+.history-commandbar input, .history-commandbar select { min-height: 40px; padding: 7px 10px; border: 1px solid var(--line); border-radius: 7px; background: var(--paper); color: var(--ink); }
 .history-list { display: grid; gap: 10px; max-height: 68vh; overflow: auto; padding-right: 4px; }
 .history-card { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.cotejo-history-dialog .history-list { margin: 0; }
+.cotejo-history-dialog .history-list .history-card { display: grid; justify-content: stretch; gap: 10px; padding: 14px; background: var(--card); border-radius: 10px; }
 .history-card h3, .history-card p { margin: 0; }
 .history-card h3 { font-size: var(--fs-md); }
+.history-card-head { display: flex; justify-content: space-between; align-items: start; gap: 16px; width: 100%; }
+.history-status { padding: 5px 9px; border-radius: 999px; background: #fbd9d6; color: #9b1c12; font-size: var(--fs-xs); font-weight: 700; }
+.history-status.complete { background: color-mix(in srgb, #16865b 18%, var(--card)); color: #16865b; }
 .history-kpis { display: flex; gap: 8px; flex-wrap: wrap; }
 .history-kpis span { padding: 6px 9px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: var(--fs-xs); }
-.history-observation { max-height: 100px; overflow: auto; padding: 9px; border-left: 3px solid var(--green); background: var(--surface); }
-.history-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.history-observation { width: 100%; box-sizing: border-box; max-height: 100px; overflow: auto; padding: 9px; border-left: 3px solid var(--green); background: var(--surface); }
+.history-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; width: 100%; }
 .history-actions button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
 .history-actions v-icon { width: 15px; height: 15px; }
+.history-export { position: relative; }
+.history-export summary { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); cursor: pointer; list-style: none; }
+.history-export summary::-webkit-details-marker { display: none; }
+.history-export summary v-icon { width: 15px; height: 15px; }
+.history-export > div { display: grid; grid-template-columns: repeat(2, minmax(90px, 1fr)); gap: 4px; min-width: 210px; margin-top: 5px; padding: 7px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); box-shadow: 0 12px 28px #0003; }
+.history-export > div button { justify-content: flex-start; }
 .danger-text { color: #c84a43 !important; }
 .danger { border: 1px solid #bd3e38; border-radius: 7px; background: #bd3e38; color: white; padding: 9px 14px; }
 .empty-history { display: grid; justify-items: center; gap: 8px; padding: 45px; color: var(--muted); }
@@ -776,7 +805,7 @@ td.center .row-state {
 .tenencia-policy-page form > label:not(.policy-check) { display: grid; grid-template-columns: minmax(0, 1fr) 110px; align-items: center; gap: 20px; }
 .tenencia-policy-page .policy-check { display: flex; align-items: center; gap: 9px; }
 .policy-actions { display: flex; justify-content: flex-end; gap: 8px; padding-top: 8px; border-top: 1px solid var(--line); }
-@media (max-width: 980px) { .cotejo-workspace { grid-template-columns: 1fr; grid-template-rows: minmax(240px, 1fr) minmax(260px, 1fr); } }
+@media (max-width: 980px) { .cotejo-workspace { grid-template-columns: 1fr; grid-template-rows: minmax(240px, 1fr) minmax(260px, 1fr); } .cotejo-heading-line { align-items: stretch; flex-direction: column; gap: 5px; } .cotejo-inline-title { width: 100%; } .history-commandbar { grid-template-columns: 1fr; } }
 .query-progress-overlay { z-index: 130; }
 .query-progress-dialog { width: min(390px, 100%); display: grid; justify-items: center; gap: 9px; text-align: center; padding: 30px; overflow: hidden; }
 .query-progress-dialog h2 { margin: 2px 0 0; font-size: var(--fs-lg); }
