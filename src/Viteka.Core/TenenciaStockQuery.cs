@@ -131,7 +131,28 @@ public static class TenenciaStockQuery
             foreach (var table in tables.Where(t=>t!=excluded)) try { var columns=Columns(table);if(columns.Any(c=>Normalize(c) is "STOCKMIN" or "PROVULTCOMPRA"))return (table,columns); } catch (DbException) { }
             return null;
         }
-        string Find(string[] columns, params string[] names) { var hits = columns.Where(c => names.Contains(c.Replace("_", "").Replace(" ", "").ToUpperInvariant())).ToArray(); if (hits.Length != 1 || !Regex.IsMatch(hits[0], "^[A-Za-z][A-Za-z0-9_ ]{0,127}$")) throw new InvalidDataException("No se identifica de forma única la columna de artículos o stock. Viteka debe revisar la estructura."); return "\"" + hits[0] + "\""; }
+        string Find(string[] columns, string table, string purpose, bool ordered, params string[] names)
+        {
+            var safe = columns.Where(SafeName).ToArray();
+            if (ordered)
+            {
+                // Las vistas nativas de NixFarma pueden exponer simultáneamente columnas históricas y actuales.
+                // Se elige la primera denominación conocida, sin depender del orden devuelto por ODBC.
+                foreach (var name in names)
+                {
+                    var preferred = safe.Where(c => Normalize(c) == name).ToArray();
+                    if (preferred.Length == 1) return Quote(preferred[0]);
+                    if (preferred.Length > 1) throw new InvalidDataException($"La tabla {table} contiene varias columnas equivalentes para {purpose}: {string.Join(", ", preferred.Take(10))}.");
+                }
+            }
+            else
+            {
+                var hits = safe.Where(c => names.Contains(Normalize(c))).ToArray();
+                if (hits.Length == 1) return Quote(hits[0]);
+                if (hits.Length > 1) throw new InvalidDataException($"La tabla {table} contiene varias columnas posibles para {purpose}: {string.Join(", ", hits.Take(10))}.");
+            }
+            throw new InvalidDataException($"No se encuentra la columna de {purpose} en {table}. Columnas disponibles: {string.Join(", ", safe.Take(80))}.");
+        }
         var article = nativeNixFarma ? FirstAvailable("APADMIN_AB_ARTICULOS", "APADMIN.AB_ARTICULOS", "APPUL.AB_ARTICULOS") : FirstAvailable("ARTICULOS");
         // AC1 aporta el stock que ya está confirmado en las instalaciones probadas. Las vistas APADMIN/AC
         // se usan como fuente auxiliar para completar mínimo, proveedor y movimientos cuando sea necesario.
@@ -148,7 +169,11 @@ public static class TenenciaStockQuery
         var candidates = a.Where(c => Regex.IsMatch(c, "^[A-Za-z][A-Za-z0-9_ ]{0,127}$") && Regex.IsMatch(c, "ATC|TERAP|GRUPO", RegexOptions.IgnoreCase | RegexOptions.CultureInvariant)).ToArray();
         var exact = candidates.Where(c => new[] { "ATC", "CODIGOATC", "GRUPOATC" }.Contains(c.Replace("_", "").Replace(" ", "").ToUpperInvariant())).ToArray();
         var homogeneous = a.Where(c => SafeName(c) && Normalize(c).Contains("HOMOG", StringComparison.Ordinal)).Take(6).Select(Quote).ToArray();
-        return new(Find(a, nativeNixFarma ? ["CODIGO", "ARTICULO", "ARTCODIGO"] : ["ARTICULO"]), Find(a, "DESCRIPCION"), Find(e, nativeNixFarma ? ["ARTCODIGO", "ARTICULO", "CODIGO"] : ["ARTICULO"]), Find(e, nativeNixFarma ? ["EXIACTUALES", "ACTUAL", "STOCKACTUAL"] : ["ACTUAL", "STOCKACTUAL"]))
+        return new(
+            Find(a, articleTable, "código nacional del artículo", nativeNixFarma, nativeNixFarma ? ["CODIGO", "ARTCODIGO", "ARTICULO"] : ["ARTICULO"]),
+            Find(a, articleTable, "descripción del artículo", nativeNixFarma, "DESCRIPCION"),
+            Find(e, stockTable, "código nacional de existencias", nativeNixFarma, nativeNixFarma ? ["ARTCODIGO", "ARTICULO", "CODIGO"] : ["ARTICULO"]),
+            Find(e, stockTable, "stock actual", nativeNixFarma, nativeNixFarma ? ["EXIACTUALES", "ACTUAL", "STOCKACTUAL"] : ["ACTUAL", "STOCKACTUAL"]))
         {
             ArticleTable = articleTable,
             StockTable = stockTable,

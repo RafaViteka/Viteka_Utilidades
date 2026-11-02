@@ -559,6 +559,8 @@ try
         var enrichedStocks = TenenciaStockQuery.ReadOnly(enriched, tx => TenenciaStockQuery.Read(enriched, tx, TenenciaStockQuery.Inspect(enriched, tx, nativeNixFarma: true), ["650001", "650002"]));
         Require(enrichedStocks["650001"] is { MinimumStock: 3, LastSupplier: "Proveedor de prueba", Laboratory: "Laboratorio de prueba", Classification: "A", Pvp: 12.34m, Homogeneous: "Conjunto homogéneo de prueba", Barcode: "847000650001" } && enrichedStocks["650001"].LastPurchase == new DateOnly(2026,10,1) && enrichedStocks["650001"].LastSale == new DateOnly(2026,10,20) && enrichedStocks["650002"].Inactive);
         Require(enriched.Steps.Any(s => s.Contains("FROM APADMIN_AC_EXISTENCIAS WHERE", StringComparison.Ordinal)));
+        using var nativeWithLegacyStock = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES", AmbiguousColumns = true };
+        TenenciaStockQuery.ReadOnly(nativeWithLegacyStock, tx => { Require(TenenciaStockQuery.Inspect(nativeWithLegacyStock, tx, nativeNixFarma: true).Stock == "\"EXI_ACTUALES\""); return true; });
         using var legacy = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES", LegacyNativeTables = true };
         TenenciaStockQuery.ReadOnly(legacy, tx => { var schema = TenenciaStockQuery.Inspect(legacy, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APPUL.AB_ARTICULOS" && schema.StockTable == "APPUL.AB_ARTICULOS_FICHA_E"); return true; });
     });
