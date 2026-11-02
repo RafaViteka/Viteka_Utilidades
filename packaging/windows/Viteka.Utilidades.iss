@@ -104,13 +104,21 @@ begin
     'Este asistente instalará la aplicación en este equipo.' + #13#10 + #13#10 +
     'Si vas a actualizar una instalación existente, cierra Viteka Conecta en el servidor y en los puestos de la farmacia antes de continuar.' + #13#10 + #13#10 +
     'Pulsa «Siguiente» para continuar o «Cancelar» para salir del asistente.';
-  WizardForm.InfoBeforePage.Caption := 'Información importante antes de instalar';
-  WizardForm.InstallingPage.Caption := 'Instalando Viteka Conecta';
   WizardForm.InstallingLabel.Caption := 'Espera mientras se preparan los componentes de la aplicación.';
   WizardForm.FinishedHeadingLabel.Caption := 'Instalación completada';
   WizardForm.FinishedLabel.Caption := 'La instalación de Viteka Conecta ha finalizado.' + #13#10 + #13#10 +
     'Antes de comenzar a trabajar, comprueba la configuración de la farmacia, la conexión con el programa de gestión y los permisos de acceso.' + #13#10 + #13#10 +
     'Pulsa «Finalizar» para cerrar el asistente.';
+end;
+
+procedure CurPageChanged(CurPageID: Integer);
+begin
+  if CurPageID = wpInfoBefore then
+    WizardForm.PageNameLabel.Caption := 'Información importante antes de instalar'
+  else if CurPageID = wpInstalling then
+    WizardForm.PageNameLabel.Caption := 'Instalando Viteka Conecta'
+  else if CurPageID = wpFinished then
+    WizardForm.PageNameLabel.Caption := 'Instalación completada';
 end;
 
 function IsUpgrade(): Boolean;
