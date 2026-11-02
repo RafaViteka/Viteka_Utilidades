@@ -44,7 +44,9 @@ public sealed class AccessSessionAgent(AccessDirectory authority)
         mustChangePassword = user.MustChangePassword,
         bootstrapPassword = user.BootstrapPassword,
         utilityIds = user.UtilityIds,
+        permissionIds = user.PermissionIds ?? [],
         canConfigure = AccessPolicy.CanConfigure(user),
+        canConfigureTenencia = AccessPolicy.CanConfigureTenencia(user),
         canManageUsers = AccessPolicy.CanManageUsers(user),
         canInstallUpdates = AccessPolicy.CanInstallUpdates(user)
     };
@@ -77,12 +79,12 @@ public sealed class AccessSessionAgent(AccessDirectory authority)
                     ticket = await Task.Run(() => authority.ChangeOwnPassword(current, oldPassword, newPassword));
                     return State();
                 case "users.list":
-                    return new { remoteAccessReady = authority.RemoteAccessReady(), users = authority.List(current).Select(Public), utilities = UtilityCatalog.Items.Select(u => new { id = u.Id, name = u.Name }) };
+                    return new { remoteAccessReady = authority.RemoteAccessReady(), users = authority.List(current).Select(Public), utilities = UtilityCatalog.Items.Select(u => new { id = u.Id, name = u.Name }), permissions = new[]{new{id=AccessPolicy.TenenciaConfiguration,name="Configurar Tenencia obligatoria"}} };
                 case "users.create":
-                    var created = await Task.Run(() => authority.Create(current, Text(payload, "name"), Role(payload), Text(payload, "password"), Ids(payload)));
+                    var created = await Task.Run(() => authority.Create(current, Text(payload, "name"), Role(payload), Text(payload, "password"), Ids(payload), PermissionIds(payload)));
                     return new { user = Public(created) };
                 case "users.modify":
-                    ticket = authority.Modify(current, Text(payload, "id"), Text(payload, "name"), Role(payload), payload.GetProperty("active").GetBoolean(), Ids(payload));
+                    ticket = authority.Modify(current, Text(payload, "id"), Text(payload, "name"), Role(payload), payload.GetProperty("active").GetBoolean(), Ids(payload), PermissionIds(payload));
                     return State();
                 case "users.password":
                     await Task.Run(() => authority.ResetPassword(current, Text(payload, "id"), Text(payload, "password")));
@@ -99,5 +101,6 @@ public sealed class AccessSessionAgent(AccessDirectory authority)
     }
     private static string Text(JsonElement data, string key) => data.GetProperty(key).GetString() ?? "";
     private static string[] Ids(JsonElement data) => data.GetProperty("utilityIds").EnumerateArray().Select(x => x.GetString() ?? "").ToArray();
+    private static string[]? PermissionIds(JsonElement data) => data.TryGetProperty("permissionIds", out var ids) ? ids.EnumerateArray().Select(x => x.GetString() ?? "").ToArray() : null;
     private static AccessRole Role(JsonElement data) => Enum.TryParse<AccessRole>(Text(data, "role"), out var value) && Enum.IsDefined(value) ? value : throw new ArgumentException("Rol no válido.");
 }

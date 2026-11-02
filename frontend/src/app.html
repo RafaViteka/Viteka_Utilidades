@@ -301,6 +301,7 @@
               [initialSearch]="tenenciaSearch()"
               (summary)="onTenenciaSummary($event)"
               [canConfigure]="!!user()?.canConfigure"
+              [canConfigureTenencia]="!!user()?.canConfigureTenencia"
               (toast)="notify($event)"
               (back)="selectedUtility.set(null)"
             />
@@ -479,6 +480,13 @@
                       (change)="draftGrant(u.id, $any($event.target).checked)"
                     />{{ u.name }}</label
                   >
+                }
+                @if (user()?.canConfigure) {
+                  @for (permission of capabilityCatalog(); track permission.id) {
+                    <label class="setting-row"
+                      ><input type="checkbox" [checked]="grantPermissionIds().includes(permission.id)" [disabled]="!canEdit(target) || busy()" [attr.aria-label]="permission.name + ' para ' + target.name" (change)="draftPermission(permission.id, $any($event.target).checked)" />{{ permission.name }}</label
+                    >
+                  }
                 }
                 @if (target.role === 'User' && canEdit(target)) {
                   <p class="hint">Al guardar se cerrarán sus sesiones anteriores. Los favoritos no conceden acceso.</p>
@@ -843,6 +851,14 @@
             }
           }
         </fieldset>
+        @if (user()?.canConfigure) {
+          <fieldset>
+            <legend>Permisos especiales</legend>
+            @for (permission of capabilityCatalog(); track permission.id) {
+              <label class="inline-check"><input type="checkbox" [checked]="editPermissionIds.includes(permission.id)" (change)="togglePermission(permission.id, $any($event.target).checked)" />{{ permission.name }}</label>
+            }
+          </fieldset>
+        }
         @if (error()) {
           <p class="error" role="alert">{{ error() }}</p>
         }

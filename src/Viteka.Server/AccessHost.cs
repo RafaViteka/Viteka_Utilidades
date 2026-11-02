@@ -15,7 +15,8 @@ internal static class AccessHost
 {
     internal const string ServiceName = ProductProfile.ServiceName;
     private sealed record DeclarationDraft(string ListVersion, Dictionary<string,string[]> Selections);
-    private sealed record CotejoDraft(string ListVersion, Dictionary<string,Dictionary<string,int>> Counts, string Observation, DateTimeOffset? CheckedAt, int ExpiryReviewMonths, bool CountExpiredStock, string? UserName = null);
+    private sealed record CotejoAttachment(string Id, string Name, string Mime, int Size, string Base64);
+    private sealed record CotejoDraft(string ListVersion, Dictionary<string,Dictionary<string,int>> Counts, string Observation, DateTimeOffset? CheckedAt, int ExpiryReviewMonths, bool CountExpiredStock, string? UserName = null, string? Id = null, string Title = "", string ObservationHtml = "", CotejoAttachment[]? Attachments = null);
     private sealed record TenenciaPolicyDraft(int ExpiryReviewMonths, bool CountExpiredStock);
     private sealed record Session(AccessSessionAgent Agent, DateTimeOffset Expires);
     internal static async Task RunAsync(string[] args)
@@ -187,6 +188,7 @@ internal static class AccessHost
             var actor = Agent(context).RequireUser(); if (!AccessPolicy.CanManageUsers(actor)) throw new AccessDeniedException();
             if (action == "save")
             {
+                if (!AccessPolicy.CanConfigureTenencia(actor)) throw new AccessDeniedException();
                 var profile = request.Deserialize<PharmacyProfile>(new JsonSerializerOptions(JsonSerializerDefaults.Web)) ?? throw new ArgumentException("Datos no válidos."); pharmacy.Save(profile);
             }
             else if (action != "state") throw new AccessDeniedException();
@@ -289,7 +291,7 @@ internal static class AccessHost
         });
         app.MapPost("/access/activity",(HttpContext context,JsonElement request)=>{
             var actor=Agent(context).RequireUser();var action=request.GetProperty("action").GetString()??"";
-            if(action is not ("export.xlsx.saved" or "export.csv.saved" or "export.pdf.saved" or "print.requested" or "update.requested" or "update.started" or "update.failed" or "update.running"))throw new AccessDeniedException();
+            if(action is not ("export.xlsx.saved" or "export.csv.saved" or "export.txt.saved" or "export.doc.saved" or "export.pdf.saved" or "print.requested" or "update.requested" or "update.started" or "update.failed" or "update.running"))throw new AccessDeniedException();
             if(action.StartsWith("update.")&&!AccessPolicy.CanInstallUpdates(actor)||!action.StartsWith("update.")&&!AccessPolicy.CanUse(actor,UtilityCatalog.TenenciaId,UtilityCatalog.Items))throw new AccessDeniedException();
             var operation=request.GetProperty("operationId").GetString();if(!Guid.TryParse(operation,out _))throw new ArgumentException();
             var note=action=="print.requested"?"Solicitud de impresión; no acredita impresión física.":"Evento confirmado por el cliente autorizado.";
@@ -319,19 +321,38 @@ internal static class AccessHost
             var profile=pharmacy.Load()??throw new ArgumentException("Configura la farmacia.");var list=catalogs.Load(profile.Province)??throw new ArgumentException();
             var key="cotejo."+profile.Province+".current";var historyKey="cotejo."+profile.Province+".history";
             return database.Transaction((c,tx)=>{
-                CotejoDraft Empty()=>new(list.Version,new(),"",null,profile.ExpiryReviewMonths,profile.CountExpiredStock);
+                CotejoDraft Empty()=>new(list.Version,new(),"",null,profile.ExpiryReviewMonths,profile.CountExpiredStock,Id:Guid.NewGuid().ToString("N"));
                 var saved=PharmacyDatabase.Get(c,tx,key);var current=saved is null?Empty():JsonSerializer.Deserialize<CotejoDraft>(saved,PharmacyDatabase.Json)??Empty();
                 if(current.ListVersion!=list.Version)current=Empty();
-                if(action=="save"){
-                    var draft=request.Deserialize<CotejoDraft>(PharmacyDatabase.Json)??throw new ArgumentException();if(draft.ListVersion!=list.Version)throw new ArgumentException("El listado cambió; vuelve a iniciar el cotejo.");
+                CotejoDraft Clean(CotejoDraft draft,bool final){
+                    if(draft.ListVersion!=list.Version)throw new ArgumentException("El listado cambió; vuelve a iniciar el cotejo.");
+                    if(draft.Counts is null)throw new ArgumentException("El recuento no es válido.");
+                    if(!string.IsNullOrWhiteSpace(draft.Id)&&!Guid.TryParseExact(draft.Id,"N",out _))throw new ArgumentException("El identificador del cotejo no es válido.");
+                    var observation=draft.Observation??"";var observationHtml=draft.ObservationHtml??"";var title=draft.Title??"";
                     var clean=new Dictionary<string,Dictionary<string,int>>();
                     foreach(var group in draft.Counts){var known=list.Groups.FirstOrDefault(x=>x.Id==group.Key)??throw new ArgumentException("Grupo no reconocido.");var items=new Dictionary<string,int>();foreach(var item in group.Value){if(!known.Codes.Contains(item.Key)||item.Value is <0 or >10000)throw new ArgumentException("Recuento no válido.");if(item.Value>0)items[item.Key]=item.Value;}if(items.Count>0)clean[group.Key]=items;}
-                    if(draft.Observation.Length>1000)throw new ArgumentException("La observación es demasiado larga.");
-                    current=new(list.Version,clean,draft.Observation.Trim(),DateTimeOffset.UtcNow,profile.ExpiryReviewMonths,profile.CountExpiredStock,actor.Name);PharmacyDatabase.Set(c,tx,key,current);
-                    var historyJson=PharmacyDatabase.Get(c,tx,historyKey);var history=historyJson is null?new List<CotejoDraft>():JsonSerializer.Deserialize<List<CotejoDraft>>(historyJson,PharmacyDatabase.Json)??new();history.Insert(0,current);if(history.Count>50)history.RemoveRange(50,history.Count-50);PharmacyDatabase.Set(c,tx,historyKey,history);
-                    PharmacyDatabase.Record(c,tx,new(actor.Id,actor.Name),"cotejo.save","ok",clean.Sum(g=>g.Value.Values.Sum())+" unidades cotejadas",utility:UtilityCatalog.TenenciaId);
+                    if(observation.Length>4000||observationHtml.Length>20000||title.Length>120)throw new ArgumentException("El título o las observaciones son demasiado largos.");
+                    var attachments=draft.Attachments??[];if(attachments.Length>8)throw new ArgumentException("Se permiten hasta 8 adjuntos.");
+                    foreach(var file in attachments){
+                        byte[] content;try{content=Convert.FromBase64String(file.Base64??"");}catch(FormatException){throw new ArgumentException("Adjunto no válido.");}
+                        if(string.IsNullOrWhiteSpace(file.Name)||file.Name.Length>120||(file.Mime?.Length??0)>100||file.Size is <1 or >2097152||!Guid.TryParseExact(file.Id,"N",out _)||content.Length!=file.Size)throw new ArgumentException("Adjunto no válido.");
+                    }
+                    return new(list.Version,clean,observation.Trim(),final?DateTimeOffset.UtcNow:null,profile.ExpiryReviewMonths,profile.CountExpiredStock,final?actor.Name:null,string.IsNullOrWhiteSpace(draft.Id)?Guid.NewGuid().ToString("N"):draft.Id,title.Trim(),observationHtml.Trim(),attachments);
+                }
+                List<CotejoDraft> History(){var json=PharmacyDatabase.Get(c,tx,historyKey);var rows=json is null?new List<CotejoDraft>():JsonSerializer.Deserialize<List<CotejoDraft>>(json,PharmacyDatabase.Json)??new();var changed=false;for(var i=0;i<rows.Count;i++)if(string.IsNullOrWhiteSpace(rows[i].Id)){rows[i]=rows[i] with{Id=Guid.NewGuid().ToString("N")};changed=true;}if(changed)PharmacyDatabase.Set(c,tx,historyKey,rows);return rows;}
+                if(action=="save"){
+                    current=Clean(request.Deserialize<CotejoDraft>(PharmacyDatabase.Json)??throw new ArgumentException(),true);PharmacyDatabase.Set(c,tx,key,current);
+                    var history=History();history.RemoveAll(x=>x.Id==current.Id);history.Insert(0,current);if(history.Count>50)history.RemoveRange(50,history.Count-50);PharmacyDatabase.Set(c,tx,historyKey,history);
+                    PharmacyDatabase.Record(c,tx,new(actor.Id,actor.Name),"cotejo.save","ok",current.Counts.Sum(g=>g.Value.Values.Sum())+" unidades cotejadas",utility:UtilityCatalog.TenenciaId);
+                }else if(action=="draft"){
+                    current=Clean(request.Deserialize<CotejoDraft>(PharmacyDatabase.Json)??throw new ArgumentException(),false);PharmacyDatabase.Set(c,tx,key,current);
+                    PharmacyDatabase.Record(c,tx,new(actor.Id,actor.Name),"cotejo.draft","ok","Borrador guardado",utility:UtilityCatalog.TenenciaId);
+                }else if(action=="clear"){
+                    current=Empty();PharmacyDatabase.Set(c,tx,key,current);
                 }else if(action=="history"){
-                    var historyJson=PharmacyDatabase.Get(c,tx,historyKey);var history=historyJson is null?new List<CotejoDraft>():JsonSerializer.Deserialize<List<CotejoDraft>>(historyJson,PharmacyDatabase.Json)??new();return Results.Ok(new{rows=history});
+                    return Results.Ok(new{rows=History()});
+                }else if(action=="delete"){
+                    var id=request.GetProperty("id").GetString();if(!Guid.TryParseExact(id,"N",out _))throw new ArgumentException();var history=History();var removed=history.RemoveAll(x=>x.Id==id);if(removed!=1)throw new ArgumentException("Cotejo no encontrado.");PharmacyDatabase.Set(c,tx,historyKey,history);PharmacyDatabase.Record(c,tx,new(actor.Id,actor.Name),"cotejo.delete","ok",id,utility:UtilityCatalog.TenenciaId);return Results.Ok(new{deleted=true});
                 }else if(action!="state")throw new AccessDeniedException();
                 return Results.Ok(current);
             });

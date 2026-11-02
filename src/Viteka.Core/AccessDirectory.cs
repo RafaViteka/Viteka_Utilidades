@@ -33,6 +33,7 @@ public sealed class AccessDirectory(string directory, IReadOnlyList<UtilityDefin
         public bool MustChange { get; set; } = true;
         public bool Bootstrap { get; set; }
         public string[] UtilityIds { get; set; } = [];
+        public string[] PermissionIds { get; set; } = [];
         public int Iterations { get; set; } = 600_000;
         public string Salt { get; set; } = "";
         public string Hash { get; set; } = "";
@@ -82,13 +83,14 @@ public sealed class AccessDirectory(string directory, IReadOnlyList<UtilityDefin
         if (!AccessPolicy.CanManageUsers(View(actor))) throw new AccessDeniedException();
         return state.Users.OrderBy(u => u.Name, StringComparer.OrdinalIgnoreCase).Select(View).ToArray();
     }
-    public AccessUserView Create(AccessTicket ticket, string name, AccessRole role, string password, string[] utilityIds)
+    public AccessUserView Create(AccessTicket ticket, string name, AccessRole role, string password, string[] utilityIds, string[]? permissionIds = null)
     {
-        ValidateName(name); ValidateNewPassword(password); ValidateUtilities(utilityIds);
+        ValidateName(name); ValidateNewPassword(password); ValidateUtilities(utilityIds); ValidatePermissions(permissionIds);
         using var guard = Lock(); var state = Read(); var actor = Require(state, ticket);
         if (!AccessPolicy.CanCreateRole(View(actor), role)) throw new AccessDeniedException();
+        if ((permissionIds?.Length ?? 0) > 0 && !AccessPolicy.CanConfigure(View(actor))) throw new AccessDeniedException();
         if (state.Users.Count >= 200 || state.Users.Any(u => u.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("El nombre ya existe o se alcanzó el límite de cuentas.");
-        var user = NewAccount(name.Trim(), role, password, utilityIds); state.Users.Add(user); Write(state); return View(user);
+        var user = NewAccount(name.Trim(), role, password, utilityIds, permissions: permissionIds); state.Users.Add(user); Write(state); return View(user);
     }
     public AccessTicket ChangeOwnPassword(AccessTicket ticket, string currentPassword, string newPassword)
     {
@@ -106,15 +108,17 @@ public sealed class AccessDirectory(string directory, IReadOnlyList<UtilityDefin
         if (!AccessPolicy.CanManage(View(actor), View(target))) throw new AccessDeniedException();
         SetPassword(target, newPassword); target.MustChange = true; Write(state);
     }
-    public AccessTicket Modify(AccessTicket ticket, string id, string name, AccessRole role, bool active, string[] utilityIds)
+    public AccessTicket Modify(AccessTicket ticket, string id, string name, AccessRole role, bool active, string[] utilityIds, string[]? permissionIds = null)
     {
-        ValidateName(name); ValidateUtilities(utilityIds);
+        ValidateName(name); ValidateUtilities(utilityIds); ValidatePermissions(permissionIds);
         using var guard = Lock(); var state = Read(); var actor = Require(state, ticket); var target = Find(state, id);
         if (!AccessPolicy.CanManage(View(actor), View(target)) || !AccessPolicy.CanCreateRole(View(actor), role)) throw new AccessDeniedException();
         if (state.Users.Any(u => u.Id != id && u.Name.Equals(name.Trim(), StringComparison.OrdinalIgnoreCase))) throw new ArgumentException("Ese nombre ya existe.");
         if ((!active || role != AccessRole.SuperAdministrator) && target.Role == AccessRole.SuperAdministrator && target.Active && state.Users.Count(u => u.Active && u.Role == AccessRole.SuperAdministrator) <= 1)
             throw new ArgumentException("Debe quedar al menos un superadministrador activo.");
-        target.Name = name.Trim(); target.Role = role; target.Active = active; target.UtilityIds = utilityIds.Distinct().ToArray();
+        var requestedPermissions = (permissionIds ?? target.PermissionIds).Distinct().ToArray();
+        if (!requestedPermissions.SequenceEqual(target.PermissionIds) && !AccessPolicy.CanConfigure(View(actor))) throw new AccessDeniedException();
+        target.Name = name.Trim(); target.Role = role; target.Active = active; target.UtilityIds = utilityIds.Distinct().ToArray(); target.PermissionIds = requestedPermissions;
         target.PasswordVersion = Guid.NewGuid().ToString("N"); Write(state);
         return target.Id == actor.Id && active ? new(target.Id, target.PasswordVersion) : ticket;
     }
@@ -126,9 +130,9 @@ public sealed class AccessDirectory(string directory, IReadOnlyList<UtilityDefin
         if (user.MustChange && !allowPasswordChange) throw new AccessDeniedException("Cambia la contraseña inicial antes de continuar.");
         return user;
     }
-    private static AccessUserView View(Account user) => new(user.Id, user.Name, user.Role, user.Active, user.MustChange, user.UtilityIds.ToArray(), user.Bootstrap);
-    private static Account NewAccount(string name, AccessRole role, string password, string[] ids, bool bootstrap = false)
-    { var user = new Account { Name = name, Role = role, UtilityIds = ids.Distinct().ToArray() }; SetPassword(user, password); user.Bootstrap = bootstrap; return user; }
+    private static AccessUserView View(Account user) => new(user.Id, user.Name, user.Role, user.Active, user.MustChange, user.UtilityIds.ToArray(), user.Bootstrap, user.PermissionIds.ToArray());
+    private static Account NewAccount(string name, AccessRole role, string password, string[] ids, bool bootstrap = false, string[]? permissions = null)
+    { var user = new Account { Name = name, Role = role, UtilityIds = ids.Distinct().ToArray(), PermissionIds = (permissions ?? []).Distinct().ToArray() }; SetPassword(user, password); user.Bootstrap = bootstrap; return user; }
     private static void SetPassword(Account user, string password)
     {
         var salt = RandomNumberGenerator.GetBytes(16);
@@ -145,6 +149,8 @@ public sealed class AccessDirectory(string directory, IReadOnlyList<UtilityDefin
     { if (string.IsNullOrWhiteSpace(password) || password.Length < 3 || password.Length > 128) throw new ArgumentException("La contraseña nueva debe tener entre 3 y 128 caracteres."); }
     private void ValidateUtilities(string[] ids)
     { if (ids is null || ids.Length > 500 || ids.Any(id => !catalog.Any(item => item.Id == id))) throw new ArgumentException("Aplicación no disponible."); }
+    private static void ValidatePermissions(string[]? ids)
+    { if (ids is null) return; if (ids.Length > 20 || ids.Any(id => id != AccessPolicy.TenenciaConfiguration)) throw new ArgumentException("Permiso no disponible."); }
     private FileStream Lock()
     {
         Directory.CreateDirectory(directory);
@@ -163,7 +169,7 @@ public sealed class AccessDirectory(string directory, IReadOnlyList<UtilityDefin
             var state = JsonSerializer.Deserialize<Document>(bytes) ?? throw new InvalidDataException();
             if (state.Schema != 1 || state.Users is null || state.Users.Count is < 1 or > 200 ||
                 state.Users.Any(u => u is null || !Enum.IsDefined(u.Role) || string.IsNullOrWhiteSpace(u.Name) || u.Name.Length > 64 ||
-                    !Guid.TryParseExact(u.Id, "N", out _) || !Guid.TryParseExact(u.PasswordVersion, "N", out _) || u.UtilityIds is null || u.UtilityIds.Length > 500 ||
+                    !Guid.TryParseExact(u.Id, "N", out _) || !Guid.TryParseExact(u.PasswordVersion, "N", out _) || u.UtilityIds is null || u.UtilityIds.Length > 500 || u.PermissionIds is null || u.PermissionIds.Length > 20 || u.PermissionIds.Any(id=>id!=AccessPolicy.TenenciaConfiguration) ||
                     u.Iterations is < 600_000 or > 2_000_000 || u.UtilityIds.Any(id => string.IsNullOrEmpty(id) || id.Length > 128) || string.IsNullOrEmpty(u.Salt) || string.IsNullOrEmpty(u.Hash) || Convert.FromBase64String(u.Salt).Length != 16 || Convert.FromBase64String(u.Hash).Length != 32) ||
                 state.Users.Select(u => u.Id).Distinct().Count() != state.Users.Count || state.Users.Select(u => u.Name).Distinct(StringComparer.OrdinalIgnoreCase).Count() != state.Users.Count ||
                 !state.Users.Any(u => u.Active && u.Role == AccessRole.SuperAdministrator)) throw new InvalidDataException("Registro de acceso no válido.");

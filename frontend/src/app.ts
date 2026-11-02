@@ -212,6 +212,7 @@ export class AppComponent {
   readonly users = signal<UserView[]>([]);
   readonly remoteReady = signal(true);
   readonly permissionCatalog = signal<Utility[]>([]);
+  readonly capabilityCatalog = signal<Utility[]>([]);
   readonly dialog = signal<'ticket' | 'remote' | null>(null);
   readonly toast = signal('');
   readonly historyOpen = signal(false);
@@ -256,6 +257,7 @@ export class AppComponent {
   editPassword = '';
   editRepeat = '';
   editUtilityIds: string[] = [];
+  editPermissionIds: string[] = [];
   resetId = '';
   resetName = '';
   resetPassword = '';
@@ -641,12 +643,13 @@ export class AppComponent {
   }
   async loadUsers() {
     try {
-      const r = await this.bridge.call<{ users: UserView[]; utilities: Utility[]; remoteAccessReady?: boolean }>(
+      const r = await this.bridge.call<{ users: UserView[]; utilities: Utility[]; permissions?: Utility[]; remoteAccessReady?: boolean }>(
         'users.list',
       );
       this.users.set(r.users);
       this.remoteReady.set(r.remoteAccessReady !== false);
       this.permissionCatalog.set(r.utilities);
+      this.capabilityCatalog.set(r.permissions ?? []);
     } catch (e) {
       this.error.set(this.message(e));
     }
@@ -657,6 +660,7 @@ export class AppComponent {
     this.editRole = target?.role ?? 'User';
     this.editActive = target?.active ?? true;
     this.editUtilityIds = [...(target?.utilityIds ?? [])];
+    this.editPermissionIds = [...(target?.permissionIds ?? [])];
     this.editPassword = '';
     this.editRepeat = '';
     this.error.set('');
@@ -666,6 +670,11 @@ export class AppComponent {
     this.editUtilityIds = enabled
       ? [...new Set([...this.editUtilityIds, id])]
       : this.editUtilityIds.filter((x) => x !== id);
+  }
+  togglePermission(id: string, enabled: boolean) {
+    this.editPermissionIds = enabled
+      ? [...new Set([...this.editPermissionIds, id])]
+      : this.editPermissionIds.filter((x) => x !== id);
   }
   async saveUser() {
     if (!this.editId && this.editPassword !== this.editRepeat) {
@@ -682,6 +691,7 @@ export class AppComponent {
           role: this.editRole,
           active: this.editActive,
           utilityIds: this.editUtilityIds,
+          permissionIds: this.editPermissionIds,
         });
         this.user.set(r.user);
       } else
@@ -690,6 +700,7 @@ export class AppComponent {
           role: this.editRole,
           password: this.editPassword,
           utilityIds: this.editUtilityIds,
+          permissionIds: this.editPermissionIds,
         });
       this.editorOpen.set(false);
       await this.loadUsers();
@@ -707,13 +718,18 @@ export class AppComponent {
   }
   readonly grantUserId = signal('');
   readonly grantIds = signal<string[]>([]);
+  readonly grantPermissionIds = signal<string[]>([]);
   readonly grantTarget = computed(() => this.users().find((u) => u.id === this.grantUserId()) ?? null);
   selectGrantUser(id: string) {
     this.grantUserId.set(id);
     this.grantIds.set([...(this.users().find((u) => u.id === id)?.utilityIds ?? [])]);
+    this.grantPermissionIds.set([...(this.users().find((u) => u.id === id)?.permissionIds ?? [])]);
   }
   draftGrant(id: string, enabled: boolean) {
     this.grantIds.update((ids) => (enabled ? [...new Set([...ids, id])] : ids.filter((x) => x !== id)));
+  }
+  draftPermission(id: string, enabled: boolean) {
+    this.grantPermissionIds.update((ids) => (enabled ? [...new Set([...ids, id])] : ids.filter((x) => x !== id)));
   }
   async saveGrants() {
     const target = this.grantTarget();
@@ -727,6 +743,7 @@ export class AppComponent {
         role: target.role,
         active: target.active,
         utilityIds: this.grantIds(),
+        permissionIds: this.grantPermissionIds(),
       });
       this.user.set(r.user);
       await this.loadUsers();

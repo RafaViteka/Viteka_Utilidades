@@ -51,6 +51,12 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Utilidades - Pruebas, dirigida a un único identificador de PC.
 
+El cotejo permite asignar un título, redactar observaciones con formato y adjuntar imágenes o documentos. Su historial se abre en una ventana independiente y permite recuperar, editar, imprimir o borrar revisiones; cada registro muestra los grupos completos y las unidades pendientes. Al salir de un cotejo en curso se puede conservar como borrador o descartarlo.
+
+Los informes de Consulta y Cotejo se pueden generar como Excel, CSV, PDF, Word, TXT o impresión. Consulta ofrece el listado completo, las faltas y la revisión de caducidad; Cotejo incluye únicamente los artículos contados por grupo y señala si cada grupo está completo. Configuración de caducidades ocupa el ancho disponible y pasa a llamarse Configuración.
+
+La configuración de Tenencia queda reservada al administrador principal o a usuarios con el nuevo permiso específico. Los grupos completados muestran un indicador circular verde y una fila más visible en los temas claro y oscuro.
+
 Rediseña el cotejo con un campo de escaneo amplio, observaciones y acciones alineadas. Al alcanzar el mínimo, la fila del grupo realiza una transición breve y permanece en verde. Las ventanas emergentes incorporan profundidad, entrada suave y una línea de marca; respetan la opción del sistema para reducir el movimiento.
 
 Consultar existencias muestra un indicador circular de 0 a 100 hasta que NixFarma devuelve y consolida el resultado. Los estados de instalación dejan de mostrar aclaraciones sobre fases sin porcentaje.

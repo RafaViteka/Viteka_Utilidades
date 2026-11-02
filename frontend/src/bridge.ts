@@ -27,7 +27,9 @@ export interface UserView {
   mustChangePassword: boolean;
   bootstrapPassword?: boolean;
   utilityIds: string[];
+  permissionIds?: string[];
   canConfigure: boolean;
+  canConfigureTenencia?: boolean;
   canManageUsers: boolean;
   canInstallUpdates: boolean;
 }

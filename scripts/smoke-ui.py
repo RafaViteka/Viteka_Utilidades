@@ -11,12 +11,12 @@ threading.Thread(target=server.serve_forever,daemon=True).start()
 url=f'http://127.0.0.1:{server.server_port}'
 class AuthorityFixture:
  def __init__(self):
-  self.accounts=[dict(id=f'{i:032x}',name=name,role=role,active=True,mustChangePassword=True,utilityIds=[],password=password) for i,(name,role,password) in enumerate([('Viteka','SuperAdministrator','jupiter'),('F. titular','Administrator','1234'),('usuario','User','0000')],1)]
-  self.pharmacy_error=False;self.review=False;self.current=None;self.calls=[];self.prefs={};self.nix=dict(configured=False,saved=False,dsn='NIXFARMA',user='',dsnAvailable=True);self.probe_fail=False;self.schema_fail=False;self.pharmacy=None;self.tenencia_ready=False;self.stock_error=False;self.tenencia_queries=0;self.many_groups=False;self.transport_error=False;self.use_excel=False;self.sort_cases=False;self.big_group=False;self.last={};self.saved=[];self.catalog=None;self.catalog_version=0;self.catalog_custom=False;self.cotejo=None
+  self.accounts=[dict(id=f'{i:032x}',name=name,role=role,active=True,mustChangePassword=True,utilityIds=[],permissionIds=[],password=password) for i,(name,role,password) in enumerate([('Viteka','SuperAdministrator','jupiter'),('F. titular','Administrator','1234'),('usuario','User','0000')],1)]
+  self.pharmacy_error=False;self.review=False;self.current=None;self.calls=[];self.prefs={};self.nix=dict(configured=False,saved=False,dsn='NIXFARMA',user='',dsnAvailable=True);self.probe_fail=False;self.schema_fail=False;self.pharmacy=None;self.tenencia_ready=False;self.stock_error=False;self.tenencia_queries=0;self.many_groups=False;self.transport_error=False;self.use_excel=False;self.sort_cases=False;self.big_group=False;self.last={};self.saved=[];self.catalog=None;self.catalog_version=0;self.catalog_custom=False;self.cotejo=None;self.cotejo_history=[]
  def view(self,u):
   if u is None:return None
   ready=not u['mustChangePassword'];admin=u['role'] in ('Administrator','SuperAdministrator')
-  return {**{k:v for k,v in u.items() if k!='password'},'canConfigure':ready and u['role']=='SuperAdministrator','canManageUsers':ready and admin,'canInstallUpdates':ready and admin}
+  return {**{k:v for k,v in u.items() if k!='password'},'canConfigure':ready and u['role']=='SuperAdministrator','canConfigureTenencia':ready and (u['role']=='SuperAdministrator' or 'tenencia.configuration' in u['permissionIds']),'canManageUsers':ready and admin,'canInstallUpdates':ready and admin}
  def state(self):return dict(user=self.view(self.current))
  def base_groups(self):
   groups=[dict(id='a',name='Grupo ficticio A',minimum=3,stock=1,missing=2,status='shortfall',articles=[dict(code='650001',description='Artículo ficticio A1',stock=1,minimumStock=2,lastSupplier='Proveedor ficticio',laboratory='Laboratorio ficticio',classification='A',pvp=12.34,homogeneous='Conjunto ficticio',barcode='847000650001'),dict(code='650004',description='Artículo ficticio A2',stock=0)]),dict(id='b',name='Grupo ficticio B',minimum=1,stock=3,missing=0,status='covered',requiresReview=True,selectionNote='Comprobar cada dosis.',articles=[dict(code='650002',description='Artículo con dos fichas',stock=3,issue='summed_stock')]),dict(id='c',name='Grupo ficticio C',minimum=1,stock=2,missing=0,status='covered',articles=[dict(code='650003',description='Artículo suficiente',stock=2)])]
@@ -66,14 +66,14 @@ class AuthorityFixture:
   if cmd=='utilities.list':return dict(utilities=[dict(id='tenencia-obligatoria',name='Tenencia obligatoria',description='Comprueba las existencias mínimas del listado de tu provincia.')] if admin or 'tenencia-obligatoria' in self.current['utilityIds'] else [])
   if cmd=='users.list':
    if not admin:deny()
-   return dict(users=[self.view(u) for u in self.accounts],utilities=[dict(id='tenencia-obligatoria',name='Tenencia obligatoria'),dict(id='fixture-a',name='Aplicación de prueba A'),dict(id='fixture-b',name='Aplicación de prueba B')])
+   return dict(users=[self.view(u) for u in self.accounts],utilities=[dict(id='tenencia-obligatoria',name='Tenencia obligatoria'),dict(id='fixture-a',name='Aplicación de prueba A'),dict(id='fixture-b',name='Aplicación de prueba B')],permissions=[dict(id='tenencia.configuration',name='Configurar Tenencia obligatoria')])
   if cmd.startswith('users.'):
    target=next((u for u in self.accounts if u['id']==d.get('id')),None)
    if not admin or target and target['role']!='User' and not superadmin:deny()
    if cmd=='users.create':
     if d['role']!='User' and not superadmin:deny()
-    self.accounts.append(dict(id=f'{len(self.accounts)+1:032x}',name=d['name'],role=d['role'],active=True,mustChangePassword=True,utilityIds=d['utilityIds'],password=d['password']));return {}
-   if cmd=='users.modify':target.update(name=d['name'],role=d['role'],active=d['active'],utilityIds=d['utilityIds']);return self.state()
+    self.accounts.append(dict(id=f'{len(self.accounts)+1:032x}',name=d['name'],role=d['role'],active=True,mustChangePassword=True,utilityIds=d['utilityIds'],permissionIds=d.get('permissionIds',[]),password=d['password']));return {}
+   if cmd=='users.modify':target.update(name=d['name'],role=d['role'],active=d['active'],utilityIds=d['utilityIds'],permissionIds=d.get('permissionIds',target['permissionIds']));return self.state()
    if cmd=='users.password':target.update(password=d['password'],mustChangePassword=True);return {}
   if cmd.startswith('pharmacy.'):
    if not admin:deny()
@@ -95,7 +95,7 @@ class AuthorityFixture:
     assert d['listVersion']==version;self.declarations=copy.deepcopy(d['selections']);return dict(saved=True)
    return dict(listVersion=version,groups=[dict(id=g['id'],name=g['name'],minimum=g['minimum'],codes=[a['code'] for a in g['articles']]+(['699998'] if g['id']=='a' else []),descriptions={a['code']:a['description'] for a in g['articles']}) for g in self.groups()],selections=getattr(self,'declarations',{}),reviewRequired=False)
   if cmd in ('file.save','file.pdf'):
-   assert re.fullmatch(r'[\w\-. ]{1,80}\.(csv|xlsx|pdf)',d['name']),d['name'];self.saved.append(copy.deepcopy(d));return dict(saved=True,file=d['name'])
+   assert re.fullmatch(r'[\w\-. ]{1,80}\.(csv|xlsx|txt|doc|pdf)',d['name']),d['name'];self.saved.append(copy.deepcopy(d));return dict(saved=True,file=d['name'])
   if cmd.startswith('tenencia.catalog.'):
    if not superadmin:deny()
    action=cmd[len('tenencia.catalog.'):]
@@ -127,9 +127,13 @@ class AuthorityFixture:
    return dict(list=dict(version='Personalizada-'+str(self.catalog_version) if self.catalog_custom else 'Fixture de pruebas',source='Fixture',groups=copy.deepcopy(self.catalog)),customized=self.catalog_custom,provinceName='Málaga')
   if cmd.startswith('cotejo.'):
    if not admin and 'tenencia-obligatoria' not in self.current['utilityIds']:deny()
-   empty=dict(listVersion='Fixture de pruebas',counts={},observation='',checkedAt=None,expiryReviewMonths=self.pharmacy.get('expiryReviewMonths',3),countExpiredStock=self.pharmacy.get('countExpiredStock',False),userName=None)
-   if cmd=='cotejo.save':self.cotejo={**copy.deepcopy(d),'checkedAt':'2026-11-02T10:00:00Z','userName':self.current['name']};return copy.deepcopy(self.cotejo)
-   if cmd=='cotejo.history':return dict(rows=[] if self.cotejo is None else [copy.deepcopy(self.cotejo)])
+   empty=dict(listVersion='Fixture de pruebas',counts={},observation='',observationHtml='',title='',attachments=[],id='1'*32,checkedAt=None,expiryReviewMonths=self.pharmacy.get('expiryReviewMonths',3),countExpiredStock=self.pharmacy.get('countExpiredStock',False),userName=None)
+   if cmd=='cotejo.save':
+    self.cotejo={**copy.deepcopy(d),'checkedAt':'2026-11-02T10:00:00Z','userName':self.current['name']};self.cotejo_history=[x for x in self.cotejo_history if x.get('id')!=self.cotejo.get('id')];self.cotejo_history.insert(0,copy.deepcopy(self.cotejo));return copy.deepcopy(self.cotejo)
+   if cmd=='cotejo.draft':self.cotejo={**copy.deepcopy(d),'checkedAt':None,'userName':None};return copy.deepcopy(self.cotejo)
+   if cmd=='cotejo.clear':self.cotejo=copy.deepcopy(empty);return copy.deepcopy(self.cotejo)
+   if cmd=='cotejo.delete':self.cotejo_history=[x for x in self.cotejo_history if x.get('id')!=d['id']];return dict(deleted=True)
+   if cmd=='cotejo.history':return dict(rows=copy.deepcopy(self.cotejo_history))
    return copy.deepcopy(self.cotejo or empty)
   if cmd.startswith('tenencia.policy.'):
    if not admin and 'tenencia-obligatoria' not in self.current['utilityIds']:deny()
@@ -207,7 +211,7 @@ with sync_playwright() as p:
  def go(name):
   if name in ('Mi cuenta','Usuarios','Actualizaciones','Auditoría'):
    go('Configuración');page.locator('.setting-row').filter(has=page.get_by_text(name,exact=True)).click()
-  else:page.get_by_role('navigation').get_by_role('button',name=name,exact=True).click()
+  else:page.get_by_role('navigation',name='Navegación principal',exact=True).get_by_role('button',name=name,exact=True).click()
   page.get_by_role('heading',name=name,exact=True).wait_for()
  def appearance(theme):
   page.locator('.setting-row').filter(has=page.get_by_text('Apariencia',exact=True)).click();dialog=page.get_by_role('dialog',name='Apariencia',exact=True);dialog.get_by_label('Apariencia',exact=True).select_option(theme);dialog.get_by_role('button',name='Guardar',exact=True).click();dialog.wait_for(state='hidden')
@@ -285,10 +289,13 @@ with sync_playwright() as p:
  page.get_by_role('button',name='Seleccionar grupo Grupo ficticio B',exact=True).click();expect(meds.locator('.expiry').first).to_have_attribute('data-expiry','ok');page.get_by_role('button',name='Seleccionar grupo Grupo ficticio C',exact=True).click();expect(meds.locator('.expiry').first).to_have_attribute('data-expiry','none');expect(meds.locator('.expiry').first).to_have_text('Sin fecha')
  page.get_by_role('button',name='Seleccionar grupo Grupo ficticio A',exact=True).click();page.get_by_role('button',name='Seleccionar artículo 650001',exact=True).click();article_info=page.get_by_role('region',name='Información del artículo seleccionado',exact=True);article_info.get_by_text('Artículo seleccionado · CN 650001',exact=True).wait_for();expect(article_info).to_contain_text('01/09/2026');expect(article_info).to_contain_text('20/10/2026');expect(article_info).to_contain_text('12/2026');expect(article_info.get_by_text('Stock mín.',exact=True)).to_be_visible();expect(article_info.get_by_text('Agrupación homogénea (AH)',exact=True)).to_be_visible();expect(article_info).to_contain_text('Proveedor ficticio');expect(article_info).to_contain_text('Laboratorio ficticio');expect(article_info.locator('.abc-badge')).to_have_text('A')
  # La política de caducidad vive dentro de Tenencia y se guarda para toda la farmacia.
- page.get_by_role('button',name='Caducidades',exact=True).click();policy=page.get_by_role('region',name='Configuración de caducidades',exact=True);policy.get_by_label('Revisar artículos que caduquen en los próximos meses',exact=True).fill('4');policy.get_by_role('button',name='Guardar',exact=True).click();page.get_by_text('Configuración de caducidades guardada para toda la farmacia.',exact=True).wait_for();assert fixture.pharmacy['expiryReviewMonths']==4
+ page.get_by_role('navigation',name='Vista de tenencia',exact=True).get_by_role('button',name='Configuración',exact=True).click();policy=page.get_by_role('region',name='Configuración de caducidades',exact=True);policy.get_by_label('Revisar artículos que caduquen en los próximos meses',exact=True).fill('4');policy.get_by_role('button',name='Guardar',exact=True).click();page.get_by_text('Configuración de caducidades guardada para toda la farmacia.',exact=True).wait_for();assert fixture.pharmacy['expiryReviewMonths']==4
  # Cotejo compartido: recuento manual y por código, observaciones y guardado.
- page.get_by_role('button',name='Cotejo',exact=True).click();cotejo=page.get_by_role('region',name='Cotejo de existencias mínimas',exact=True);cotejo.get_by_role('heading',name='Cotejo físico',exact=True).wait_for();groups_table=cotejo.get_by_role('region',name='Grupos del cotejo',exact=True);expect(groups_table.locator('tbody tr')).to_have_count(3);cotejo.get_by_role('button',name='Sumar 650001',exact=True).click();expect(cotejo.locator('.counter strong').first).to_have_text('1');cotejo.get_by_label('CN o código de barras',exact=True).fill('847000650001');cotejo.get_by_label('CN o código de barras',exact=True).press('Enter');expect(cotejo.locator('.counter strong').first).to_have_text('2');cotejo.get_by_role('button',name='Sumar 650001',exact=True).click();expect(cotejo.locator('.counter strong').first).to_have_text('3');expect(groups_table.locator('tbody tr').first).to_have_class(re.compile('complete'));expect(groups_table.locator('tbody tr').first).to_have_class(re.compile('just-completed'));page.screenshot(path=str(artifacts/'angular-cotejo-complete.png'),full_page=True);cotejo.get_by_label('Observaciones',exact=True).fill('Recuento de prueba');cotejo.get_by_role('button',name='Guardar cotejo',exact=True).click();page.get_by_text('Cotejo guardado en el historial de la farmacia.',exact=True).wait_for();assert fixture.cotejo['counts']['a']['650001']==3
- page.get_by_role('button',name='Consulta',exact=True).click()
+ page.get_by_role('button',name='Cotejo',exact=True).click();cotejo=page.get_by_role('region',name='Cotejo de existencias mínimas',exact=True);cotejo.get_by_role('heading',name='Cotejo físico',exact=True).wait_for();groups_table=cotejo.get_by_role('region',name='Grupos del cotejo',exact=True);expect(groups_table.locator('tbody tr')).to_have_count(3);cotejo.get_by_role('button',name='Sumar 650001',exact=True).click();expect(cotejo.locator('.counter strong').first).to_have_text('1');cotejo.get_by_label('CN o código de barras',exact=True).fill('847000650001');cotejo.get_by_label('CN o código de barras',exact=True).press('Enter');expect(cotejo.locator('.counter strong').first).to_have_text('2');cotejo.get_by_role('button',name='Sumar 650001',exact=True).click();expect(cotejo.locator('.counter strong').first).to_have_text('3');expect(groups_table.locator('tbody tr').first).to_have_class(re.compile('complete'));expect(groups_table.locator('tbody tr').first.locator('.cotejo-state v-icon')).to_have_count(1);cotejo.get_by_label('Título del cotejo',exact=True).fill('Cotejo de prueba');cotejo.get_by_label('Observaciones',exact=True).fill('Recuento de prueba');page.screenshot(path=str(artifacts/'angular-cotejo-complete.png'),full_page=True);cotejo.get_by_role('button',name='Guardar cotejo',exact=True).click();page.get_by_text('Cotejo guardado en el historial de la farmacia.',exact=True).wait_for();assert fixture.cotejo['counts']['a']['650001']==3 and fixture.cotejo['title']=='Cotejo de prueba'
+ cotejo.get_by_role('button',name='Ver historial',exact=True).click();history=page.get_by_role('dialog',name='Historial de cotejos',exact=True);history.get_by_role('heading',name='Cotejo de prueba',exact=True).wait_for();expect(history).to_contain_text('1 de 3 grupos');expect(history).to_contain_text('2 unidades pendientes');page.screenshot(path=str(artifacts/'angular-cotejo-history.png'),full_page=True);history.get_by_role('button',name='Cerrar historial',exact=True).click();history.wait_for(state='hidden')
+ page.get_by_role('button',name='Consulta',exact=True).click();assert fixture.cotejo['counts']=={}
+ page.get_by_role('button',name='Cotejo',exact=True).click();cotejo.get_by_role('button',name='Sumar 650001',exact=True).click();page.get_by_role('button',name='Consulta',exact=True).click();leave=page.get_by_role('dialog',name='Guardar cambios del cotejo',exact=True);leave.get_by_role('button',name='Guardar borrador y salir',exact=True).click();leave.wait_for(state='hidden');assert fixture.cotejo['counts']['a']['650001']==1 and fixture.cotejo['checkedAt'] is None
+ page.get_by_role('button',name='Cotejo',exact=True).click();page.get_by_role('button',name='Consulta',exact=True).click();leave=page.get_by_role('dialog',name='Guardar cambios del cotejo',exact=True);leave.get_by_role('button',name='Borrar lo realizado',exact=True).click();leave.wait_for(state='hidden');assert fixture.cotejo['counts']=={}
  page.screenshot(path=str(artifacts/'angular-tenencia-expiry.png'),full_page=True)
  # Exportaciones: Excel con logo, CSV y PDF a través del puente nativo.
  import base64,zipfile,io
@@ -296,15 +303,15 @@ with sync_playwright() as p:
   page.locator('details.export-menu summary').click();page.get_by_role('menuitem',name=re.compile('^'+kind)).click()
   modal=page.get_by_role('dialog',name='Preparar exportación',exact=True);modal.wait_for()
   modal.get_by_label('Modalidad de exportación',exact=True).select_option('complete' if complete else 'shortfalls')
-  if complete:
-   modal.get_by_label('Grupo para declaración',exact=True).select_option('a');modal.locator('input[type=checkbox]').first.check()
+  if complete: expect(modal.get_by_text('Listado completo de grupos y artículos de tenencia.',exact=True)).to_be_visible()
   page.screenshot(path=str(artifacts/('angular-report-complete.png' if complete else 'angular-report-shortfalls.png')),full_page=True)
   modal.get_by_role('button',name='Generar archivo',exact=True).click();modal.wait_for(state='hidden');page.wait_for_timeout(300);return fixture.saved[-1]
  x=export('Excel');assert x['name'].startswith('tenencia-faltas-') and x['name'].endswith('.xlsx'),x['name']
  book=zipfile.ZipFile(io.BytesIO(base64.b64decode(x['base64'])));names=book.namelist();assert 'xl/media/image1.png' in names,names;sheet=book.read('xl/worksheets/sheet1.xml').decode();assert 'Grupo ficticio A' in sheet and 'Grupo ficticio B' not in sheet and 'Última compra' in sheet
- c=export('CSV');csv=base64.b64decode(c['base64']).decode('utf-8');assert 'Última compra descendente' in csv or 'última compra descendente' in csv;assert '650001' in csv and '2026-09-01' in csv and 'Grupo ficticio B' not in csv
- before=copy.deepcopy(fixture.groups());c=export('CSV',True);csv=base64.b64decode(c['base64']).decode('utf-8');assert '699998' in csv and 'Grupo ficticio B' in csv and ';Sí' in csv and ';No' in csv;assert fixture.groups()==before
- assert fixture.declarations['a']
+ c=export('CSV');csv=base64.b64decode(c['base64']).decode('utf-8');assert 'Grupos con unidades pendientes' in csv;assert '650001' in csv and '2026-09-01' in csv and 'Grupo ficticio B' not in csv
+ before=copy.deepcopy(fixture.groups());c=export('CSV',True);csv=base64.b64decode(c['base64']).decode('utf-8');assert '650001' in csv and 'Grupo ficticio B' in csv and 'Seleccionado para declaración' not in csv;assert fixture.groups()==before
+ t=export('TXT');assert t['name'].endswith('.txt') and 'Grupo ficticio A' in base64.b64decode(t['base64']).decode('utf-8'),t
+ w=export('Word');assert w['name'].endswith('.doc') and '<table>' in base64.b64decode(w['base64']).decode('utf-8')
  f=export('PDF');assert f['name'].startswith('tenencia-faltas-') and f['name'].endswith('.pdf') and 'base64' not in f
  page.emulate_media(media='print');page.screenshot(path=str(artifacts/'angular-tenencia-print.png'),full_page=True);assert page.locator('.tenencia-print img[src="logotipo.png"]').count()==1;expect(page.locator('.tenencia-print .group-line .missing').first).to_have_text('2');page.emulate_media(media='screen')
  # Grupos con más de 10 artículos: los de existencias y las 8 compras/ventas más recientes; «Ver todos».
@@ -374,6 +381,7 @@ with sync_playwright() as p:
  page.get_by_role('group',name='Secciones de configuración',exact=True).get_by_role('button',name='Acceso a aplicaciones',exact=True).click();page.get_by_role('heading',name='Acceso a aplicaciones',exact=True).wait_for()
  page.get_by_label('Usuario para permisos',exact=True).select_option(fixture.accounts[2]['id'])
  box=page.get_by_label('Tenencia obligatoria para usuario',exact=True);expect(box).not_to_be_checked();box.check();assert fixture.accounts[2]['utilityIds']==[]
+ expect(page.get_by_label('Configurar Tenencia obligatoria para usuario',exact=True)).not_to_be_checked()
  page.get_by_role('button',name='Guardar',exact=True).click();page.get_by_text('Acceso a aplicaciones guardado para usuario. Se han cerrado sus sesiones anteriores.',exact=True).wait_for();assert 'tenencia-obligatoria' in fixture.accounts[2]['utilityIds']
  page.get_by_label('Usuario para permisos',exact=True).select_option(fixture.accounts[1]['id']);expect(page.get_by_label('Tenencia obligatoria para F. titular',exact=True)).to_be_disabled()
  page.get_by_label('Usuario para permisos',exact=True).select_option(fixture.accounts[2]['id']);page.get_by_label('Tenencia obligatoria para usuario',exact=True).uncheck();page.get_by_role('button',name='Guardar',exact=True).click();page.wait_for_timeout(150);assert fixture.accounts[2]['utilityIds']==[];page.screenshot(path=str(artifacts/'angular-grants.png'),full_page=True)
@@ -393,7 +401,7 @@ with sync_playwright() as p:
  assert page.locator('.setting-row').filter(has=page.get_by_text('Auditoría',exact=True)).count()==0
  go('Aplicaciones');page.get_by_role('heading',name='No hay aplicaciones disponibles para tu cuenta',exact=True).wait_for()
  fixture.current['utilityIds']=['tenencia-obligatoria'];page.reload();go('Aplicaciones');page.locator('button.resource',has_text='Tenencia obligatoria').click();page.get_by_role('heading',name='Tenencia obligatoria',exact=True).wait_for()
- assert page.get_by_role('button',name='Editar listado',exact=False).count()==0;page.get_by_text(re.compile('Última consulta: 28/10/2026')).wait_for()
+ assert page.get_by_role('button',name='Editar listado',exact=False).count()==0;assert page.get_by_role('navigation',name='Vista de tenencia',exact=True).get_by_role('button',name='Configuración',exact=True).count()==0;page.get_by_text(re.compile('Última consulta: 28/10/2026')).wait_for()
  go('Aplicaciones');page.get_by_role('button',name='Favorito',exact=True).click();page.get_by_role('navigation').get_by_role('button',name='Acceso directo Tenencia obligatoria',exact=True).click();page.get_by_role('heading',name='Tenencia obligatoria',exact=True).wait_for()
  go('Actualizaciones');assert page.get_by_role('button',name='Actualizar ahora',exact=True).count()==0;page.get_by_text('El titular o Viteka pueden ejecutar esta actualización desde el servidor de la farmacia.',exact=True).wait_for()
  go('Mi cuenta');page.locator('.setting-row').filter(has=page.get_by_text('Cambiar mi contraseña',exact=True)).click();page.get_by_label('Contraseña actual',exact=True).fill('FixtureUserPass1');page.get_by_label('Nueva contraseña',exact=True).fill('abc');page.get_by_label('Repetir nueva contraseña',exact=True).fill('abc');page.get_by_role('button',name='Guardar',exact=True).click();page.get_by_text('Contraseña actualizada.',exact=True).wait_for()

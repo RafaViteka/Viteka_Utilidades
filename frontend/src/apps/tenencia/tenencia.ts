@@ -1,5 +1,6 @@
 import { Component, computed, inject, signal, output, input, effect, OnInit, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 import { DesktopBridge } from '../../bridge';
 import { IconComponent } from '../../icon';
 import { TenenciaEditorComponent } from './tenencia-editor';
@@ -71,7 +72,12 @@ interface CotejoState {
   expiryReviewMonths: number;
   countExpiredStock: boolean;
   userName?: string | null;
+  id?: string | null;
+  title?: string;
+  observationHtml?: string;
+  attachments?: CotejoAttachment[];
 }
+interface CotejoAttachment { id: string; name: string; mime: string; size: number; base64: string }
 interface TenenciaPolicySettings {
   expiryReviewMonths: number;
   countExpiredStock: boolean;
@@ -85,6 +91,7 @@ interface TenenciaPolicySettings {
 })
 export class TenenciaComponent implements OnInit {
   private bridge = inject(DesktopBridge);
+  private sanitizer = inject(DomSanitizer);
   readonly back = output<void>();
   readonly summary = output<{ total: number; covered: number; shortfall: number; checkedAt: string }>();
   /** Identificador del usuario para recordar el último grupo consultado. */
@@ -93,6 +100,7 @@ export class TenenciaComponent implements OnInit {
   readonly initialSearch = input('');
   /** Solo el superadministrador (Viteka) puede editar el listado. */
   readonly canConfigure = input(false);
+  readonly canConfigureTenencia = input(false);
   /** Mensajes breves para el aviso flotante de la aplicación. */
   readonly toast = output<string>();
   readonly VISIBLE = VISIBLE_ARTICLES;
@@ -101,13 +109,19 @@ export class TenenciaComponent implements OnInit {
   readonly cotejo = signal<CotejoState | null>(null);
   readonly cotejoHistory = signal<CotejoState[] | null>(null);
   readonly historyOpen = signal(false);
+  readonly historyDelete = signal<CotejoState | null>(null);
   readonly cotejoBusy = signal(false);
+  readonly cotejoDirty = signal(false);
+  readonly leaveCotejo = signal<'query' | 'expiry' | 'back' | null>(null);
   readonly scanCode = signal('');
   readonly cotejoActiveId = signal<string | null>(null);
   readonly cotejoCompleted = signal<string | null>(null);
   readonly policyBusy = signal(false);
   readonly policy = signal<TenenciaPolicySettings | null>(null);
   cotejoObservation = '';
+  cotejoTitle = '';
+  cotejoObservationHtml = '';
+  cotejoAttachments: CotejoAttachment[] = [];
   readonly exporting = signal(false);
   readonly expanded = signal<string[]>([]);
   readonly showExpiry = computed(() => !!this.result()?.fields?.expiry);
@@ -244,8 +258,9 @@ export class TenenciaComponent implements OnInit {
     };
   }
   readonly reportOpen = signal(false);
-  readonly reportMode = signal<'complete' | 'shortfalls'>('shortfalls');
-  readonly reportKind = signal<'xlsx' | 'csv' | 'pdf' | 'print'>('xlsx');
+  readonly reportMode = signal<'complete' | 'shortfalls' | 'expiry' | 'cotejo'>('shortfalls');
+  readonly reportKind = signal<'xlsx' | 'csv' | 'txt' | 'doc' | 'pdf' | 'print'>('xlsx');
+  readonly reportCotejo = signal<CotejoState | null>(null);
   readonly declarationGroups = signal<
     {
       id: string;
@@ -260,26 +275,21 @@ export class TenenciaComponent implements OnInit {
   readonly declarationPicks = signal<Record<string, string[]>>({});
   readonly declarationGroupId = signal('');
   readonly declarationReview = signal(false);
-  readonly reportRows = computed(() =>
-    this.reportMode() === 'shortfalls'
-      ? this.shortfallsByMissing()
-      : this.rows().map((row) => {
-          const group = this.declarationGroups().find((g) => g.id === row.id);
-          return group
-            ? {
-                ...row,
-                articles: group.codes.map(
-                  (code) =>
-                    row.articles.find((a) => a.code === code) ?? {
-                      code,
-                      description: group.descriptions?.[code] ?? 'CN ' + code,
-                      stock: 0,
-                    },
-                ),
-              }
-            : row;
-        }),
-  );
+  readonly reportRows = computed(() => {
+    const mode = this.reportMode();
+    if (mode === 'shortfalls') return this.shortfallsByMissing();
+    if (mode === 'expiry') return this.rows().filter((row) => this.needsExpiryReview(row)).map((row) => ({ ...row, articles: row.articles.filter((article) => this.requiresExpiryAttention(article)) }));
+    if (mode === 'cotejo') {
+      const state = this.reportCotejo() ?? this.cotejo();
+      if (!state) return [];
+      return this.rows().map((row) => {
+        const articles = row.articles.filter((article) => (state.counts?.[row.id]?.[article.code] ?? 0) > 0);
+        const counted = articles.reduce((sum, article) => sum + (state.counts?.[row.id]?.[article.code] ?? 0), 0);
+        return { ...row, stock: counted, missing: Math.max(0, row.minimum - counted), status: counted >= row.minimum ? 'covered' : 'shortfall', articles };
+      }).filter((row) => row.articles.length > 0);
+    }
+    return this.rows();
+  });
   readonly declarationRow = computed(
     () => this.reportRows().find((r) => r.id === this.declarationGroupId()) ?? this.reportRows()[0],
   );
@@ -287,14 +297,16 @@ export class TenenciaComponent implements OnInit {
     return this.reportMode() === 'shortfalls' ? purchaseCandidates(row.articles) : row.articles;
   }
   reportTitle() {
-    return this.reportMode() === 'shortfalls'
-      ? 'Tenencia obligatoria · Solo faltas'
-      : 'Tenencia obligatoria · Listado completo para declaración';
+    return this.reportMode() === 'shortfalls' ? 'Tenencia obligatoria · Solo faltas'
+      : this.reportMode() === 'expiry' ? 'Tenencia obligatoria · Revisar caducidad'
+      : this.reportMode() === 'cotejo' ? (this.reportCotejo()?.title || this.cotejoTitle || 'Cotejo de existencias mínimas')
+      : 'Tenencia obligatoria · Listado completo';
   }
   reportCriteria() {
-    return this.reportMode() === 'shortfalls'
-      ? 'Máximo 10 artículos por grupo; última compra descendente. Sin fecha de compra al final, ordenados por CN. No se utilizan ventas.'
-      : 'Todos los grupos y candidatos; selección de declaración independiente del catálogo. No acredita automáticamente cumplimiento normativo.';
+    return this.reportMode() === 'shortfalls' ? 'Grupos con unidades pendientes y candidatos de reposición.'
+      : this.reportMode() === 'expiry' ? `Artículos con stock caducados o que caducan en ${this.expiryReviewMonths()} meses o menos.`
+      : this.reportMode() === 'cotejo' ? `${this.cotejoCompletedGroups(this.reportCotejo() ?? this.cotejo())} de ${this.rows().length} grupos completos · ${this.cotejoMissingUnits(this.reportCotejo() ?? this.cotejo())} unidades pendientes.`
+      : 'Listado completo de grupos y artículos de tenencia.';
   }
   chosenForDeclaration(row: Row, a: Article) {
     return (this.declarationPicks()[row.id] ?? []).includes(a.code);
@@ -305,36 +317,21 @@ export class TenenciaComponent implements OnInit {
       [row.id]: on ? [...new Set([...(p[row.id] ?? []), a.code])] : (p[row.id] ?? []).filter((c) => c !== a.code),
     }));
   }
-  async openReport(kind: 'xlsx' | 'csv' | 'pdf' | 'print') {
+  async openReport(kind: 'xlsx' | 'csv' | 'txt' | 'doc' | 'pdf' | 'print') {
     this.closeMenus();
     this.reportKind.set(kind);
+    if (this.view() === 'cotejo' && !this.reportCotejo()) this.reportCotejo.set(this.cotejo());
+    this.reportMode.set(this.view() === 'cotejo' ? 'cotejo' : this.reportMode() === 'cotejo' ? 'shortfalls' : this.reportMode());
     this.error.set('');
-    try {
-      const d = await this.bridge.call<{
-        listVersion: string;
-        groups: {
-          id: string;
-          name: string;
-          minimum: number;
-          codes: string[];
-          descriptions?: Record<string, string>;
-          atcPrefix?: string;
-          classificationCode?: string;
-        }[];
-        selections: Record<string, string[]>;
-        reviewRequired: boolean;
-      }>('declaration.state');
-      if (d.listVersion !== this.result()?.listVersion)
-        throw new Error('El listado cambió. Actualiza la consulta antes de exportar.');
-      this.declarationGroups.set(d.groups);
-      this.declarationPicks.set(d.selections);
-      this.declarationReview.set(d.reviewRequired);
-      this.reportOpen.set(true);
-    } catch (e) {
-      this.error.set(this.message(e));
-    }
+    this.reportOpen.set(true);
   }
   private reportLines(): unknown[][] {
+    if (this.reportMode() === 'cotejo') {
+      const state=this.reportCotejo()??this.cotejo();
+      const lines:unknown[][]=[['Código grupo','Grupo','Mínimo','Cotejado','Faltan','Estado','CN','Descripción','Unidades cotejadas']];
+      for(const row of this.reportRows()) for(const article of this.reportArticles(row)) lines.push([row.classification??'',row.name,row.minimum,row.stock??0,row.missing??0,row.status==='covered'?'Correcto':'Pendiente',article.code,article.description,state?.counts?.[row.id]?.[article.code]??0]);
+      return lines;
+    }
     const lines: unknown[][] = [
       [
         'Código grupo',
@@ -346,13 +343,12 @@ export class TenenciaComponent implements OnInit {
         'Medicamento',
         'Existencias CN',
         'Última compra',
-        'Seleccionado para declaración',
       ],
     ];
     for (const r of this.reportRows()) {
       const articles = this.reportArticles(r),
         base = [r.classification ?? '', r.name, r.minimum, r.stock ?? 0, r.missing ?? 0];
-      if (!articles.length) lines.push([...base, '', '', '', '', '']);
+      if (!articles.length) lines.push([...base, '', '', '', '']);
       for (const a of articles)
         lines.push([
           ...base,
@@ -360,22 +356,16 @@ export class TenenciaComponent implements OnInit {
           a.description,
           a.stock ?? 0,
           a.lastPurchase ?? 'Sin fecha de compra',
-          this.reportMode() === 'complete' ? (this.chosenForDeclaration(r, a) ? 'Sí' : 'No') : '',
         ]);
     }
     return lines;
   }
   async generateReport() {
-    if (!this.hasStock() || this.exporting()) return;
+    if ((!this.hasStock() && this.reportMode() !== 'cotejo') || this.exporting()) return;
     return this.run(async () => {
-      if (this.reportMode() === 'complete')
-        await this.bridge.call('declaration.save', {
-          listVersion: this.result()?.listVersion,
-          selections: this.declarationPicks(),
-        });
       this.reportOpen.set(false);
-      const kind = this.reportKind(),
-        name = 'tenencia-' + (this.reportMode() === 'shortfalls' ? 'faltas' : 'declaracion') + '-' + this.fileDay();
+      const kind = this.reportKind(), modeName={shortfalls:'faltas',complete:'completo',expiry:'caducidades',cotejo:'cotejo'}[this.reportMode()],
+        name = 'tenencia-' + modeName + '-' + this.fileDay();
       if (kind === 'csv') {
         const text =
           '\ufeff' +
@@ -388,6 +378,14 @@ export class TenenciaComponent implements OnInit {
             .map((l) => l.map(csvCell).join(';'))
             .join('\r\n');
         await this.save(name + '.csv', new TextEncoder().encode(text));
+      } else if (kind === 'txt') {
+        const text=[this.reportTitle(),this.reportCriteria(),'',...this.reportLines().map((line)=>line.join('\t'))].join('\r\n');
+        await this.save(name+'.txt',new TextEncoder().encode('\ufeff'+text));
+      } else if (kind === 'doc') {
+        const escape=(value:unknown)=>String(value??'').replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;');
+        const lines=this.reportLines();
+        const html=`<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial;color:#153b35}h1{color:#07555c}table{border-collapse:collapse;width:100%}th,td{border:1px solid #ccd6cf;padding:6px}th{background:#e8efe8}</style></head><body><h1>${escape(this.reportTitle())}</h1><p>${escape(this.reportCriteria())}</p><table><tr>${lines[0].map((v)=>`<th>${escape(v)}</th>`).join('')}</tr>${lines.slice(1).map((line)=>`<tr>${line.map((v)=>`<td>${escape(v)}</td>`).join('')}</tr>`).join('')}</table></body></html>`;
+        await this.save(name+'.doc',new TextEncoder().encode('\ufeff'+html));
       } else if (kind === 'xlsx') {
         const logo = await loadLogo(48);
         const lines = this.reportLines();
@@ -414,10 +412,10 @@ export class TenenciaComponent implements OnInit {
           buildXlsx(
             [
               {
-                name: this.reportMode() === 'shortfalls' ? 'Faltas' : 'Declaración',
-                widths: [12, 44, 9, 13, 9, 10, 50, 12, 16, 18],
+                name: this.reportMode() === 'shortfalls' ? 'Faltas' : this.reportMode() === 'expiry' ? 'Caducidades' : this.reportMode() === 'cotejo' ? 'Cotejo' : 'Completo',
+                widths: this.reportMode() === 'cotejo' ? [12, 44, 9, 12, 9, 12, 10, 50, 14] : [12, 44, 9, 13, 9, 10, 50, 12, 16],
                 rows,
-                merges: ['A4:J4', 'A5:J5', 'A6:J6'],
+                merges: this.reportMode() === 'cotejo' ? ['A4:I4', 'A5:I5', 'A6:I6'] : ['A4:I4', 'A5:I5', 'A6:I6'],
                 freeze: 8,
                 image: logo ?? undefined,
               },
@@ -696,9 +694,33 @@ export class TenenciaComponent implements OnInit {
     this.activeArticleCode.set(article.code);
   }
   async setView(view: 'query' | 'cotejo' | 'expiry') {
+    if (this.view() === 'cotejo' && view !== 'cotejo' && (await this.prepareCotejoExit(view))) return;
     this.view.set(view);
     if (view === 'cotejo' && !this.cotejo()) await this.loadCotejo();
     if (view === 'expiry' && !this.policy()) await this.loadPolicy();
+  }
+  async requestBack() {
+    if (this.view() === 'cotejo' && (await this.prepareCotejoExit('back'))) return;
+    this.back.emit();
+  }
+  private hasCotejoWork() {
+    return !!this.cotejoTitle.trim() || !!this.cotejoObservationHtml.trim() || this.cotejoAttachments.length > 0 ||
+      !!this.cotejo() && this.cotejoUnits(this.cotejo()!) > 0;
+  }
+  private async prepareCotejoExit(target: 'query' | 'expiry' | 'back') {
+    if (!this.hasCotejoWork()) return false;
+    if (this.cotejo()?.checkedAt && !this.cotejoDirty()) {
+      await this.clearCotejo();
+      return false;
+    }
+    this.leaveCotejo.set(target);
+    return true;
+  }
+  private finishCotejoExit() {
+    const target = this.leaveCotejo();
+    this.leaveCotejo.set(null);
+    if (target === 'back') this.back.emit();
+    else if (target) this.view.set(target);
   }
   chooseCotejoGroup(row: Row) {
     this.cotejoActiveId.set(row.id);
@@ -709,6 +731,11 @@ export class TenenciaComponent implements OnInit {
       const state = await this.bridge.call<CotejoState>('cotejo.state');
       this.cotejo.set({ ...state, counts: state.counts ?? {} });
       this.cotejoObservation = state.observation ?? '';
+      this.cotejoTitle = state.title ?? '';
+      this.cotejoObservationHtml = state.observationHtml || this.escapeHtml(state.observation ?? '');
+      this.cotejoAttachments = [...(state.attachments ?? [])];
+      this.cotejoDirty.set(false);
+      this.applyObservation();
     } catch (e) {
       this.error.set(this.message(e));
     } finally {
@@ -727,6 +754,17 @@ export class TenenciaComponent implements OnInit {
   cotejoUnits(state: CotejoState) {
     return Object.values(state.counts ?? {}).reduce((total, group) => total + Object.values(group).reduce((sum, value) => sum + value, 0), 0);
   }
+  cotejoCompletedGroups(state = this.cotejo()) {
+    if (!state) return 0;
+    return this.rows().filter((row) => row.articles.reduce((sum, article) => sum + (state.counts?.[row.id]?.[article.code] ?? 0), 0) >= row.minimum).length;
+  }
+  cotejoMissingUnits(state = this.cotejo()) {
+    if (!state) return this.rows().reduce((sum, row) => sum + row.minimum, 0);
+    return this.rows().reduce((sum, row) => {
+      const total = row.articles.reduce((n, article) => n + (state.counts?.[row.id]?.[article.code] ?? 0), 0);
+      return sum + Math.max(0, row.minimum - total);
+    }, 0);
+  }
   adjustCotejo(row: Row, article: Article, change: number) {
     const state = this.cotejo();
     if (!state) return;
@@ -736,6 +774,7 @@ export class TenenciaComponent implements OnInit {
     counts[row.id][article.code] = Math.max(0, Math.min(10000, (counts[row.id][article.code] ?? 0) + change));
     if (!counts[row.id][article.code]) delete counts[row.id][article.code];
     this.cotejo.set({ ...state, counts });
+    this.cotejoDirty.set(true);
     if (wasMissing > 0 && this.cotejoMissing(row) === 0) {
       this.cotejoCompleted.set(row.id);
       window.setTimeout(() => {
@@ -743,6 +782,57 @@ export class TenenciaComponent implements OnInit {
       }, 1300);
     }
   }
+  private escapeHtml(value: string) {
+    const div = document.createElement('div'); div.textContent = value; return div.innerHTML;
+  }
+  private applyObservation() { window.setTimeout(() => { const editor=document.querySelector<HTMLElement>('.rich-observation'); if(editor) editor.innerHTML=this.cotejoObservationHtml; }); }
+  trustedObservation(html: string): SafeHtml { return this.sanitizer.bypassSecurityTrustHtml(this.cleanObservation(html)); }
+  syncObservation(event: Event) {
+    const editor = event.currentTarget as HTMLElement;
+    this.cotejoObservationHtml = this.cleanObservation(editor.innerHTML);
+    this.cotejoObservation = editor.innerText.trim();
+    this.cotejoDirty.set(true);
+  }
+  private cleanObservation(html: string) {
+    const doc = new DOMParser().parseFromString('<div>' + html + '</div>', 'text/html');
+    const allowed = new Set(['DIV','P','BR','B','STRONG','I','EM','U','OL','UL','LI','SPAN']);
+    for (const node of Array.from(doc.body.querySelectorAll('*'))) {
+      if (node.tagName === 'FONT') {
+        const span=doc.createElement('span');span.innerHTML=node.innerHTML;const color=node.getAttribute('color');if(color)span.style.color=color;node.replaceWith(span);continue;
+      }
+      if (!allowed.has(node.tagName)) { node.replaceWith(...Array.from(node.childNodes)); continue; }
+      for (const attr of Array.from(node.attributes)) {
+        if (attr.name !== 'style') node.removeAttribute(attr.name);
+      }
+      if (node.hasAttribute('style')) {
+        const color = (node as HTMLElement).style.color;
+        const background = (node as HTMLElement).style.backgroundColor;
+        node.removeAttribute('style');
+        if (color && /^rgba?\([\d\s,.%]+\)$|^#[\da-f]{3,8}$/i.test(color)) (node as HTMLElement).style.color = color;
+        if (background && /^rgba?\([\d\s,.%]+\)$|^#[\da-f]{3,8}$/i.test(background)) (node as HTMLElement).style.backgroundColor = background;
+      }
+    }
+    return doc.body.firstElementChild?.innerHTML.slice(0, 20000) ?? '';
+  }
+  formatObservation(command: string, value?: string) {
+    document.querySelector<HTMLElement>('.rich-observation')?.focus();
+    document.execCommand(command, false, value);
+    const editor = document.querySelector<HTMLElement>('.rich-observation');
+    if (editor) this.syncObservation({ currentTarget: editor } as unknown as Event);
+  }
+  async addCotejoFiles(event: Event) {
+    const input = event.currentTarget as HTMLInputElement;
+    const files = Array.from(input.files ?? []);
+    if (this.cotejoAttachments.length + files.length > 8) { this.error.set('Se permiten hasta 8 adjuntos.'); input.value=''; return; }
+    for (const file of files) {
+      if (file.size > 2 * 1024 * 1024) { this.error.set(`${file.name}: el máximo por archivo es 2 MB.`); continue; }
+      const bytes = new Uint8Array(await file.arrayBuffer());
+      this.cotejoAttachments.push({ id: crypto.randomUUID().replaceAll('-',''), name: file.name.slice(0,120), mime: file.type.slice(0,100), size: file.size, base64: toBase64(bytes) });
+    }
+    input.value=''; this.cotejoAttachments = [...this.cotejoAttachments]; this.cotejoDirty.set(true);
+  }
+  removeCotejoFile(id: string) { this.cotejoAttachments = this.cotejoAttachments.filter((file) => file.id !== id); this.cotejoDirty.set(true); }
+  attachmentUrl(file: CotejoAttachment) { return `data:${file.mime || 'application/octet-stream'};base64,${file.base64}`; }
   scanCotejo() {
     const value = this.scanCode().trim();
     if (!value) return;
@@ -822,8 +912,13 @@ export class TenenciaComponent implements OnInit {
         ...state,
         listVersion: this.result()!.listVersion,
         observation: this.cotejoObservation,
+        observationHtml: this.cotejoObservationHtml,
+        title: this.cotejoTitle || `Cotejo ${new Date().toLocaleDateString('es-ES')}`,
+        attachments: this.cotejoAttachments,
       });
       this.cotejo.set(saved);
+      this.cotejoTitle = saved.title ?? this.cotejoTitle;
+      this.cotejoDirty.set(false);
       this.toast.emit('Cotejo guardado en el historial de la farmacia.');
     } catch (e) {
       this.error.set(this.message(e));
@@ -844,6 +939,36 @@ export class TenenciaComponent implements OnInit {
       this.cotejoBusy.set(false);
     }
   }
+  private cotejoPayload() {
+    const state = this.cotejo();
+    if (!state || !this.result()?.listVersion) return null;
+    return { ...state, listVersion: this.result()!.listVersion, observation: this.cotejoObservation, observationHtml: this.cotejoObservationHtml, title: this.cotejoTitle, attachments: this.cotejoAttachments };
+  }
+  async saveCotejoDraft() {
+    const payload = this.cotejoPayload(); if (!payload) return;
+    this.cotejoBusy.set(true);
+    try { const saved = await this.bridge.call<CotejoState>('cotejo.draft', payload); this.cotejo.set(saved); this.cotejoDirty.set(false); this.toast.emit('Borrador guardado para continuar más tarde.'); this.finishCotejoExit(); }
+    catch (e) { this.error.set(this.message(e)); }
+    finally { this.cotejoBusy.set(false); }
+  }
+  async clearCotejo() {
+    try {
+      const empty = await this.bridge.call<CotejoState>('cotejo.clear');
+      this.cotejo.set(empty); this.cotejoTitle=''; this.cotejoObservation=''; this.cotejoObservationHtml=''; this.cotejoAttachments=[]; this.cotejoDirty.set(false);
+    } catch (e) { this.error.set(this.message(e)); }
+  }
+  async discardAndLeave() { await this.clearCotejo(); this.finishCotejoExit(); }
+  openHistoryItem(item: CotejoState) {
+    this.cotejo.set(structuredClone(item)); this.cotejoTitle=item.title??''; this.cotejoObservation=item.observation??''; this.cotejoObservationHtml=item.observationHtml||this.escapeHtml(item.observation??''); this.cotejoAttachments=[...(item.attachments??[])]; this.cotejoDirty.set(false); this.historyOpen.set(false); this.applyObservation();
+  }
+  async deleteHistoryItem() {
+    const item=this.historyDelete(); if (!item?.id) return;
+    this.cotejoBusy.set(true);
+    try { await this.bridge.call('cotejo.delete',{id:item.id}); this.cotejoHistory.update((rows)=>(rows??[]).filter((row)=>row.id!==item.id)); this.historyDelete.set(null); this.toast.emit('Cotejo eliminado del historial.'); }
+    catch(e){this.error.set(this.message(e));}
+    finally{this.cotejoBusy.set(false);}
+  }
+  async printHistoryItem(item: CotejoState) { this.historyOpen.set(false); this.reportCotejo.set(item); this.reportMode.set('cotejo'); await this.openReport('print'); }
   move(e: Event, step: number) {
     const element = e.currentTarget as HTMLElement;
     const buttons = Array.from(

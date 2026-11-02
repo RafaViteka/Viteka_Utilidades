@@ -707,13 +707,13 @@ td.center .row-state {
 .cotejo-workspace th, .cotejo-workspace td { padding: 7px 8px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: middle; }
 .cotejo-workspace th { position: sticky; top: 0; z-index: 1; background: var(--surface); }
 .cotejo-workspace tr.chosen { background: var(--selected); }
-.cotejo-workspace tr.complete td { background: color-mix(in srgb, var(--green) 16%, var(--card)); }
+.cotejo-workspace tr.complete td { background: color-mix(in srgb, var(--green) 28%, var(--card)); color: var(--ink); font-weight: 620; }
 .cotejo-workspace tr.complete td:first-child { box-shadow: inset 3px 0 var(--green); }
 .cotejo-workspace tr.just-completed td { animation: cotejo-complete 1.2s ease-out; }
 @keyframes cotejo-complete {
   0% { background: color-mix(in srgb, var(--lime) 55%, var(--card)); }
   35% { background: color-mix(in srgb, var(--lime) 35%, var(--card)); }
-  100% { background: color-mix(in srgb, var(--green) 16%, var(--card)); }
+  100% { background: color-mix(in srgb, var(--green) 28%, var(--card)); }
 }
 .cotejo-group-button, .cotejo-article-button { width: 100%; padding: 0; border: 0; background: transparent; color: inherit; text-align: left; font: inherit; }
 .cotejo-articles > header { padding: 9px 11px; border-bottom: 1px solid var(--line); background: var(--surface); }
@@ -723,23 +723,53 @@ td.center .row-state {
 .cotejo-group > header { display: flex; justify-content: space-between; align-items: center; padding: 8px 10px; background: var(--surface); }
 .cotejo-group > header div { display: grid; }
 .cotejo-group > header small { color: var(--muted); }
-.cotejo-state { padding: 3px 9px; border-radius: 999px; color: #9b1c12; background: #fbd9d6; }
-.cotejo-state[data-complete='true'] { color: #17643f; background: #e3f4ea; }
+.cotejo-state { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 2px 7px; border-radius: 999px; color: #9b1c12; background: #fbd9d6; }
+.cotejo-state[data-complete='true'] { color: white; background: #16865b; box-shadow: 0 0 0 3px color-mix(in srgb, #16865b 18%, transparent); }
+.cotejo-state v-icon { width: 15px; height: 15px; }
+:host-context(html[data-theme='dark']) .cotejo-workspace tr.complete td { background: color-mix(in srgb, #2fa66f 34%, var(--card)); }
+:host-context(html[data-theme='dark']) .cotejo-state[data-complete='true'] { background: #3fbd82; color: #062c20; }
 .counter { display: inline-grid; grid-template-columns: 30px 42px 30px; align-items: center; text-align: center; }
 .counter button { width: 28px; height: 28px; padding: 0; border: 1px solid var(--line); border-radius: 5px; background: var(--surface); }
 .cotejo-footer { display: grid; gap: 10px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); }
 .cotejo-footer label { display: grid; gap: 6px; width: 100%; color: var(--muted); font-size: var(--fs-xs); }
-.cotejo-footer textarea { width: 100%; min-height: 68px; resize: vertical; padding: 10px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); font: inherit; line-height: 1.45; }
-.cotejo-footer textarea:focus { outline: 0; border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
+.cotejo-title input { width: 100%; min-height: 40px; padding: 8px 11px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); }
+.observation-label { color: var(--muted); font-size: var(--fs-xs); }
+.rich-toolbar { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; padding: 6px; border: 1px solid var(--line); border-bottom: 0; border-radius: 8px 8px 0 0; background: var(--surface); }
+.rich-toolbar button { min-width: 32px; height: 30px; padding: 3px 8px; border: 1px solid var(--line); border-radius: 5px; background: var(--card); color: var(--ink); }
+.rich-toolbar label { width: auto; display: inline-flex; align-items: center; grid-auto-flow: column; gap: 5px; margin-left: 5px; }
+.rich-toolbar input[type='color'] { width: 28px; height: 24px; padding: 1px; border: 1px solid var(--line); border-radius: 4px; background: var(--card); }
+.rich-observation { width: 100%; min-height: 100px; max-height: 260px; overflow: auto; padding: 12px; border: 1px solid var(--line); border-radius: 0 0 8px 8px; background: var(--paper); color: var(--ink); font-size: var(--fs-sm); line-height: 1.5; }
+.rich-observation:empty::before { content: attr(data-placeholder); color: var(--muted); }
+.rich-observation:focus { outline: 0; border-color: var(--green); box-shadow: 0 0 0 3px color-mix(in srgb, var(--green) 18%, transparent); }
+.cotejo-attachments { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.attachment-button { width: auto !important; display: inline-flex !important; grid-auto-flow: column; align-items: center; gap: 7px !important; padding: 8px 11px; border: 1px solid var(--line); border-radius: 7px; background: var(--surface); color: var(--ink) !important; cursor: pointer; }
+.attachment-button v-icon { width: 17px; height: 17px; }
+.attachment-button input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.attachment-list { flex-basis: 100%; display: flex; gap: 6px; flex-wrap: wrap; }
+.attachment-list span { display: inline-flex; align-items: center; gap: 6px; max-width: 320px; padding: 5px 8px; border-radius: 6px; background: var(--surface); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.attachment-list v-icon { width: 15px; height: 15px; }
+.attachment-list button { border: 0; background: transparent; color: var(--muted); font-size: 18px; }
 .cotejo-footer-bar { display: flex; justify-content: space-between; align-items: center; gap: 16px; width: 100%; padding-top: 9px; border-top: 1px solid var(--line); color: var(--muted); font-size: var(--fs-xs); }
 .cotejo-saved { min-width: 0; overflow-wrap: anywhere; }
 .cotejo-actions { display: flex; gap: 8px; margin-left: auto; }
 .cotejo-actions button { min-height: 38px; white-space: nowrap; }
-.cotejo-history { display: grid; gap: 6px; border-top: 1px solid var(--line); padding-top: 8px; }
-.cotejo-history h3, .cotejo-history p { margin: 0; }
-.cotejo-history article { display: grid; grid-template-columns: 160px 1fr; gap: 4px 12px; padding: 7px 9px; background: var(--surface); border-radius: 5px; }
-.cotejo-history article p { grid-column: 1 / -1; }
-.tenencia-policy-page { width: min(780px, 100%); display: grid; gap: 14px; padding: 18px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.cotejo-history-dialog { width: min(1000px, 96vw); max-width: 1000px; }
+.history-list { display: grid; gap: 10px; max-height: 68vh; overflow: auto; padding-right: 4px; }
+.history-card { display: grid; gap: 10px; padding: 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+.history-card h3, .history-card p { margin: 0; }
+.history-card h3 { font-size: var(--fs-md); }
+.history-kpis { display: flex; gap: 8px; flex-wrap: wrap; }
+.history-kpis span { padding: 6px 9px; border-radius: 999px; background: var(--surface); color: var(--muted); font-size: var(--fs-xs); }
+.history-observation { max-height: 100px; overflow: auto; padding: 9px; border-left: 3px solid var(--green); background: var(--surface); }
+.history-actions { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; }
+.history-actions button { display: inline-flex; align-items: center; gap: 6px; padding: 7px 9px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); color: var(--ink); }
+.history-actions v-icon { width: 15px; height: 15px; }
+.danger-text { color: #c84a43 !important; }
+.danger { border: 1px solid #bd3e38; border-radius: 7px; background: #bd3e38; color: white; padding: 9px 14px; }
+.empty-history { display: grid; justify-items: center; gap: 8px; padding: 45px; color: var(--muted); }
+.leave-cotejo-dialog { max-width: 520px; }
+.leave-options { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
+.tenencia-policy-page { width: 100%; min-height: 0; flex: 1; align-content: start; display: grid; gap: 14px; padding: 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
 .tenencia-policy-page header h2, .tenencia-policy-page header p { margin: 0; }
 .tenencia-policy-page header p { margin-top: 4px; color: var(--muted); }
 .tenencia-policy-page form { display: grid; gap: 16px; }
@@ -979,10 +1009,18 @@ td.center .row-state {
     color: #7a858a;
     font-size: 8.5px;
   }
+  .print-observation { margin-top: 12px; padding: 10px; border: 1px solid #d3dadd; }
+  .print-observation h2, .print-attachments h2 { margin: 0 0 6px; font-size: 13px; color: #0f4c5c; }
+  .print-attachments { margin-top: 12px; display: flex; gap: 10px; flex-wrap: wrap; }
+  .print-attachments h2 { flex-basis: 100%; }
+  .print-attachments figure { width: 180px; margin: 0; }
+  .print-attachments img { display: block; width: 100%; max-height: 180px; object-fit: contain; }
+  .print-attachments figcaption { font-size: 8px; }
 }
 
 .report-dialog {
-  width: min(900px, 95vw);
+  width: min(1000px, 96vw);
+  max-width: 1000px;
   max-height: 90vh;
   overflow: auto;
 }

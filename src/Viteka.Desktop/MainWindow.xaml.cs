@@ -329,7 +329,7 @@ public partial class MainWindow : Window
                 if (command.StartsWith("pharmacy.", StringComparison.Ordinal) && !AccessPolicy.CanManageUsers(actor) || (command == "tenencia.schema" || command.StartsWith("tenencia.catalog.", StringComparison.Ordinal)) && !AccessPolicy.CanConfigure(actor) || command is "tenencia.state" or "tenencia.query" && !AccessPolicy.CanUse(actor, Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items)) throw new AccessDeniedException();
                 Reply(id, await Access.UtilityAsync(command, root.TryGetProperty("payload", out var payload) ? payload : null)); return;
             }
-            if(command?.StartsWith("catalog.data.",StringComparison.Ordinal)==true || command is "audit.settings" or "audit.query" or "activity.record" or "declaration.state" or "declaration.save" or "cotejo.state" or "cotejo.save" or "cotejo.history" or "tenencia.policy.state" or "tenencia.policy.save"){
+            if(command?.StartsWith("catalog.data.",StringComparison.Ordinal)==true || command is "audit.settings" or "audit.query" or "activity.record" or "declaration.state" or "declaration.save" or "cotejo.state" or "cotejo.save" or "cotejo.draft" or "cotejo.clear" or "cotejo.history" or "cotejo.delete" or "tenencia.policy.state" or "tenencia.policy.save"){
                 Reply(id,await Access.UtilityAsync(command!,root.TryGetProperty("payload",out var extra)?extra:null));return;
             }
             switch (command)
@@ -416,7 +416,7 @@ public partial class MainWindow : Window
                         var name = payload.GetProperty("name").GetString() ?? "";
                         var pdf = command == "file.pdf";
                         var catalogFile=name.EndsWith(".vcat",StringComparison.Ordinal);if(catalogFile&&!AccessPolicy.CanConfigure(actor))throw new AccessDeniedException();
-                        if (!System.Text.RegularExpressions.Regex.IsMatch(name, pdf ? @"^[\w\-. ]{1,80}\.pdf$" : @"^[\w\-. ]{1,80}\.(csv|xlsx|vcat)$")) { Reply(id, error: "Nombre de archivo no válido."); break; }
+                        if (!System.Text.RegularExpressions.Regex.IsMatch(name, pdf ? @"^[\w\-. ]{1,80}\.pdf$" : @"^[\w\-. ]{1,80}\.(csv|xlsx|txt|doc|vcat)$")) { Reply(id, error: "Nombre de archivo no válido."); break; }
                         var extension = Path.GetExtension(name).TrimStart('.').ToLowerInvariant();
                         byte[]? bytes = null;
                         if (!pdf)
@@ -431,7 +431,7 @@ public partial class MainWindow : Window
                             DefaultExt = "." + extension,
                             AddExtension = true,
                             OverwritePrompt = true,
-                            Filter = extension switch { "vcat"=>"Listado firmado (*.vcat)|*.vcat", "xlsx" => "Libro de Excel (*.xlsx)|*.xlsx", "csv" => "CSV para Excel (*.csv)|*.csv", _ => "Documento PDF (*.pdf)|*.pdf" },
+                            Filter = extension switch { "vcat"=>"Listado firmado (*.vcat)|*.vcat", "xlsx" => "Libro de Excel (*.xlsx)|*.xlsx", "csv" => "CSV para Excel (*.csv)|*.csv", "txt" => "Documento de texto (*.txt)|*.txt", "doc" => "Documento de Word (*.doc)|*.doc", _ => "Documento PDF (*.pdf)|*.pdf" },
                             InitialDirectory = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments),
                         };
                         if (dialog.ShowDialog(this) != true) { Reply(id, new { saved = false }); break; }
