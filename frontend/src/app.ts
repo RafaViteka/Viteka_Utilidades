@@ -733,7 +733,7 @@ export class AppComponent {
   }
   async saveGrants() {
     const target = this.grantTarget();
-    if (!target || !this.canEdit(target) || target.role !== 'User' || this.busy()) return;
+    if (!target || !this.canEdit(target) || this.busy()) return;
     this.busy.set(true);
     this.error.set('');
     try {

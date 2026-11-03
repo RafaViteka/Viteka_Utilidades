@@ -488,7 +488,7 @@
                     >
                   }
                 }
-                @if (target.role === 'User' && canEdit(target)) {
+                @if (canEdit(target)) {
                   <p class="hint">Al guardar se cerrarán sus sesiones anteriores. Los favoritos no conceden acceso.</p>
                   <viteka-edit-actions [submit]="false" [busy]="busy()" (save)="saveGrants()" (cancel)="selectGrantUser(target.id)" />
                 }

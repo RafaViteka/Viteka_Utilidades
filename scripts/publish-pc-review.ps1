@@ -51,6 +51,8 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Conecta - Pruebas, dirigida a un único identificador de PC.
 
+Corrige las acciones de Acceso a aplicaciones: el administrador puede guardar los accesos de usuarios normales y el superadministrador también puede guardar los permisos especiales delegados a administradores. La interfaz y el servidor mantienen el límite que impide a un administrador concederse privilegios reservados.
+
 Corrige el selector de exportación del historial: cada formato ocupa un botón completo, alineado y con icono propio. Los adjuntos se abren en un visor que permite seleccionar el archivo, previsualizar imágenes y descargar cualquier documento.
 
 La configuración de Tenencia permite al superadministrador editar por separado los listados de Almería, Cádiz, Córdoba, Granada, Huelva, Jaén, Málaga y Sevilla. Cada farmacia sigue consultando exclusivamente el listado de su provincia. El permiso Configurar Tenencia puede delegarse a un administrador y permanece desactivado hasta que el superadministrador lo conceda.
