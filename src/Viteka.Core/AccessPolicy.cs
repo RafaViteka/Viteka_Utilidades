@@ -18,7 +18,7 @@ public static class AccessPolicy
         (actor.Role == AccessRole.SuperAdministrator || requested == AccessRole.User);
     public static bool CanUse(AccessUserView user, string id, IReadOnlyList<UtilityDefinition> catalog) =>
         user.Active && !user.MustChangePassword && catalog.Any(item => item.Id == id) &&
-        (user.Role is AccessRole.Administrator or AccessRole.SuperAdministrator || user.UtilityIds.Contains(id, StringComparer.Ordinal));
+        (user.Role == AccessRole.SuperAdministrator || user.UtilityIds.Contains(id, StringComparer.Ordinal));
     public static bool CanOpenPage(AccessUserView user, string page) => user.Active && !user.MustChangePassword && page switch
     {
         "Inicio" or "Aplicaciones" or "Actualizaciones" or "Mi cuenta" => true,

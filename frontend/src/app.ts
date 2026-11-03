@@ -714,7 +714,7 @@ export class AppComponent {
     }
   }
   hasGrant(target: UserView, id: string) {
-    return target.role !== 'User' || target.utilityIds.includes(id);
+    return target.role === 'SuperAdministrator' || target.utilityIds.includes(id);
   }
   readonly grantUserId = signal('');
   readonly grantIds = signal<string[]>([]);
@@ -733,7 +733,7 @@ export class AppComponent {
   }
   async saveGrants() {
     const target = this.grantTarget();
-    if (!target || !this.canEdit(target) || this.busy()) return;
+    if (!target || !this.canEdit(target) || target.role === 'SuperAdministrator' || this.busy()) return;
     this.busy.set(true);
     this.error.set('');
     try {

@@ -879,7 +879,8 @@ export class TenenciaComponent implements OnInit {
   viewAttachments(item: CotejoState) { if (item.attachments?.length) this.openAttachments(item.title || 'Sin título', item.attachments); }
   closeAttachments() { this.attachmentViewer.set(null); this.attachmentPreview.set(null); }
   scanCotejo() {
-    const value = this.scanCode().trim();
+    const scanned = this.scanCode().trim();
+    const value = scanned.startsWith('$') ? scanned.slice(1).trim() : scanned;
     if (!value) return;
     const matches: { row: Row; article: Article }[] = [];
     for (const row of this.rows()) {

@@ -467,15 +467,17 @@
                 </select></label
               >
               @if (grantTarget(); as target) {
-                @if (target.role !== 'User') {
-                  <p>Esta cuenta accede a todas las aplicaciones por su rol.</p>
+                @if (target.role === 'SuperAdministrator') {
+                  <p>El superadministrador tiene siempre activas todas las aplicaciones y funciones.</p>
+                } @else if (target.role === 'Administrator') {
+                  <p>El administrador solo accede a las aplicaciones y funciones que le conceda el superadministrador.</p>
                 }
                 @for (u of permissionCatalog(); track u.id) {
                   <label class="setting-row"
                     ><input
                       type="checkbox"
-                      [checked]="target.role !== 'User' || grantIds().includes(u.id)"
-                      [disabled]="target.role !== 'User' || !canEdit(target) || busy()"
+                      [checked]="target.role === 'SuperAdministrator' || grantIds().includes(u.id)"
+                      [disabled]="target.role === 'SuperAdministrator' || !canEdit(target) || busy()"
                       [attr.aria-label]="u.name + ' para ' + target.name"
                       (change)="draftGrant(u.id, $any($event.target).checked)"
                     />{{ u.name }}</label
@@ -484,11 +486,11 @@
                 @if (user()?.canConfigure) {
                   @for (permission of capabilityCatalog(); track permission.id) {
                     <label class="setting-row"
-                      ><input type="checkbox" [checked]="grantPermissionIds().includes(permission.id)" [disabled]="!canEdit(target) || busy()" [attr.aria-label]="permission.name + ' para ' + target.name" (change)="draftPermission(permission.id, $any($event.target).checked)" />{{ permission.name }}</label
+                      ><input type="checkbox" [checked]="target.role === 'SuperAdministrator' || grantPermissionIds().includes(permission.id)" [disabled]="target.role === 'SuperAdministrator' || !canEdit(target) || busy()" [attr.aria-label]="permission.name + ' para ' + target.name" (change)="draftPermission(permission.id, $any($event.target).checked)" />{{ permission.name }}</label
                     >
                   }
                 }
-                @if (canEdit(target)) {
+                @if (canEdit(target) && target.role !== 'SuperAdministrator') {
                   <p class="hint">Al guardar se cerrarán sus sesiones anteriores. Los favoritos no conceden acceso.</p>
                   <viteka-edit-actions [submit]="false" [busy]="busy()" (save)="saveGrants()" (cancel)="selectGrantUser(target.id)" />
                 }
@@ -837,8 +839,8 @@
         }
         <fieldset>
           <legend>Acceso a aplicaciones</legend>
-          @if (editRole !== 'User') {
-            <p>Este rol tiene acceso a todas las aplicaciones publicadas.</p>
+          @if (editRole === 'SuperAdministrator') {
+            <p>El superadministrador tiene siempre activas todas las aplicaciones publicadas.</p>
           } @else {
             @for (app of permissionCatalog(); track app.id) {
               <label class="inline-check"

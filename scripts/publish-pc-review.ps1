@@ -51,6 +51,10 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Conecta - Pruebas, dirigida a un único identificador de PC.
 
+El superadministrador mantiene siempre activas todas las aplicaciones y funciones y su ficha no ofrece una acción de guardado. Administradores y usuarios parten sin acceso; el superadministrador puede conceder Tenencia y su configuración al administrador, y el administrador puede asignar aplicaciones a usuarios normales.
+
+El cotejo acepta lectores EAN-13 configurados con el preámbulo `$`: una lectura como `$847000650001` se normaliza antes de buscar el artículo y conserva la compatibilidad con códigos sin preámbulo.
+
 Corrige las acciones de Acceso a aplicaciones: el administrador puede guardar los accesos de usuarios normales y el superadministrador también puede guardar los permisos especiales delegados a administradores. La interfaz y el servidor mantienen el límite que impide a un administrador concederse privilegios reservados.
 
 Corrige el selector de exportación del historial: cada formato ocupa un botón completo, alineado y con icono propio. Los adjuntos se abren en un visor que permite seleccionar el archivo, previsualizar imágenes y descargar cualquier documento.

@@ -640,7 +640,7 @@ try
         Require(!AccessPolicy.CanConfigure(authority.Current(adminTicket)) && !AccessPolicy.CanConfigure(authority.Current(normalTicket)));
         Require(AccessPolicy.CanInstallUpdates(authority.Current(adminTicket)) && !AccessPolicy.CanInstallUpdates(authority.Current(normalTicket)));
         Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Usuarios"));
-        Require(!AccessPolicy.CanUse(authority.Current(normalTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items) && AccessPolicy.CanUse(authority.Current(adminTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items));
+        Require(!AccessPolicy.CanUse(authority.Current(normalTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items) && !AccessPolicy.CanUse(authority.Current(adminTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items) && AccessPolicy.CanUse(authority.Current(superTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items));
         Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Auditoría") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Auditoría") && AccessPolicy.CanOpenPage(authority.Current(superTicket), "Auditoría"));
         Require(AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Configuración") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Configuración"));
     });
@@ -664,7 +664,7 @@ try
         var staff = authority.Current(staffTicket);
         Require(AccessPolicy.CanUse(staff, "fixture-a", accessCatalog) && !AccessPolicy.CanUse(staff, "fixture-b", accessCatalog));
         Require(!AccessPolicy.CanUse(staff, "unknown", accessCatalog) && !AccessPolicy.CanUse(authority.Current(superTicket), "unknown", accessCatalog));
-        Require(AccessPolicy.CanUse(authority.Current(adminTicket), "fixture-b", accessCatalog));
+        Require(!AccessPolicy.CanUse(authority.Current(adminTicket), "fixture-b", accessCatalog) && AccessPolicy.CanUse(authority.Current(superTicket), "fixture-b", accessCatalog));
     });
     Check("Changing grants immediately invalidates the previous session", () =>
     {
