@@ -13,6 +13,11 @@ namespace Viteka.Server;
 
 internal static class AccessHost
 {
+    private static readonly IReadOnlyDictionary<string, string> AndalusianProvinces = new Dictionary<string, string>
+    {
+        ["04"] = "Almería", ["11"] = "Cádiz", ["14"] = "Córdoba", ["18"] = "Granada",
+        ["21"] = "Huelva", ["23"] = "Jaén", ["29"] = "Málaga", ["41"] = "Sevilla"
+    };
     internal const string ServiceName = ProductProfile.ServiceName;
     private sealed record DeclarationDraft(string ListVersion, Dictionary<string,string[]> Selections);
     private sealed record CotejoAttachment(string Id, string Name, string Mime, int Size, string Base64);
@@ -91,7 +96,7 @@ internal static class AccessHost
         app.Use(async (context, next) =>
         {
             context.Response.Headers.CacheControl = "no-store";
-            if(context.Request.Path.StartsWithSegments("/access/catalog-data")||context.Request.Path.StartsWithSegments("/access/cotejo")){
+            if(context.Request.Path.StartsWithSegments("/access/catalog-data")||context.Request.Path.StartsWithSegments("/access/tenencia-catalog")||context.Request.Path.StartsWithSegments("/access/cotejo")){
                 var limit=context.Features.Get<Microsoft.AspNetCore.Http.Features.IHttpMaxRequestBodySizeFeature>();if(limit is not null&&!limit.IsReadOnly)limit.MaxRequestBodySize=6*1024*1024;
                 if(context.Request.Path.StartsWithSegments("/access/cotejo")&&limit is not null&&!limit.IsReadOnly)limit.MaxRequestBodySize=24*1024*1024;
             }
@@ -243,12 +248,14 @@ internal static class AccessHost
             else if (action != "state") throw new AccessDeniedException();
             return Results.Ok(new { expiryReviewMonths = profile.ExpiryReviewMonths, countExpiredStock = profile.CountExpiredStock });
         });
-        // Edición del listado y búsqueda de artículos: exclusivamente Viteka (superadministrador).
+        // Edición provincial: superadministrador o administrador expresamente autorizado por este.
         app.MapPost("/access/tenencia-catalog/{action}", async (string action, HttpContext context, JsonElement request) =>
         {
             var actor = Agent(context).RequireUser();
-            if (!AccessPolicy.CanConfigure(actor)) throw new AccessDeniedException();
+            if (!AccessPolicy.CanConfigureTenencia(actor)) throw new AccessDeniedException();
             var profile = pharmacy.Load() ?? throw new ArgumentException("Guarda primero la provincia en Datos de la farmacia.");
+            var province = request.TryGetProperty("province", out var requested) && requested.ValueKind == JsonValueKind.String && requested.GetString() is { Length: > 0 } selected ? selected : profile.Province;
+            if (!AndalusianProvinces.ContainsKey(province)) throw new ArgumentException("Selecciona una provincia andaluza.");
             if (action == "search")
             {
                 string Value(string name) => request.TryGetProperty(name, out var v) && v.ValueKind == JsonValueKind.String ? v.GetString() ?? "" : "";
@@ -256,14 +263,16 @@ internal static class AccessHost
                 return Results.Ok(await oracle.SearchArticlesAsync(Value("mode"), text, Value("field") is { Length: > 0 } f ? f : null, context.RequestAborted));
             }
             TenenciaList? list;
-            if (action == "state") list = catalogs.Load(profile.Province);
-            else if (action is "group.save" or "group.delete" or "codes.add" or "codes.remove" or "reset") list = catalogs.Apply(profile.Province, action, request, new(actor.Id,actor.Name));
+            if (action == "state") list = catalogs.Load(province);
+            else if (action is "group.save" or "group.delete" or "codes.add" or "codes.remove" or "import" or "reset") list = catalogs.Apply(province, action, request, new(actor.Id,actor.Name));
             else throw new AccessDeniedException();
-            return Results.Ok(new { list, customized = catalogs.IsCustomized(profile.Province), provinceName = SpanishProvinces.Items[profile.Province], conflicts=catalogs.Revisions.Read(profile.Province)?.Conflicts, masterVersion=catalogs.Revisions.Read(profile.Province)?.Base.Version });
+            return Results.Ok(new { list, customized = catalogs.IsCustomized(province), province, currentProvince = profile.Province, provinceName = AndalusianProvinces[province], provinces = AndalusianProvinces.Select(p => new { code = p.Key, name = p.Value }).OrderBy(p => p.name), conflicts=catalogs.Revisions.Read(province)?.Conflicts, masterVersion=catalogs.Revisions.Read(province)?.Base.Version });
         });
         app.MapPost("/access/catalog-data/{action}",async(string action,HttpContext context,JsonElement request)=>{
-            var user=Agent(context).RequireUser();if(!AccessPolicy.CanConfigure(user))throw new AccessDeniedException();
-            var profile=pharmacy.Load()??throw new ArgumentException("Configura primero la provincia.");var province=profile.Province;
+            var user=Agent(context).RequireUser();if(!AccessPolicy.CanConfigureTenencia(user))throw new AccessDeniedException();
+            var profile=pharmacy.Load()??throw new ArgumentException("Configura primero la provincia.");
+            var province=request.TryGetProperty("province",out var requested)&&requested.ValueKind==JsonValueKind.String&&requested.GetString() is {Length:>0} selected?selected:profile.Province;
+            if(!AndalusianProvinces.ContainsKey(province))throw new ArgumentException("Selecciona una provincia andaluza.");
             _=catalogs.Load(province);var actor=new AuditActor(user.Id,user.Name);
             string Text(string name)=>request.GetProperty(name).GetString()??"";
             return action switch{

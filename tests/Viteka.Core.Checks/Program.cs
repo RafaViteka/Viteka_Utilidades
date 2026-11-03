@@ -447,6 +447,17 @@ try
         var reset = store.Apply("29", "reset", J(new { })); Require(!store.IsCustomized("29") && reset.Version == "fixture-v1" && store.LoadLast("29", last.ListVersion!) is null);
         try { store.Load("../29"); throw new Exception("Expected invalid province"); } catch (ArgumentException) { }
     });
+    Check("Tenencia catalogue imports merge or replace atomically", () =>
+    {
+        var packaged = Path.Combine(root, "tenencia-import-packaged"); Directory.CreateDirectory(packaged); File.WriteAllBytes(Path.Combine(packaged, "29.json"), JsonSerializer.SerializeToUtf8Bytes(tenenciaList));
+        var store = new TenenciaCatalogStore(Path.Combine(root, "tenencia-import-custom"), packaged); Directory.CreateDirectory(Path.Combine(root, "tenencia-import-custom"));
+        JsonElement J(object value) => JsonSerializer.SerializeToElement(value);
+        var merged = store.Apply("29", "import", J(new { mode = "merge", groups = new object[] { new { code = "", name = "Grupo ficticio", minimum = 5, note = "Importado", items = new[] { new { code = "650020", description = "Artículo nuevo" } } }, new { code = "B02BC", name = "Grupo añadido", minimum = 2, note = "", items = Array.Empty<object>() } } }));
+        Require(merged.Groups.Length == 2 && merged.Groups[0].Minimum == 5 && merged.Groups[0].Codes.Contains("650020") && merged.Groups[1].Name == "Grupo añadido");
+        var replaced = store.Apply("29", "import", J(new { mode = "replace", groups = new[] { new { code = "C01CA", name = "Lista sustitutiva", minimum = 3, note = "", items = new[] { new { code = "650030", description = "Único artículo" } } } } }));
+        Require(replaced.Groups.Length == 1 && replaced.Groups[0].Name == "Lista sustitutiva" && replaced.Groups[0].Codes.SequenceEqual(new[] { "650030" }));
+        try { store.Apply("29", "import", J(new { mode = "replace", groups = Array.Empty<object>() })); throw new Exception("Expected empty import rejection"); } catch (ArgumentException) { }
+    });
     Check("Catalog deltas merge additions modifications and deletions once while retaining local fields", () =>
     {
         var db=new PharmacyDatabase(Path.Combine(root,"revision-merge"));var revisions=new CatalogRevisions(db);var actor=new AuditActor("fixture","Viteka");

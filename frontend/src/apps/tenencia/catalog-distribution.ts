@@ -1,4 +1,4 @@
-import { Component, inject, signal, OnInit, output } from '@angular/core';
+import { Component, inject, input, signal, OnInit, output } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DesktopBridge } from '../../bridge';
 import { toBase64 } from './xlsx';
@@ -32,9 +32,15 @@ interface State {
       }
       @if (s.canPrepare) {
         <label
-          >Nueva versión maestra<input maxlength="40" [(ngModel)]="version" placeholder="Málaga-2026-11-01" /></label
-        >
-        <viteka-edit-actions [submit]="false" [busy]="busy()" [saveDisabled]="!version || s.legacy || s.conflicts.length > 0" (save)="prepare()" (cancel)="version = ''" />
+          >Nueva versión maestra<input maxlength="40" [(ngModel)]="version" placeholder="Málaga-2026-11-01"
+        /></label>
+        <viteka-edit-actions
+          [submit]="false"
+          [busy]="busy()"
+          [saveDisabled]="!version || s.legacy || s.conflicts.length > 0"
+          (save)="prepare()"
+          (cancel)="version = ''"
+        />
         <p>
           Se guarda un paquete firmado. No se publica en GitHub. Tras autorizar y publicar, impórtalo también en la
           instalación maestra para avanzar su base.
@@ -54,7 +60,13 @@ interface State {
         @if (p.missingPrevious && !p.alreadyApplied) {
           <p>Falta instalar una versión anterior.</p>
         }
-        <viteka-edit-actions [submit]="false" [busy]="busy()" [saveDisabled]="p.alreadyApplied || p.missingPrevious" (save)="apply()" (cancel)="cancelPreview()" />
+        <viteka-edit-actions
+          [submit]="false"
+          [busy]="busy()"
+          [saveDisabled]="p.alreadyApplied || p.missingPrevious"
+          (save)="apply()"
+          (cancel)="cancelPreview()"
+        />
       }
       @if (s.conflicts.length) {
         <h3>Personalizaciones por revisar</h3>
@@ -92,6 +104,7 @@ interface State {
 export class CatalogDistributionComponent implements OnInit {
   private bridge = inject(DesktopBridge);
   readonly changed = output<void>();
+  readonly province = input('');
   readonly state = signal<State | null>(null);
   readonly busy = signal(false);
   readonly error = signal('');
@@ -105,7 +118,14 @@ export class CatalogDistributionComponent implements OnInit {
     changes: { groupId: string; action: string; name?: string; codes?: number }[];
   } | null>(null);
   private package: unknown;
-  cancelPreview() { if (!this.busy()) { this.preview.set(null); this.package=undefined; this.error.set(''); this.message.set(''); } }
+  cancelPreview() {
+    if (!this.busy()) {
+      this.preview.set(null);
+      this.package = undefined;
+      this.error.set('');
+      this.message.set('');
+    }
+  }
   version = '';
   async ngOnInit() {
     await this.load();
@@ -114,7 +134,7 @@ export class CatalogDistributionComponent implements OnInit {
     return new Date(at).toLocaleString('es-ES');
   }
   private async load() {
-    this.state.set(await this.bridge.call<State>('catalog.data.state'));
+    this.state.set(await this.bridge.call<State>('catalog.data.state', { province: this.province() }));
   }
   private async run(task: () => Promise<void>) {
     if (this.busy()) return;
@@ -130,7 +150,10 @@ export class CatalogDistributionComponent implements OnInit {
   }
   async prepare() {
     await this.run(async () => {
-      const r = await this.bridge.call<{ package: unknown }>('catalog.data.prepare', { version: this.version });
+      const r = await this.bridge.call<{ package: unknown }>('catalog.data.prepare', {
+        version: this.version,
+        province: this.province(),
+      });
       const name = 'tenencia-' + this.state()?.province + '-' + this.version.replace(/[^a-zA-Z0-9-]/g, '-') + '.vcat';
       const r2 = await this.bridge.call<{ saved: boolean }>('file.save', {
         name,
@@ -144,13 +167,16 @@ export class CatalogDistributionComponent implements OnInit {
       const r = await this.bridge.call<{ package: unknown | null }>('catalog.file.read');
       if (!r.package) return;
       this.package = r.package;
-      this.preview.set(await this.bridge.call('catalog.data.preview', { package: r.package }));
+      this.preview.set(
+        await this.bridge.call('catalog.data.preview', { package: r.package, province: this.province() }),
+      );
     });
   }
   async apply() {
     await this.run(async () => {
       await this.bridge.call('catalog.data.apply', {
         package: this.package,
+        province: this.province(),
         expectedVersion: this.state()?.localVersion,
       });
       await this.load();
@@ -161,7 +187,12 @@ export class CatalogDistributionComponent implements OnInit {
   }
   async resolve(c: { groupId: string; field: string }, useMaster: boolean) {
     await this.run(async () => {
-      await this.bridge.call('catalog.data.resolve', { ...c, useMaster, expectedVersion: this.state()?.localVersion });
+      await this.bridge.call('catalog.data.resolve', {
+        ...c,
+        province: this.province(),
+        useMaster,
+        expectedVersion: this.state()?.localVersion,
+      });
       await this.load();
       this.changed.emit();
     });
@@ -169,7 +200,11 @@ export class CatalogDistributionComponent implements OnInit {
   async rollback(revision: number) {
     if (!confirm('¿Recuperar esta revisión como personalización? La base maestra se conserva.')) return;
     await this.run(async () => {
-      await this.bridge.call('catalog.data.rollback', { revision, expectedVersion: this.state()?.localVersion });
+      await this.bridge.call('catalog.data.rollback', {
+        revision,
+        province: this.province(),
+        expectedVersion: this.state()?.localVersion,
+      });
       await this.load();
       this.changed.emit();
     });
@@ -178,6 +213,7 @@ export class CatalogDistributionComponent implements OnInit {
     await this.run(async () => {
       const r = await this.bridge.call<{ updates: { name: string; url: string }[]; message: string }>(
         'catalog.data.check',
+        { province: this.province() },
       );
       this.updates.set(r.updates);
       this.message.set(r.message);

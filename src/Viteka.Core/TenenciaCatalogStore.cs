@@ -58,6 +58,52 @@ public sealed class TenenciaCatalogStore(string directory, string packagedDirect
             }
             switch (action)
             {
+                case "import":
+                    {
+                        var mode = Text("mode", 20);
+                        if (mode is not ("merge" or "replace")) throw new ArgumentException("Modo de importación no válido.");
+                        if (!data.TryGetProperty("groups", out var imported) || imported.ValueKind != JsonValueKind.Array || imported.GetArrayLength() is < 1 or > 250) throw new ArgumentException("El archivo debe contener entre 1 y 250 grupos.");
+                        var target = mode == "replace" ? new List<TenenciaGroup>() : groups.ToList();
+                        foreach (var value in imported.EnumerateArray())
+                        {
+                            string ImportText(string property, int max, bool required = true)
+                            {
+                                var text = value.TryGetProperty(property, out var p) && p.ValueKind == JsonValueKind.String ? p.GetString()!.Trim() : "";
+                                if (required && text.Length == 0 || text.Length > max || text.Any(char.IsControl)) throw new ArgumentException("Revisa el campo " + property + ".");
+                                return text;
+                            }
+                            var name = ImportText("name", 200);
+                            var code = ImportText("code", 12, false).ToUpperInvariant();
+                            var note = ImportText("note", 600, false);
+                            if (!value.TryGetProperty("minimum", out var minimumValue) || !minimumValue.TryGetInt32(out var minimum) || minimum is < 1 or > 10000) throw new ArgumentException("Mínimo no válido en " + name + ".");
+                            if (code.Length > 0 && !TenenciaRules.ValidAtc(code) && !Regex.IsMatch(code, "^[A-Z0-9]{2,12}$", RegexOptions.CultureInvariant)) throw new ArgumentException("Código de grupo no válido: " + code);
+                            var existing = groups.FirstOrDefault(g =>
+                                code.Length > 0 && string.Equals(g.AtcPrefix ?? g.ClassificationCode, code, StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase));
+                            var id = existing?.Id ?? "custom-" + Guid.NewGuid().ToString("N")[..10];
+                            if (target.Any(g => g.Id != id && (code.Length > 0 && string.Equals(g.AtcPrefix ?? g.ClassificationCode, code, StringComparison.OrdinalIgnoreCase) || string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase)))) throw new ArgumentException("El grupo está repetido: " + name + ".");
+                            var current = target.FirstOrDefault(g => g.Id == id);
+                            var codes = mode == "merge" ? (current?.Codes ?? existing?.Codes ?? []).ToList() : [];
+                            var descriptions = (mode == "merge" ? current?.Descriptions ?? existing?.Descriptions : null)?.ToDictionary(p => p.Key, p => p.Value) ?? [];
+                            if (!value.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array || items.GetArrayLength() > 1000) throw new ArgumentException("Artículos no válidos en " + name + ".");
+                            foreach (var item in items.EnumerateArray())
+                            {
+                                var cn = item.TryGetProperty("code", out var c) ? c.GetString()?.Trim() : null;
+                                if (!TenenciaRules.ValidCode(cn)) throw new ArgumentException("Código nacional no válido: " + cn);
+                                var description = item.TryGetProperty("description", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString()!.Trim() : "";
+                                if (description.Length > 200 || description.Any(char.IsControl)) throw new ArgumentException("Descripción no válida para " + cn + ".");
+                                if (!codes.Contains(cn!)) codes.Add(cn!);
+                                if (description.Length > 0) descriptions[cn!] = description;
+                            }
+                            var atc = code.Length > 0 && TenenciaRules.ValidAtc(code) ? code : null;
+                            var classification = code.Length > 0 && atc is null ? code : null;
+                            var next = new TenenciaGroup(id, name, minimum, codes.ToArray()) { AtcPrefix = atc, ClassificationCode = classification, SelectionNote = note.Length > 0 ? note : null, Descriptions = descriptions };
+                            var index = target.FindIndex(g => g.Id == id);
+                            if (index >= 0) target[index] = next; else target.Add(next);
+                        }
+                        groups = target;
+                        break;
+                    }
                 case "group.save":
                     {
                         var id = data.TryGetProperty("id", out var idValue) && idValue.ValueKind == JsonValueKind.String ? idValue.GetString() : null;

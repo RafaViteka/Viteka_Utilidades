@@ -111,6 +111,7 @@ export class TenenciaComponent implements OnInit {
   readonly historyOpen = signal(false);
   readonly historyDelete = signal<CotejoState | null>(null);
   readonly attachmentViewer = signal<{ title: string; attachments: CotejoAttachment[] } | null>(null);
+  readonly attachmentPreview = signal<CotejoAttachment | null>(null);
   readonly historySearch = signal('');
   readonly historyFilter = signal<'all' | 'complete' | 'pending' | 'draft'>('all');
   readonly documentationOpen = signal(true);
@@ -873,8 +874,10 @@ export class TenenciaComponent implements OnInit {
   }
   removeCotejoFile(id: string) { this.cotejoAttachments = this.cotejoAttachments.filter((file) => file.id !== id); this.cotejoDirty.set(true); this.cotejoDraftSaved.set(false); }
   attachmentUrl(file: CotejoAttachment) { return `data:${file.mime || 'application/octet-stream'};base64,${file.base64}`; }
-  viewCurrentAttachments() { if (this.cotejoAttachments.length) this.attachmentViewer.set({ title: this.cotejoTitle || 'Sin título', attachments: this.cotejoAttachments }); }
-  viewAttachments(item: CotejoState) { if (item.attachments?.length) this.attachmentViewer.set({ title: item.title || 'Sin título', attachments: item.attachments }); }
+  private openAttachments(title: string, attachments: CotejoAttachment[], selected?: CotejoAttachment) { if (!attachments.length) return; this.attachmentViewer.set({ title, attachments }); this.attachmentPreview.set(selected ?? attachments[0]); }
+  viewCurrentAttachments(file?: CotejoAttachment) { this.openAttachments(this.cotejoTitle || 'Sin título', this.cotejoAttachments, file); }
+  viewAttachments(item: CotejoState) { if (item.attachments?.length) this.openAttachments(item.title || 'Sin título', item.attachments); }
+  closeAttachments() { this.attachmentViewer.set(null); this.attachmentPreview.set(null); }
   scanCotejo() {
     const value = this.scanCode().trim();
     if (!value) return;

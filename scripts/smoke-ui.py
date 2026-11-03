@@ -97,7 +97,7 @@ class AuthorityFixture:
   if cmd in ('file.save','file.pdf'):
    assert re.fullmatch(r'[\w\-. ]{1,80}\.(csv|xlsx|txt|doc|pdf)',d['name']),d['name'];self.saved.append(copy.deepcopy(d));return dict(saved=True,file=d['name'])
   if cmd.startswith('tenencia.catalog.'):
-   if not superadmin:deny()
+   if not (superadmin or 'tenencia.configuration' in self.current['permissionIds']):deny()
    action=cmd[len('tenencia.catalog.'):]
    if self.catalog is None:self.catalog=[dict(id=g['id'],name=g['name'],minimum=g['minimum'],codes=[a['code'] for a in g['articles']],descriptions={a['code']:a['description'] for a in g['articles']},classificationCode=g.get('classification'),selectionNote=g.get('selectionNote')) for g in self.base_groups()]
    find=lambda i:next(g for g in self.catalog if g['id']==i)
@@ -122,9 +122,21 @@ class AuthorityFixture:
      if it['code'] not in g['codes']:g['codes'].append(it['code'])
      if it['description']:g['descriptions'][it['code']]=it['description']
    elif action=='codes.remove':g=find(d['id']);g['codes']=[c for c in g['codes'] if c not in d['codes']]
+   elif action=='import':
+    imported=[] if d['mode']=='replace' else copy.deepcopy(self.catalog)
+    for item in d['groups']:
+     current=next((g for g in imported if (item['code'] and g.get('classificationCode')==item['code']) or g['name']==item['name']),None)
+     codes=[] if d['mode']=='replace' or current is None else current['codes'][:];descriptions={} if d['mode']=='replace' or current is None else copy.deepcopy(current['descriptions'])
+     for article in item['items']:
+      if article['code'] not in codes:codes.append(article['code'])
+      if article['description']:descriptions[article['code']]=article['description']
+     next_group=dict(id=current['id'] if current else 'import-'+str(len(imported)+1),name=item['name'],minimum=item['minimum'],codes=codes,descriptions=descriptions,classificationCode=item['code'] or None,selectionNote=item['note'] or None)
+     if current:imported[imported.index(current)]=next_group
+     else:imported.append(next_group)
+    self.catalog=imported
    elif action=='reset':self.catalog=None;self.catalog_custom=False;self.catalog_version+=1;self.last={};return dict(list=dict(version='Fixture de pruebas',source='Fixture',groups=[dict(id=g['id'],name=g['name'],minimum=g['minimum'],codes=[a['code'] for a in g['articles']],descriptions={a['code']:a['description'] for a in g['articles']}) for g in self.base_groups()]),customized=False,provinceName='Málaga')
    if action!='state':self.catalog_custom=True;self.catalog_version+=1
-   return dict(list=dict(version='Personalizada-'+str(self.catalog_version) if self.catalog_custom else 'Fixture de pruebas',source='Fixture',groups=copy.deepcopy(self.catalog)),customized=self.catalog_custom,provinceName='Málaga')
+   return dict(list=dict(version='Personalizada-'+str(self.catalog_version) if self.catalog_custom else 'Fixture de pruebas',source='Fixture',groups=copy.deepcopy(self.catalog)),customized=self.catalog_custom,province='29',currentProvince='29',provinceName='Málaga',provinces=[dict(code='04',name='Almería'),dict(code='11',name='Cádiz'),dict(code='14',name='Córdoba'),dict(code='18',name='Granada'),dict(code='21',name='Huelva'),dict(code='23',name='Jaén'),dict(code='29',name='Málaga'),dict(code='41',name='Sevilla')])
   if cmd.startswith('cotejo.'):
    if not admin and 'tenencia-obligatoria' not in self.current['utilityIds']:deny()
    empty=dict(listVersion='Fixture de pruebas',counts={},observation='',observationHtml='',title='',attachments=[],id='1'*32,checkedAt=None,expiryReviewMonths=self.pharmacy.get('expiryReviewMonths',3),countExpiredStock=self.pharmacy.get('countExpiredStock',False),userName=None)
@@ -330,7 +342,7 @@ with sync_playwright() as p:
  ed.get_by_role('button',name='Por código nacional',exact=True).click();ed.get_by_label('Códigos nacionales',exact=True).fill('660003, 699999');ed.get_by_role('button',name='Buscar en Nixfarma',exact=True).click();ed.get_by_text('No dado de alta en Nixfarma',exact=True).wait_for();ed.get_by_role('button',name='Guardar',exact=True).click();expect(ed.locator('.articles tbody tr')).to_have_count(3)
  ed.get_by_role('button',name='Quitar 660002',exact=True).click();expect(ed.locator('.articles tbody tr')).to_have_count(2)
  page.get_by_role('button',name='Editar grupo Grupo nuevo de prueba',exact=True).click();dlg=page.get_by_role('dialog',name='Editar grupo',exact=True);dlg.get_by_label('Mínimo',exact=True).fill('6');dlg.get_by_label('Nota',exact=True).fill('Nota de prueba');dlg.get_by_role('button',name='Guardar',exact=True).click();dlg.wait_for(state='hidden');ed.get_by_text(re.compile('Mínimo 6')).wait_for()
- page.get_by_role('button',name='Importar códigos',exact=True).click();imp=page.get_by_role('dialog',name='Importar códigos',exact=True);imp.get_by_label('Filas a importar',exact=True).fill('X01;650003\nZ99;Grupo importado;3;650004;ARTÍCULO IMPORTADO\nlinea mala');imp.get_by_role('button',name='Guardar',exact=True).click();imp.wait_for(state='hidden');page.get_by_text('2 códigos añadidos en 2 grupos · 1 grupos nuevos · 1 líneas no reconocidas.',exact=True).wait_for()
+ page.get_by_role('button',name='Importar códigos',exact=True).click();imp=page.get_by_role('dialog',name='Importar códigos',exact=True);imp.get_by_label('Filas a importar',exact=True).fill('X01;650003\nZ99;Grupo importado;3;650004;ARTÍCULO IMPORTADO\nlinea mala');imp.get_by_role('button',name='Guardar',exact=True).click();imp.wait_for(state='hidden');page.get_by_text('2 grupos y 2 artículos importados en Málaga · 1 filas omitidas.',exact=True).wait_for()
  expect(page.locator('.editor-groups tbody tr')).to_have_count(5)
  page.get_by_role('button',name='Exportar Excel',exact=True).click();page.wait_for_timeout(300);x=fixture.saved[-1];assert x['name'].startswith('tenencia-codigos-') and x['name'].endswith('.xlsx');book=zipfile.ZipFile(io.BytesIO(base64.b64decode(x['base64'])));assert 'Grupo importado' in book.read('xl/worksheets/sheet1.xml').decode() and 'xl/media/image1.png' in book.namelist()
  page.get_by_role('button',name='CSV',exact=True).click();page.wait_for_timeout(300);csv=base64.b64decode(fixture.saved[-1]['base64']).decode('utf-8');assert csv.startswith('\ufeffCódigo grupo;Grupo;Mínimo;CN;Descripción;Nota') and 'X01;Grupo nuevo de prueba;6;660001' in csv,csv[:300]

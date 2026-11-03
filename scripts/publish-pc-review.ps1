@@ -51,6 +51,12 @@ if ($null -ne $release -and -not $release.draft) { throw 'This PC review is alre
 $notes = @"
 Revisión técnica $version de Viteka Conecta - Pruebas, dirigida a un único identificador de PC.
 
+Corrige el selector de exportación del historial: cada formato ocupa un botón completo, alineado y con icono propio. Los adjuntos se abren en un visor que permite seleccionar el archivo, previsualizar imágenes y descargar cualquier documento.
+
+La configuración de Tenencia permite al superadministrador editar por separado los listados de Almería, Cádiz, Córdoba, Granada, Huelva, Jaén, Málaga y Sevilla. Cada farmacia sigue consultando exclusivamente el listado de su provincia. El permiso Configurar Tenencia puede delegarse a un administrador y permanece desactivado hasta que el superadministrador lo conceda.
+
+La importación de listados incorpora dos modos: acumular y actualizar conserva las entradas no incluidas, añade las nuevas y actualiza coincidencias; sustituir completamente elimina el listado provincial anterior y deja únicamente el archivo importado. La sustitución exige que todas las filas sean válidas para evitar borrados parciales.
+
 Los códigos que no pertenecen al listado se muestran en una ventana emergente con una explicación y un botón Aceptar. La incidencia deja de ocupar espacio permanente en la pantalla.
 
 Diferencia visualmente las acciones del cotejo: Finalizar y guardar conserva el botón principal; Descartar utiliza rojo con texto blanco; Guardar borrador emplea verde oscuro en el tema claro y lima en el oscuro. Historial se mantiene como acción neutra con icono de reloj.

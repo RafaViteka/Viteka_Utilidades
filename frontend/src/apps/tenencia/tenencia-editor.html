@@ -1,6 +1,6 @@
 <button class="text-button" (click)="distributionOpen.set(!distributionOpen())">Versiones y distribución</button>
 @if (distributionOpen()) {
-  <viteka-catalog-distribution (changed)="distributionChanged()" />
+  <viteka-catalog-distribution [province]="province()" (changed)="distributionChanged()" />
 }
 <section class="editor-bar" aria-label="Edición del listado">
   <div class="editor-title">
@@ -13,6 +13,14 @@
       >
     </div>
   </div>
+  <label class="province-picker"
+    ><span>Provincia del listado</span
+    ><select [ngModel]="province()" (ngModelChange)="selectProvince($event)" [disabled]="busy()">
+      @for (p of provinces(); track p.code) {
+        <option [value]="p.code">{{ p.name }}</option>
+      }
+    </select></label
+  >
   <div class="editor-actions">
     <button class="text-button" (click)="newGroup()" [disabled]="busy()"><v-icon name="plus" />Añadir grupo</button
     ><button class="text-button" (click)="openImport()" [disabled]="busy()">
@@ -256,7 +264,13 @@
           </div>
           <div class="add-footer">
             <span>{{ picked().length }} seleccionados</span>
-            <viteka-edit-actions [submit]="false" [busy]="busy()" [saveDisabled]="!picked().length" (save)="addPicked()" (cancel)="pickAll(false)" />
+            <viteka-edit-actions
+              [submit]="false"
+              [busy]="busy()"
+              [saveDisabled]="!picked().length"
+              (save)="addPicked()"
+              (cancel)="pickAll(false)"
+            />
           </div>
         }
       </div>
@@ -336,10 +350,36 @@
         <h2>Importar códigos</h2>
         <button aria-label="Cerrar" (click)="closeImport()"><v-icon name="close" /></button>
       </div>
-      <p class="hint">
-        Pega filas desde Excel con el formato exportado (Código grupo; Grupo; Mínimo; CN; Descripción) o filas cortas
-        «código o nombre del grupo; CN». Los grupos que no existan se crean con el formato completo.
-      </p>
+      <p class="hint">Pega las filas del Excel o CSV exportado (Código grupo; Grupo; Mínimo; CN; Descripción; Nota).</p>
+      <fieldset class="import-modes">
+        <legend>Cómo aplicar la importación</legend>
+        <label
+          ><input
+            type="radio"
+            name="importMode"
+            value="merge"
+            [ngModel]="importMode()"
+            (ngModelChange)="importMode.set($event)"
+          /><span
+            ><strong>Acumular y actualizar</strong
+            ><small
+              >Añade grupos y artículos nuevos, modifica los incluidos y conserva los que no aparecen en el
+              archivo.</small
+            ></span
+          ></label
+        ><label
+          ><input
+            type="radio"
+            name="importMode"
+            value="replace"
+            [ngModel]="importMode()"
+            (ngModelChange)="importMode.set($event)"
+          /><span
+            ><strong>Sustituir completamente</strong
+            ><small>Borra el listado provincial actual y usa exclusivamente el contenido importado.</small></span
+          ></label
+        >
+      </fieldset>
       <textarea
         rows="10"
         aria-label="Filas a importar"
@@ -353,7 +393,13 @@
       @if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       }
-      <viteka-edit-actions [submit]="false" [busy]="busy()" [saveDisabled]="!importText().trim()" (save)="runImport()" (cancel)="closeImport()" />
+      <viteka-edit-actions
+        [submit]="false"
+        [busy]="busy()"
+        [saveDisabled]="!importText().trim()"
+        (save)="runImport()"
+        (cancel)="closeImport()"
+      />
     </section>
   </div>
 }
