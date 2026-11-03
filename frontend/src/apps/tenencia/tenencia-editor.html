@@ -366,10 +366,10 @@
       aria-label="Confirmar"
       (click)="$event.stopPropagation()"
     >
-      <p>{{ c.text }}</p>
+      <p class="dialog-copy">{{ c.text }}</p>
       <div class="dialog-actions">
-        <button class="text-button" (click)="confirming.set(null)">Cancelar</button>
-        <button class="primary danger" (click)="confirm()">{{ c.label }}</button>
+        <button class="button-secondary" (click)="confirming.set(null)">Cancelar</button>
+        <button class="button-danger" (click)="confirm()">{{ c.label }}</button>
       </div>
     </section>
   </div>

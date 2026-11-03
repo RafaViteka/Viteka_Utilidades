@@ -661,10 +661,10 @@
         Se instala sola, sin asistente. Windows pedirá una confirmación de permisos y Viteka volverá a abrirse con tu
         sesión iniciada.
       </p>
-      <div class="actions">
-        <button class="primary" (click)="installFromPrompt()">Actualizar ahora</button
-        ><button class="text-button" (click)="laterUpdate()">Más tarde</button
-        ><button class="text-button" (click)="viewUpdate()">Ver detalles</button>
+      <div class="dialog-actions">
+        <button class="button-ghost" (click)="viewUpdate()">Ver detalles</button
+        ><button class="button-secondary" (click)="laterUpdate()">Más tarde</button
+        ><button class="primary" (click)="installFromPrompt()">Actualizar ahora</button>
       </div>
     </section>
   </div>
@@ -1093,20 +1093,22 @@
 
 @if (bridge.updatePhase()) {
   <div class="modal-overlay">
-    <section class="dialog" role="dialog" aria-modal="true" aria-label="Progreso de actualización">
-      <h2>Actualización de Viteka</h2>
-      <p role="status">{{ phaseLabels[bridge.updatePhase()] || 'Actualizando' }}</p>
+    <section class="dialog update-progress-dialog" role="dialog" aria-modal="true" aria-label="Progreso de actualización">
+      <h2>{{ bridge.updatePhase() === 'failed' ? 'No se pudo actualizar Viteka' : bridge.updatePhase() === 'cancelled' ? 'Actualización cancelada' : 'Actualizando Viteka' }}</h2>
+      @if (bridge.updatePhase() !== 'failed' && bridge.updatePhase() !== 'cancelled') {
+        <p class="dialog-copy" role="status">{{ phaseLabels[bridge.updatePhase()] || 'Actualizando' }}</p>
+      }
       @if (bridge.updatePhase() === 'downloading' && bridge.progress() !== null) {
         <progress max="100" [value]="bridge.progress()"></progress><strong>{{ bridge.progress() }} %</strong>
       } @else if (bridge.updatePhase() !== 'failed' && bridge.updatePhase() !== 'cancelled') {
         <progress></progress>
       }
       @if (['preparing', 'downloading', 'verifying'].includes(bridge.updatePhase())) {
-        <button class="text-button" (click)="cancelUpdate()">Cancelar actualización</button>
+        <div class="dialog-actions"><button class="button-secondary" (click)="cancelUpdate()">Cancelar actualización</button></div>
       }
       @if (bridge.updatePhase() === 'failed' || bridge.updatePhase() === 'cancelled') {
-        <p>{{ error() || updateMessage() }}</p>
-        <button (click)="bridge.updatePhase.set('')">Cerrar</button>
+        <p class="dialog-copy" role="status">{{ error() || updateMessage() }}</p>
+        <div class="dialog-actions"><button class="primary" (click)="bridge.updatePhase.set('')">Cerrar</button></div>
       }
     </section>
   </div>

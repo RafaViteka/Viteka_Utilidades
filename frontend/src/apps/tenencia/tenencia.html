@@ -627,19 +627,19 @@
   </div>
 }
 @if (scanError()) {
-  <div class="modal-overlay scan-error-overlay" (document:keydown.enter)="scanError.set('')"><section class="dialog scan-error-dialog" role="alertdialog" aria-modal="true" aria-label="Código no encontrado"><div class="scan-error-icon"><v-icon name="warning" /></div><h2>Código no encontrado</h2><p>{{ scanError() }}</p><div class="dialog-actions"><button class="primary" (click)="scanError.set('')" autofocus>Aceptar</button></div></section></div>
+  <div class="modal-overlay scan-error-overlay" (document:keydown.enter)="scanError.set('')"><section class="dialog scan-error-dialog" role="alertdialog" aria-modal="true" aria-label="Código no encontrado"><div class="scan-error-icon"><v-icon name="warning" /></div><h2>Código no encontrado</h2><p class="dialog-copy">{{ scanError() }}</p><div class="dialog-actions"><button class="primary" (click)="scanError.set('')" autofocus>Aceptar</button></div></section></div>
 }
 @if (overagePrompt(); as pending) {
-  <div class="modal-overlay"><section class="dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-label="Superar existencias mínimas"><h2>El grupo ya está completo</h2><p>{{ pending.row.name }} ya alcanza sus {{ pending.row.minimum }} unidades mínimas. ¿Quieres incluir una unidad adicional de {{ pending.article.description }}?</p><div class="dialog-actions"><button (click)="overagePrompt.set(null)" autofocus>Cancelar</button><button class="primary" (click)="confirmCotejoOverage()">Incluir unidad</button></div></section></div>
+  <div class="modal-overlay"><section class="dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-label="Superar existencias mínimas"><h2>Grupo completo</h2><p class="dialog-copy">Ya has cotejado las {{ pending.row.minimum }} unidades mínimas de {{ pending.row.name }}.</p><div class="dialog-summary"><span>Unidad adicional</span><strong>{{ pending.article.description }}</strong></div><p class="dialog-question">¿Quieres añadirla igualmente?</p><div class="dialog-actions"><button class="button-secondary" (click)="overagePrompt.set(null)" autofocus>Cancelar</button><button class="primary" (click)="confirmCotejoOverage()">Añadir unidad</button></div></section></div>
 }
 @if (attachmentViewer(); as viewer) {
   <div class="modal-overlay" (click)="attachmentViewer.set(null)"><section class="dialog attachment-viewer" role="dialog" aria-modal="true" aria-label="Adjuntos del cotejo" (click)="$event.stopPropagation()"><div class="dialog-top"><div><h2>Adjuntos</h2><p>{{ viewer.title }} · {{ viewer.attachments.length }} archivos</p></div><button aria-label="Cerrar adjuntos" (click)="attachmentViewer.set(null)"><v-icon name="close" /></button></div><div class="attachment-gallery">@for (file of viewer.attachments; track file.id) { <a [href]="attachmentUrl(file)" [download]="file.name" [title]="'Descargar ' + file.name">@if (file.mime.startsWith('image/')) { <img [src]="attachmentUrl(file)" [alt]="file.name" /> } @else { <v-icon name="file" /> }<span>{{ file.name }}</span><small>{{ number(file.size / 1024) }} KB</small></a> }</div></section></div>
 }
 @if (historyDelete(); as item) {
-  <div class="modal-overlay" (click)="historyDelete.set(null)"><section class="dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-label="Eliminar cotejo" (click)="$event.stopPropagation()"><h2>Eliminar cotejo</h2><p>Se eliminará «{{ item.title || 'Cotejo sin título' }}» del historial. Esta acción no se puede deshacer.</p><div class="dialog-actions"><button (click)="historyDelete.set(null)">Cancelar</button><button class="danger" (click)="deleteHistoryItem()">Eliminar</button></div></section></div>
+  <div class="modal-overlay" (click)="historyDelete.set(null)"><section class="dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-label="Eliminar cotejo" (click)="$event.stopPropagation()"><h2>Eliminar cotejo</h2><p class="dialog-copy">Vas a eliminar este documento del historial.</p><div class="dialog-summary"><span>Documento</span><strong>{{ item.title || 'Cotejo sin título' }}</strong></div><p class="dialog-question">Esta acción no se puede deshacer.</p><div class="dialog-actions"><button class="button-secondary" (click)="historyDelete.set(null)">Cancelar</button><button class="button-danger" (click)="deleteHistoryItem()">Eliminar</button></div></section></div>
 }
 @if (leaveCotejo()) {
-  <div class="modal-overlay"><section class="dialog leave-cotejo-dialog" role="dialog" aria-modal="true" aria-label="Guardar cambios del cotejo"><div class="dialog-top"><div><h2>¿Quieres continuar este cotejo más tarde?</h2><p>Hay cambios que todavía no forman parte del historial.</p></div></div><div class="leave-options"><button class="primary" (click)="saveCotejoDraft()" [disabled]="cotejoBusy()">Guardar borrador y salir</button><button class="danger-text" (click)="discardAndLeave()" [disabled]="cotejoBusy()">Borrar lo realizado</button><button class="text-button" (click)="leaveCotejo.set(null)">Seguir en el cotejo</button></div></section></div>
+  <div class="modal-overlay"><section class="dialog confirm-dialog leave-cotejo-dialog" role="dialog" aria-modal="true" aria-label="Guardar cambios del cotejo"><h2>Guardar antes de salir</h2><p class="dialog-copy">Este cotejo tiene cambios pendientes. Puedes guardarlo como borrador para continuarlo más tarde.</p><div class="dialog-actions"><button class="button-ghost" (click)="discardAndLeave()" [disabled]="cotejoBusy()">Descartar cambios</button><button class="button-secondary" (click)="leaveCotejo.set(null)">Seguir editando</button><button class="primary" (click)="saveCotejoDraft()" [disabled]="cotejoBusy()">Guardar borrador y salir</button></div></section></div>
 }
 
 @if (queryProgress() !== null) {
@@ -682,10 +682,10 @@
       >
       <p>{{ reportCriteria() }}</p>
       <p>{{ reportRows().length }} grupos · Consulta: {{ checkedTime() }} · Listado: {{ result()?.listVersion }}</p>
-      <div class="actions">
-        <button class="primary" (click)="generateReport()" [disabled]="exporting()">
-          {{ reportKind() === 'print' ? 'Imprimir' : 'Generar archivo' }}</button
-        ><button class="text-button" (click)="reportOpen.set(false)">Cancelar</button>
+      <div class="dialog-actions">
+        <button class="button-secondary" (click)="reportOpen.set(false)">Cancelar</button
+        ><button class="primary" (click)="generateReport()" [disabled]="exporting()">
+          {{ reportKind() === 'print' ? 'Imprimir' : 'Generar archivo' }}</button>
       </div>
     </section>
   </div>

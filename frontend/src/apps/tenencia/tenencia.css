@@ -826,7 +826,7 @@ td.center .row-state {
 .scan-error-dialog p { color: var(--muted); }
 .scan-error-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; background: color-mix(in srgb, #d88a28 18%, var(--card)); color: #c87518; }
 .scan-error-icon v-icon { width: 24px; height: 24px; }
-.scan-error-dialog .dialog-actions { width: 100%; justify-content: center; margin-top: 5px; }
+.scan-error-dialog .dialog-actions { width: 100%; margin-top: 5px; }
 .leave-cotejo-dialog { max-width: 520px; }
 .leave-options { display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap; margin-top: 20px; }
 .tenencia-policy-page { width: 100%; min-height: 0; flex: 1; align-content: start; display: grid; gap: 14px; padding: 22px; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }

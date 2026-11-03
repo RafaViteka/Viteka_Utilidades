@@ -647,6 +647,25 @@ footer {
   font-size: var(--fs-xs);
   font-weight: 650;
 }
+.button-secondary,
+.button-danger,
+.button-ghost {
+  min-height: 40px;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+.button-secondary {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.button-secondary:hover { border-color: var(--green); background: var(--active); }
+.button-danger { border: 1px solid #bd3e38; background: #bd3e38; color: white; }
+.button-danger:hover { background: #a9322d; border-color: #a9322d; }
+.button-ghost { border: 1px solid transparent; background: transparent; color: var(--green); }
+.button-ghost:hover { background: var(--surface); }
 .settings .update-copy {
   font-size: var(--fs-sm);
   margin: 22px 0 18px;
@@ -805,6 +824,21 @@ details p {
   height: 34px;
   width: 34px;
   flex: none;
+}
+.dialog h2 { margin: 0; font-size: var(--fs-xl); line-height: 1.2; letter-spacing: -0.5px; }
+.dialog-copy { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.55; }
+.dialog-question { margin: 0; color: var(--ink); font-size: var(--fs-sm); font-weight: 650; }
+.dialog-summary { display: grid; gap: 5px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.dialog-summary span { color: var(--muted); font-size: var(--fs-xs); }
+.dialog-summary strong { font-size: var(--fs-sm); line-height: 1.35; }
+.dialog-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--line); }
+.dialog-actions .primary { min-height: 40px; }
+.confirm-dialog { display: grid; gap: 14px; max-width: 480px; }
+.update-progress-dialog { display: grid; gap: 14px; max-width: 520px; }
+.update-progress-dialog progress { width: 100%; }
+@media (max-width: 560px) {
+  .dialog-actions { display: grid; grid-template-columns: 1fr; }
+  .dialog-actions > button { width: 100%; }
 }
 .dialog ol {
   padding-left: 23px;
