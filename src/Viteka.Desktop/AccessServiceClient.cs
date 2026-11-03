@@ -163,11 +163,19 @@ internal sealed class AccessServiceClient : IDisposable
     }
     private async Task<JsonElement> RequestAsync(HttpMethod method, string path, JsonElement? body = null)
     {
-        using var request = new HttpRequestMessage(method, path);
-        if (token is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null) request.Content = JsonContent.Create(body.Value);
         using var timeout = new CancellationTokenSource(path.StartsWith("access/tenencia/", StringComparison.Ordinal) ? TimeSpan.FromSeconds(100) : path == "access/oracle/test" ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20));
-        using var response = await trust.Client.SendAsync(request, timeout.Token);
+        HttpResponseMessage response;
+        while (true)
+        {
+            using var request = new HttpRequestMessage(method, path);
+            if (token is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            if (body is not null) request.Content = JsonContent.Create(body.Value);
+            try { response = await trust.Client.SendAsync(request, timeout.Token); break; }
+            catch (HttpRequestException) when (trust.TryNextServer()) { }
+            catch (TaskCanceledException) when (!timeout.IsCancellationRequested && trust.TryNextServer()) { }
+        }
+        using (response)
+        {
         if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new AccessDeniedException("Demasiados intentos. Espera un minuto antes de volver a intentarlo.");
         if (response.StatusCode == HttpStatusCode.Unauthorized) { token = null; throw new AccessSessionException(); }
         var text = await response.Content.ReadAsStringAsync(timeout.Token);
@@ -179,6 +187,7 @@ internal sealed class AccessServiceClient : IDisposable
             throw new AccessDeniedException(message ?? "No se pudo completar la operación de acceso.");
         }
         return document.RootElement.Clone();
+        }
     }
     public void Dispose() => trust.Dispose();
 }

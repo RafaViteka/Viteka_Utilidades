@@ -326,7 +326,7 @@ public partial class MainWindow : Window
             if (command is "pharmacy.state" or "pharmacy.save" or "tenencia.state" or "tenencia.query" or "tenencia.schema" || command?.StartsWith("tenencia.catalog.", StringComparison.Ordinal) == true)
             {
                 if (actor is null) throw new AccessSessionException();
-                if (command.StartsWith("pharmacy.", StringComparison.Ordinal) && !AccessPolicy.CanManageUsers(actor) || (command == "tenencia.schema" || command.StartsWith("tenencia.catalog.", StringComparison.Ordinal)) && !AccessPolicy.CanConfigure(actor) || command is "tenencia.state" or "tenencia.query" && !AccessPolicy.CanUse(actor, Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items)) throw new AccessDeniedException();
+                if (command.StartsWith("pharmacy.", StringComparison.Ordinal) && !AccessPolicy.CanManageUsers(actor) || command == "tenencia.schema" && !AccessPolicy.CanConfigure(actor) || command.StartsWith("tenencia.catalog.", StringComparison.Ordinal) && !AccessPolicy.CanConfigureTenencia(actor) || command is "tenencia.state" or "tenencia.query" && !AccessPolicy.CanUse(actor, Viteka.Contracts.UtilityCatalog.TenenciaId,Viteka.Contracts.UtilityCatalog.Items)) throw new AccessDeniedException();
                 Reply(id, await Access.UtilityAsync(command, root.TryGetProperty("payload", out var payload) ? payload : null)); return;
             }
             if(command?.StartsWith("catalog.data.",StringComparison.Ordinal)==true || command is "audit.settings" or "audit.query" or "activity.record" or "declaration.state" or "declaration.save" or "cotejo.state" or "cotejo.save" or "cotejo.draft" or "cotejo.clear" or "cotejo.history" or "cotejo.delete" or "tenencia.policy.state" or "tenencia.policy.save"){
@@ -481,6 +481,7 @@ public partial class MainWindow : Window
             Post(new{type="update-phase",phase="failed"});if(id is not null)Reply(id,error:UpdateDiagnostics.Describe(failure));
         }
         catch (HttpRequestException) { if (id is not null) Reply(id, error: "No se pudo contactar con el servicio de usuarios. Revisa que esté iniciado en el servidor y que su identidad esté configurada."); }
+        catch (OperationCanceledException) { if (id is not null) Reply(id, error: "El servidor no respondió a tiempo. Comprueba que el equipo servidor está encendido y conectado a la misma red."); }
         catch (Win32Exception ex) when (ex.NativeErrorCode == 1223) { if (id is not null) Reply(id, new { cancelled = true }); }
         catch (Exception ex) when (ex is IOException or InvalidDataException or JsonException or UnauthorizedAccessException or InvalidOperationException or System.Security.Cryptography.CryptographicException or KeyNotFoundException or HttpRequestException or OperationCanceledException or System.Runtime.InteropServices.ExternalException)
         { if (id is not null) Reply(id, error: "No se pudo completar la operación. La aplicación y tus archivos se conservan."); }
