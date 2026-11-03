@@ -1,0 +1,17 @@
+VITEKA CONECTA · PUESTO CLIENTE
+
+Este instalador crea accesos directos hacia el cliente compartido del servidor.
+La ubicación prevista es X:\Viteka\Conecta\Cliente.
+
+Antes de instalar:
+1. El servidor debe tener Viteka Conecta instalado en C:\Viteka\Conecta.
+2. El disco compartido del servidor debe estar conectado en este puesto como X:.
+3. El usuario debe disponer de lectura y ejecución sobre la carpeta compartida.
+
+Este puesto no instala el servicio, Oracle ni credenciales de NixFarma. Todas las
+consultas se realizan mediante el servicio protegido del servidor de la farmacia.
+
+Si el disco se asigna con otra letra, ejecuta el instalador con:
+  /SHAREDIR="R:\Viteka\Conecta\Cliente"
+
+Asistencia: conecta@viteka.es

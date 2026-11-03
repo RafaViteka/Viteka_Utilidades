@@ -27,7 +27,7 @@
 #define InstallFolder "UtilidadesVistaPrevia"
 #define AccessService "VitekaUtilidadesAccess"
 #define ShellIdentity "Viteka.Utilidades"
-#define SetupFile "VitekaUtilidades-Setup-" + AppVersion + "-win-x64-preview"
+#define SetupFile "VitekaUtilidades-Setup-" + AppVersion + "-win-x64"
 #define ReviewMode "False"
 #define PreviousGroupTitle "Viteka Utilidades - Vista previa"
 #define PreviousShortcutTitle "Viteka Utilidades"
@@ -44,7 +44,12 @@ AppPublisherURL=mailto:conecta@viteka.es
 AppSupportURL=mailto:conecta@viteka.es
 AppComments=Herramientas y servicios para tu farmacia
 ChangesAssociations=yes
+#ifdef ReviewBuild
 DefaultDirName={autopf}\Viteka\{#InstallFolder}
+#else
+DefaultDirName=C:\Viteka\Conecta
+DisableDirPage=yes
+#endif
 DefaultGroupName={#GroupTitle}
 UninstallDisplayIcon={app}\Cliente\Viteka.Desktop.exe
 SetupIconFile=viteka.ico

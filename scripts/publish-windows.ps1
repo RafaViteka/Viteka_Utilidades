@@ -44,6 +44,8 @@ try {
         $version = ([xml](Get-Content 'Directory.Build.props' -Raw)).SelectSingleNode('/Project/PropertyGroup/Version').InnerText
         & $iscc "/DAppVersion=$version" 'packaging/windows/Viteka.Utilidades.iss'
         if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
+        & $iscc "/DAppVersion=$version" 'packaging/windows/Viteka.Cliente.iss'
+        if ($LASTEXITCODE -ne 0) { throw 'Client installer compilation failed.' }
     }
 }
 finally { Pop-Location }

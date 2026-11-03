@@ -1,13 +1,11 @@
-Desarrollo posterior a 0.17 · pendiente de validación Windows y publicación autorizada.
+# Viteka Conecta 0.18.23
 
-- Entrada siempre en Inicio y tarjetas con apertura y favoritos separados.
-- Acceso a aplicaciones por usuario con revisión y Guardar.
-- Listados versionados en SQLite, conflictos, recuperación y paquetes incrementales firmados.
-- Herramienta maestra integrada, habilitada por clave editorial separada.
-- Auditoría central, filtros, paginación y conservación configurable.
-- Exportación completa con selección para declaración o solo faltas con hasta diez artículos por compra reciente.
-- Progreso por fases y monitor nativo de instalación; conserva UAC.
-- Búsqueda terapéutica condicionada a metadatos y enlace verificado en cada servidor.
-- Nombre visible Nixfarma, conservando DSN e identificadores.
+Primera distribución estable para farmacias con instalación centralizada.
 
-La primera migración conserva las fuentes existentes y señala listados personalizados heredados para revisión. No se han publicado paquetes de datos ni configurado claves de confianza en farmacias. No se han realizado pruebas contra Oracle real. Consultar docs/mejoras-018.md antes de distribuir.
+- El instalador de servidor utiliza `C:\Viteka\Conecta`, registra el servicio de acceso y prepara el cliente compartido.
+- El instalador de puesto valida `X:\Viteka\Conecta\Cliente` y crea accesos directos sin copiar el servicio ni las credenciales de NixFarma.
+- El superadministrador mantiene todas las funciones activas; administradores y usuarios reciben accesos expresamente.
+- Tenencia admite los listados independientes de las provincias andaluzas y lectores EAN-13 con preámbulo `$`.
+- Incluye consulta, cotejo, caducidades, borradores, historial, adjuntos y exportaciones.
+
+La instalación conserva cuentas, configuración y datos al actualizar. El disco `C:` debe estar compartido por la farmacia de forma que los puestos vean la misma ruta como `X:`.
