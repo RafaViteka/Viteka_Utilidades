@@ -117,7 +117,9 @@ internal static class AccessServiceManagement
             var ruleType = Type.GetTypeFromProgID("HNetCfg.FWRule") ?? throw new InvalidOperationException();
             dynamic rule = Activator.CreateInstance(ruleType) ?? throw new InvalidOperationException(); created = rule;
             rule.Name = ProductProfile.ServiceName+"-LAN"; rule.Description = "Usuarios de Viteka por HTTPS en la red local de la farmacia.";
-            rule.Protocol = 6; rule.LocalPorts = ProductProfile.AccessPort.ToString(); rule.Direction = 1; rule.Action = 1; rule.Profiles = 3;
+            // Windows often classifies a pharmacy LAN as Public. Keep the endpoint restricted to LocalSubnet,
+            // but enable the rule on Domain, Private and Public profiles so mapped client PCs can reach it.
+            rule.Protocol = 6; rule.LocalPorts = ProductProfile.AccessPort.ToString(); rule.Direction = 1; rule.Action = 1; rule.Profiles = 7;
             rule.RemoteAddresses = "LocalSubnet"; rule.Enabled = true; policy.Rules.Add(rule);
         }
         finally { if (created is not null) Marshal.FinalReleaseComObject(created); Marshal.FinalReleaseComObject((object)policy); }

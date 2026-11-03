@@ -17,6 +17,10 @@ $previousBootstrap=$env:VITEKA_ACCESS_BOOTSTRAP
 try{
     Run-Owned -Exe $setup -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$install+'"'),('/LOG="'+(Join-Path $directory 'install.log')+'"'))
     $server=Join-Path $install 'Servidor/Viteka.Server.exe'
+    $firewall=Get-NetFirewallRule -DisplayName 'VitekaUtilidadesAccess-LAN' -ErrorAction Stop
+    if(@($firewall.Profile) -notcontains 'Any' -and @($firewall.Profile) -notcontains 'Public'){throw 'Client access firewall rule does not include Public networks.'}
+    $remote=$firewall|Get-NetFirewallAddressFilter
+    if(@($remote.RemoteAddress) -notcontains 'LocalSubnet'){throw 'Client access firewall rule is not restricted to LocalSubnet.'}
     Run-Owned -Exe $server -Arguments @('--access-health',('"'+(Join-Path $install 'Cliente/access-server.json')+'"')) -Seconds 10
     $env:VITEKA_ACCESS_BOOTSTRAP=Join-Path $install 'Cliente/access-server.json'
     $env:VITEKA_UI_SMOKE_REPORT=Join-Path $directory 'installed-native.json'

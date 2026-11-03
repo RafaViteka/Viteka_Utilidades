@@ -528,6 +528,7 @@ try
             Require(TenenciaArticleFinder.Search(c, tx, schema, "homogeneous", "1234", "COLUMNA_INVENTADA").Code == "unavailable");
             try { TenenciaArticleFinder.Search(c, tx, schema, "sql", "x", null); throw new Exception("Expected invalid mode"); } catch (ArgumentException) { }
             var found = TenenciaArticleFinder.Search(c, tx, schema, "code", "650001, 650002 y 650001", null); Require(found.Code == "ok" && found.Articles.Length == 2);
+            var dotted = TenenciaArticleFinder.Search(c, tx, schema with { ArticleTable = "APADMIN.AB_ARTICULOS" }, "code", "650001", null); Require(dotted.Code == "ok" && dotted.Articles.Length == 1);
             return true;
         });
         Require(c.Steps.Last() == "rollback");
