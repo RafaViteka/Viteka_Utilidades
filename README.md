@@ -1,6 +1,12 @@
-# Viteka Utilidades · Centro de accesos 0.14.0
+# Viteka Conecta · Desarrollo 0.18.25
 
 Aplicación de escritorio Windows: **Angular + WebView2**, con un anfitrión .NET para preferencias, controles de ventana y actualizaciones. La interfaz se incluye en el paquete. La autoridad de usuarios y el acceso Oracle se ejecutan en el servicio del servidor de la farmacia.
+
+> Cambios posteriores a 0.17, migración, distribución y límites: [mejoras 0.18](docs/mejoras-018.md). Rama de desarrollo; sin publicación general. Las revisiones por PC utilizan un canal separado.
+
+## PC de pruebas independiente
+
+[Instalación de pruebas y actualizaciones por ID de PC](docs/pc-pruebas.md). El instalador de revisión aislada no sustituye al normal ni usa su servicio o datos. Primera instalación manual; después se obtiene el ID para dirigir futuras revisiones.
 
 ## Accesos y administración
 
@@ -14,12 +20,18 @@ Actualizaciones tiene una pantalla propia dentro de Configuración: búsqueda ca
 - Inicio con portal de soporte, AnyDesk local, manuales, formación, web y contactos.
 - Menú lateral plegable, logotipo inferior sin eslogan y apariencia clara/oscura/automática persistente.
 - Isotipo bicolor transparente original en ventana, ejecutable e instalador.
-- Aplicaciones incluye Tenencia obligatoria:83 grupos de Málaga del Excel, 2.089 asociaciones explícitas por CN de los vídeos y lectura de stock de NixFarma. Favoritos y Auditoría conservan estados vacíos.
+- Aplicaciones incluye Tenencia obligatoria:83 grupos de Málaga del Excel, 2.089 asociaciones explícitas por CN de los vídeos y lectura de stock de Nixfarma. Favoritos y Auditoría conservan estados vacíos.
+- Tenencia muestra grupos y medicamentos en tablas compactas y alineadas. El editor busca por código nacional, descripción o agrupación homogénea, sin búsqueda terapéutica visible.
+- Al seleccionar un medicamento, el tercio inferior del panel muestra su ficha. Código y descripción se leen de `APADMIN_AB_ARTICULOS`; stock, mínimo, movimientos y último proveedor parten de `APADMIN_AC_EXISTENCIAS` (con compatibilidad para `AC1_EXISTENCIAS`). El nombre del proveedor se obtiene de `APADMIN_AD_PROVEEDORES` y el laboratorio de `DW_AB_LABORATORIOS`, cruzando clase y código.
+- Datos de la farmacia permite definir con cuántos meses se revisa la caducidad (3 por defecto) y si el stock caducado cuenta como efectivo. De forma provisional, todas las unidades de una ficha comparten su fecha de caducidad.
+- Tenencia separa Consulta y Cotejo. El cotejo compartido permite sumar o restar unidades por artículo, leer CN o código de barras, guardar observaciones y revisar el historial de la farmacia.
+- Los artículos sin ficha de existencias se marcan como «No trabajado». La pantalla pide verificar físicamente las unidades antes de considerar cumplida la tenencia y no presenta información de procedencia del listado.
+- Los formularios de edición comparten las acciones Cancelar y Guardar. Las ventanas de Configuración se cierran al confirmar un guardado correcto y conservan los datos introducidos si se produce un error.
 - Preferencias locales por usuario, conservadas entre versiones.
 - Canal de pruebas GitHub: búsqueda, descarga verificada e instalación desatendida (sin asistente; solo la confirmación UAC de Windows). Viteka se reinicia sola y recupera la sesión sin pedir la contraseña.
 - Instalador x64 autocontenido para .NET, con bootstrapper de WebView2 verificado como Microsoft. Si falta el runtime, su instalación inicial puede requerir internet.
 
-La configuración Oracle y la prueba fija de solo lectura se ejecutan ahora en el servicio del servidor, bajo LocalService y con DSN de sistema de 64 bits. Las credenciales previas se migran desde el perfil original al entrar Viteka en el propio servidor. Tenencia obligatoria incorpora consultas de clasificación y existencias de solo lectura; las restricciones de vía/dosis/tamaño se revisan por separado. Ver [conexión a NixFarma](docs/conexion-nixfarma.md).
+La configuración Oracle y la prueba fija de solo lectura se ejecutan ahora en el servicio del servidor, bajo LocalService y con DSN de sistema de 64 bits. Las credenciales previas se migran desde el perfil original al entrar Viteka en el propio servidor. Tenencia obligatoria incorpora consultas de clasificación y existencias de solo lectura; las restricciones de vía/dosis/tamaño se revisan por separado. Ver [conexión a Nixfarma](docs/conexion-nixfarma.md).
 
 [Descargar desde GitHub Releases](https://github.com/RafaViteka/Viteka_Utilidades/releases). Instalar sobre la versión anterior sin desinstalar. Desde 0.6 se puede actualizar desde Configuración; desde 0.5 hay que incorporar el actualizador mediante una descarga manual una vez. Paquetes de prueba sin firma digital del editor, no certificados para distribuir a farmacias.
 
@@ -34,7 +46,7 @@ bash scripts/setup-cloud.sh
 python scripts/smoke-ui.py
 ```
 
-El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 72 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera una captura en artifacts/ui.
+El primer comando instala/compila Angular, copia el resultado a `src/Viteka.Desktop/Web`, compila .NET y ejecuta las 90 comprobaciones y el smoke HTTP. El segundo requiere `pip install -r requirements-ui.txt` y Chromium/Chrome instalado; no descarga navegadores. Genera capturas en artifacts/ui.
 
 Para editar la interfaz en navegador:
 
@@ -84,4 +96,4 @@ El diagnóstico de tablas y la prueba de conexión limpian resultados anteriores
 
 ## Conector MCP local opcional
 
-Puente STDIO Windows x64 para consultar el DSN NIXFARMA desde un cliente compatible ejecutado en el mismo servidor y usuario Windows. [Descargar ZIP](downloads/Viteka-NixFarma-MCP-0.1.1.zip) y [pasos de instalación](tools/nixfarma-mcp/LEEME.md). Credenciales en Windows Credential Manager; consultas fijas, parametrizadas y en transacción de solo lectura. No instala un servicio HTTP ni cambia Viteka Utilidades. La relación CN–ATC se devuelve como candidata para verificar clase/tipo/nivel; no calcula cumplimiento. La configuración del cliente MCP no conecta por sí sola una sesión cloud.
+Puente STDIO Windows x64 para consultar el DSN NIXFARMA desde un cliente compatible ejecutado en el mismo servidor y usuario Windows. [Descargar ZIP](downloads/Viteka-NixFarma-MCP-0.1.1.zip) y [pasos de instalación](tools/nixfarma-mcp/LEEME.md). Credenciales en Windows Credential Manager; consultas fijas, parametrizadas y en transacción de solo lectura. No instala un servicio HTTP ni cambia Viteka Conecta. La relación CN–ATC se devuelve como candidata para verificar clase/tipo/nivel; no calcula cumplimiento. La configuración del cliente MCP no conecta por sí sola una sesión cloud.

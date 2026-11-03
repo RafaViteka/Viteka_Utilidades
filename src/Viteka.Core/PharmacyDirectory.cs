@@ -79,5 +79,6 @@ public sealed class PharmacyDirectory(string directory, Func<byte[], byte[]> pro
         if (fields.Any(x => x is null || x.Length > 200 || x.Any(char.IsControl))) throw new ArgumentException("Revisa los datos de la farmacia (máximo 200 caracteres por campo).");
         if (p.Email.Length > 0 && (!MailAddress.TryCreate(p.Email, out var mail) || mail.Address != p.Email)) throw new ArgumentException("El correo no es válido.");
         if (p.Postcode.Length > 0 && (!Regex.IsMatch(p.Postcode, "^[0-9]{5}$") || !p.Postcode.StartsWith(p.Province!, StringComparison.Ordinal))) throw new ArgumentException("El código postal debe corresponder a la provincia seleccionada.");
+        if (p.ExpiryReviewMonths is < 1 or > 24) throw new ArgumentException("La revisión de caducidades debe estar entre 1 y 24 meses.");
     }
 }

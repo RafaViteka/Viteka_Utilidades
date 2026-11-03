@@ -13,6 +13,6 @@ public sealed class UnconfiguredPharmacyReader : IPharmacyReader
     {
         cancellationToken.ThrowIfCancellationRequested();
         return Task.FromResult(new UtilityExecutionResult("database_not_configured",
-            "NixFarma no está configurado. No se ha ejecutado ninguna consulta."));
+            "Nixfarma no está configurado. No se ha ejecutado ninguna consulta."));
     }
 }

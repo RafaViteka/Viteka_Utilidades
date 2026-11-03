@@ -5,7 +5,11 @@ public static class UtilityCatalog
     public const string TenenciaId = "tenencia-obligatoria";
     public static IReadOnlyList<UtilityDefinition> Items { get; } = [new(TenenciaId, "Tenencia obligatoria", "Comprueba las existencias mínimas del listado de tu provincia.", "Existencias", true)];
 }
-public sealed record PharmacyProfile(string Name, string Province, string Town, string Email, string Phone, string Address, string Postcode);
+public sealed record PharmacyProfile(string Name, string Province, string Town, string Email, string Phone, string Address, string Postcode)
+{
+    public int ExpiryReviewMonths { get; init; } = 3;
+    public bool CountExpiredStock { get; init; }
+}
 public sealed record TenenciaGroup(string Id, string Name, int Minimum, string[] Codes) { public Dictionary<string, string>? Descriptions { get; init; } public string? AtcPrefix { get; init; } public string? ClassificationCode { get; init; } public string? SelectionNote { get; init; } public bool RequiresReview { get; init; } public int? SourceRow { get; init; } }
 public sealed record TenenciaList(int Schema, string Province, string Version, string Source, DateOnly ReviewedOn, TenenciaGroup[] Groups);
 public sealed record StockArticle(string Code, string Description, decimal? Stock, string? Issue = null)
@@ -16,9 +20,22 @@ public sealed record StockArticle(string Code, string Description, decimal? Stoc
     public DateOnly? LastPurchase { get; init; }
     /// <summary>Fecha de la última venta registrada en la ficha.</summary>
     public DateOnly? LastSale { get; init; }
+    /// <summary>Unidades que computan para tenencia tras aplicar el criterio de caducidad de la farmacia.</summary>
+    public decimal? EffectiveStock { get; init; }
+    public decimal? MinimumStock { get; init; }
+    public string? LastSupplier { get; init; }
+    public string? Laboratory { get; init; }
+    public string? Classification { get; init; }
+    public decimal? Pvp { get; init; }
+    public string? Homogeneous { get; init; }
+    public string? Barcode { get; init; }
+    public bool Inactive { get; init; }
+    public DateOnly? InactiveOn { get; init; }
 }
 /// <summary>Datos opcionales de la ficha que esta instalación de NixFarma permite leer.</summary>
-public sealed record TenenciaFields(bool Expiry, bool Movements, string[] Homogeneous);
-public sealed record ArticleSearchResult(string Code, string Message, StockArticle[] Articles, bool Truncated = false) { public string? Group { get; init; } }
+public sealed record TenenciaFields(bool Expiry, bool Movements, string[] Homogeneous) { public bool Purchase {get;init;} public string? PurchaseColumn {get;init;} }
+public sealed record TherapeuticClassification(string Code,string Description,string Class,string Type,int? Level,string Parent,string Source);
+public sealed record ArticleSearchResult(string Code, string Message, StockArticle[] Articles, bool Truncated = false) { public string? Group { get; init; } public TherapeuticClassification[]? Classifications { get; init; } }
 public sealed record TenenciaRow(string Id, string Name, int Minimum, decimal? Stock, decimal? Missing, string Status, StockArticle[] Articles) { public bool RequiresReview { get; init; } public string? Classification { get; init; } public string? SelectionNote { get; init; } public int? SourceRow { get; init; } }
-public sealed record TenenciaResponse(string Code, string Message, string Province, string? ListVersion = null, string? Source = null, DateTimeOffset? CheckedAt = null, TenenciaRow[]? Rows = null) { public string? ProvinceName { get; init; } public TenenciaFields? Fields { get; init; } public bool Cached { get; init; } public bool Customized { get; init; } }
+public sealed record TenenciaPolicy(int ExpiryReviewMonths, bool CountExpiredStock);
+public sealed record TenenciaResponse(string Code, string Message, string Province, string? ListVersion = null, string? Source = null, DateTimeOffset? CheckedAt = null, TenenciaRow[]? Rows = null) { public string? ProvinceName { get; init; } public TenenciaFields? Fields { get; init; } public TenenciaPolicy? Policy { get; init; } public bool Cached { get; init; } public bool Customized { get; init; } }

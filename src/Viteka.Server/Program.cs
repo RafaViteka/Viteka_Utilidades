@@ -4,6 +4,11 @@ using Viteka.Server;
 using System.Threading.RateLimiting;
 using Microsoft.Extensions.Hosting.WindowsServices;
 
+if (args is ["--catalog-key-init", var keyDirectory]) {
+    CatalogDistribution.InitializeKey(Path.GetFullPath(keyDirectory));
+    Console.WriteLine("Clave editorial creada. Distribuye solo catalog-trust.pem a las farmacias; nunca la clave privada.");return;
+}
+
 if (args.Length > 0 && args[0].StartsWith("--access-", StringComparison.Ordinal))
 {
     try { await AccessHost.RunAsync(args); }
@@ -14,6 +19,12 @@ if (args.Length > 0 && args[0].StartsWith("--access-", StringComparison.Ordinal)
         Environment.ExitCode = 2;
     }
     return;
+}
+
+// The isolated build must never fall back to legacy demo services or their shared state paths.
+if (ProductProfile.IsReview) {
+    Console.Error.WriteLine("La edición de pruebas utiliza únicamente su servicio local de acceso.");
+    Environment.ExitCode=2; return;
 }
 
 var serviceMode = args.Contains("--service") || (OperatingSystem.IsWindows() && WindowsServiceHelpers.IsWindowsService());

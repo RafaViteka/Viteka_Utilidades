@@ -18,7 +18,7 @@ public sealed class LocalStateStore(string directory, IReadOnlyList<UtilityDefin
     private static readonly HashSet<string> RetiredDemoIds = ["stock", "expiry", "purchases"];
     private static readonly JsonSerializerOptions JsonOptions = new() { WriteIndented = true };
     public static LocalStateStore ForCurrentUser() => new(Path.Combine(
-        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Viteka", "Utilidades"));
+        Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Viteka", ProductProfile.UserFolder));
 
     public LocalState Load()
     {

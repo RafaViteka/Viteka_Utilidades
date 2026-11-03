@@ -54,9 +54,9 @@ internal sealed class NixFarmaConnectionTester
         {
             ("IM002", _) => ("dsn_missing", "No se encuentra este DSN de sistema de 64 bits. Comprueba NIXFARMA en el administrador ODBC de 64 bits de este equipo."),
             ("IM003" or "IM014", _) => ("driver", "No se pudo cargar el controlador Oracle de 64 bits. Revisa la arquitectura y la instalación del cliente Oracle."),
-            (_, 1017) or ("28000", null) => ("authentication", "Oracle ha rechazado el usuario o la contraseña. Revisa las credenciales con el administrador de NixFarma."),
-            (_, 28000) => ("account_locked", "La cuenta Oracle está bloqueada. Debe revisarla el administrador de NixFarma."),
-            (_, 28001) => ("password_expired", "La contraseña Oracle ha caducado. Debe actualizarla el administrador de NixFarma."),
+            (_, 1017) or ("28000", null) => ("authentication", "Oracle ha rechazado el usuario o la contraseña. Revisa las credenciales con el administrador de Nixfarma."),
+            (_, 28000) => ("account_locked", "La cuenta Oracle está bloqueada. Debe revisarla el administrador de Nixfarma."),
+            (_, 28001) => ("password_expired", "La contraseña Oracle ha caducado. Debe actualizarla el administrador de Nixfarma."),
             (_, 12154) => ("tns", "Oracle no puede resolver el servicio TNS. Revisa la configuración del cliente Oracle para este usuario de Windows."),
             (_, 12514 or 12541 or 12545 or 12170) or ("08001" or "08S01", _) => ("network", "No se alcanza el servicio Oracle. Revisa el servicio TNS, el servidor y su disponibilidad en la red."),
             (_, 1031) => ("permissions", "La cuenta no tiene los permisos necesarios para la operación de lectura. Solicita una cuenta de consulta con permisos mínimos."),

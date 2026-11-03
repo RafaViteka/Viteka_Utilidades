@@ -6,21 +6,25 @@ namespace Viteka.Core;
 
 /// <summary>
 /// Listado de tenencia editable por Viteka (superadministrador). Las modificaciones se guardan en el servidor como
-/// una copia completa de la lista provincial; la lista empaquetada se conserva para poder restaurarla.
+/// una revisión transaccional de base/vista local; se conservan las fuentes JSON para migración.
 /// También guarda la última consulta de existencias para mostrarla al volver a abrir Tenencia.
 /// </summary>
 public sealed class TenenciaCatalogStore(string directory, string packagedDirectory)
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly Lock gate = new();
+    public PharmacyDatabase Database { get; } = new(directory);
+    public CatalogRevisions Revisions => new(Database);
     private string CustomPath(string province) => Path.Combine(directory, "tenencia-" + province + ".json");
     private string LastPath(string province) => Path.Combine(directory, "tenencia-ultima-" + province + ".json");
 
-    public bool IsCustomized(string province) => File.Exists(CustomPath(province));
+    public bool IsCustomized(string province) { var s = Revisions.Read(province); return s is null ? File.Exists(CustomPath(province)) : s.Legacy || !System.Text.Json.Nodes.JsonNode.DeepEquals(JsonSerializer.SerializeToNode(s.Base.Groups,Json),JsonSerializer.SerializeToNode(s.Effective.Groups,Json)); }
 
     public TenenciaList? Load(string province)
     {
         if (!SpanishProvinces.Items.ContainsKey(province)) throw new ArgumentException("Provincia no válida.");
+        if (Revisions.Read(province) is {} current) return current.Effective;
+        var packaged = TenenciaRules.Load(packagedDirectory, province);
         var custom = CustomPath(province);
         if (File.Exists(custom))
         {
@@ -28,18 +32,22 @@ public sealed class TenenciaCatalogStore(string directory, string packagedDirect
             var list = JsonSerializer.Deserialize<TenenciaList>(File.ReadAllBytes(custom), Json) ?? throw new InvalidDataException();
             TenenciaRules.Validate(list);
             if (list.Province != province) throw new InvalidDataException("La lista no corresponde a la provincia.");
-            return list;
+            if (packaged is not null) return Revisions.Ensure(packaged, list).Effective;
+            return Revisions.Ensure(list, list).Effective;
         }
-        return TenenciaRules.Load(packagedDirectory, province);
+        return packaged is null ? null : Revisions.Ensure(packaged).Effective;
     }
 
     /// <summary>Aplica una operación de edición y devuelve la lista resultante.</summary>
-    public TenenciaList Apply(string province, string action, JsonElement data)
+    public TenenciaList Apply(string province, string action, JsonElement data, AuditActor? actor = null)
     {
         lock (gate)
         {
-            if (action == "reset") { File.Delete(CustomPath(province)); File.Delete(LastPath(province)); return Load(province) ?? throw new InvalidDataException("No hay lista empaquetada para esta provincia."); }
             var list = Load(province) ?? NewList(province);
+            var expected = data.TryGetProperty("expectedVersion",out var v) ? v.GetString() : list.Version;
+            if (expected != list.Version) throw new ArgumentException("El listado cambió en otro puesto. Recarga antes de guardar.");
+            actor ??= new("system","Sistema");
+            if (action == "reset") return Revisions.Reset(province,list.Version,actor);
             var groups = list.Groups.ToList();
             TenenciaGroup Find(string id) => groups.FirstOrDefault(g => g.Id == id) ?? throw new KeyNotFoundException();
             string Text(string name, int max, bool required = true)
@@ -50,6 +58,52 @@ public sealed class TenenciaCatalogStore(string directory, string packagedDirect
             }
             switch (action)
             {
+                case "import":
+                    {
+                        var mode = Text("mode", 20);
+                        if (mode is not ("merge" or "replace")) throw new ArgumentException("Modo de importación no válido.");
+                        if (!data.TryGetProperty("groups", out var imported) || imported.ValueKind != JsonValueKind.Array || imported.GetArrayLength() is < 1 or > 250) throw new ArgumentException("El archivo debe contener entre 1 y 250 grupos.");
+                        var target = mode == "replace" ? new List<TenenciaGroup>() : groups.ToList();
+                        foreach (var value in imported.EnumerateArray())
+                        {
+                            string ImportText(string property, int max, bool required = true)
+                            {
+                                var text = value.TryGetProperty(property, out var p) && p.ValueKind == JsonValueKind.String ? p.GetString()!.Trim() : "";
+                                if (required && text.Length == 0 || text.Length > max || text.Any(char.IsControl)) throw new ArgumentException("Revisa el campo " + property + ".");
+                                return text;
+                            }
+                            var name = ImportText("name", 200);
+                            var code = ImportText("code", 12, false).ToUpperInvariant();
+                            var note = ImportText("note", 600, false);
+                            if (!value.TryGetProperty("minimum", out var minimumValue) || !minimumValue.TryGetInt32(out var minimum) || minimum is < 1 or > 10000) throw new ArgumentException("Mínimo no válido en " + name + ".");
+                            if (code.Length > 0 && !TenenciaRules.ValidAtc(code) && !Regex.IsMatch(code, "^[A-Z0-9]{2,12}$", RegexOptions.CultureInvariant)) throw new ArgumentException("Código de grupo no válido: " + code);
+                            var existing = groups.FirstOrDefault(g =>
+                                code.Length > 0 && string.Equals(g.AtcPrefix ?? g.ClassificationCode, code, StringComparison.OrdinalIgnoreCase) ||
+                                string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase));
+                            var id = existing?.Id ?? "custom-" + Guid.NewGuid().ToString("N")[..10];
+                            if (target.Any(g => g.Id != id && (code.Length > 0 && string.Equals(g.AtcPrefix ?? g.ClassificationCode, code, StringComparison.OrdinalIgnoreCase) || string.Equals(g.Name, name, StringComparison.OrdinalIgnoreCase)))) throw new ArgumentException("El grupo está repetido: " + name + ".");
+                            var current = target.FirstOrDefault(g => g.Id == id);
+                            var codes = mode == "merge" ? (current?.Codes ?? existing?.Codes ?? []).ToList() : [];
+                            var descriptions = (mode == "merge" ? current?.Descriptions ?? existing?.Descriptions : null)?.ToDictionary(p => p.Key, p => p.Value) ?? [];
+                            if (!value.TryGetProperty("items", out var items) || items.ValueKind != JsonValueKind.Array || items.GetArrayLength() > 1000) throw new ArgumentException("Artículos no válidos en " + name + ".");
+                            foreach (var item in items.EnumerateArray())
+                            {
+                                var cn = item.TryGetProperty("code", out var c) ? c.GetString()?.Trim() : null;
+                                if (!TenenciaRules.ValidCode(cn)) throw new ArgumentException("Código nacional no válido: " + cn);
+                                var description = item.TryGetProperty("description", out var d) && d.ValueKind == JsonValueKind.String ? d.GetString()!.Trim() : "";
+                                if (description.Length > 200 || description.Any(char.IsControl)) throw new ArgumentException("Descripción no válida para " + cn + ".");
+                                if (!codes.Contains(cn!)) codes.Add(cn!);
+                                if (description.Length > 0) descriptions[cn!] = description;
+                            }
+                            var atc = code.Length > 0 && TenenciaRules.ValidAtc(code) ? code : null;
+                            var classification = code.Length > 0 && atc is null ? code : null;
+                            var next = new TenenciaGroup(id, name, minimum, codes.ToArray()) { AtcPrefix = atc, ClassificationCode = classification, SelectionNote = note.Length > 0 ? note : null, Descriptions = descriptions };
+                            var index = target.FindIndex(g => g.Id == id);
+                            if (index >= 0) target[index] = next; else target.Add(next);
+                        }
+                        groups = target;
+                        break;
+                    }
                 case "group.save":
                     {
                         var id = data.TryGetProperty("id", out var idValue) && idValue.ValueKind == JsonValueKind.String ? idValue.GetString() : null;
@@ -111,11 +165,12 @@ public sealed class TenenciaCatalogStore(string directory, string packagedDirect
             }
             var now = DateTime.Now;
             var source = list.Source.Contains("Editada en Viteka", StringComparison.Ordinal) ? list.Source : (list.Source.Length > 440 ? list.Source[..440] : list.Source) + " · Editada en Viteka.";
-            var edited = list with { Version = "Personalizada-" + now.ToString("yyyy-MM-dd-HHmmss", CultureInfo.InvariantCulture), Source = source, ReviewedOn = DateOnly.FromDateTime(DateTime.UtcNow), Groups = groups.ToArray() };
+            var edited = list with { Version = CatalogRevisions.NewVersion(), Source = source, ReviewedOn = DateOnly.FromDateTime(DateTime.UtcNow), Groups = groups.ToArray() };
             try { TenenciaRules.Validate(edited); }
             catch (InvalidDataException error) { throw new ArgumentException(error.Message, error); }
-            Write(CustomPath(province), JsonSerializer.SerializeToUtf8Bytes(edited, Json));
-            return edited;
+            var first=Revisions.Read(province) is null;
+            if (first) Revisions.Ensure(edited);
+            return Revisions.SaveLocal(edited, first?edited.Version:list.Version, actor, "catalog."+action);
         }
     }
     private static TenenciaList NewList(string province) =>
@@ -123,20 +178,24 @@ public sealed class TenenciaCatalogStore(string directory, string packagedDirect
 
     public void SaveLast(string province, TenenciaResponse response)
     {
-        if (response.Code != "ok" || response.Rows is null) return;
-        try { lock (gate) Write(LastPath(province), JsonSerializer.SerializeToUtf8Bytes(response, Json)); }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException) { /* sin memoria de la última consulta */ }
+        if(response.Code!="ok"||response.Rows is null)return;
+        Database.Transaction((c,tx)=>{
+            var state=System.Text.Json.JsonSerializer.Deserialize<CatalogRevision>(PharmacyDatabase.Get(c,tx,"catalog."+province)??"null",Json);
+            if(state?.Effective.Version==response.ListVersion)PharmacyDatabase.Set(c,tx,"last."+province,response);
+            return true;
+        });
     }
-    public TenenciaResponse? LoadLast(string province, string listVersion)
+    public TenenciaResponse? LoadLast(string province,string listVersion)
     {
-        try
-        {
-            var path = LastPath(province);
-            if (!File.Exists(path) || new FileInfo(path).Length > 16 * 1024 * 1024) return null;
-            var last = JsonSerializer.Deserialize<TenenciaResponse>(File.ReadAllBytes(path), Json);
-            return last is { Code: "ok", Rows: not null } && last.Province == province && last.ListVersion == listVersion ? last : null;
-        }
-        catch (Exception error) when (error is IOException or UnauthorizedAccessException or JsonException) { return null; }
+        return Database.Transaction((c,tx)=>{
+            var catalog=System.Text.Json.JsonSerializer.Deserialize<CatalogRevision>(PharmacyDatabase.Get(c,tx,"catalog."+province)??"null",Json);
+            if(catalog?.Effective.Version!=listVersion)return null;
+            var json=PharmacyDatabase.Get(c,tx,"last."+province);
+            if(json is null && File.Exists(LastPath(province)) && new FileInfo(LastPath(province)).Length<=16*1024*1024)json=File.ReadAllText(LastPath(province));
+            if(json is null)return null;
+            try{var last=JsonSerializer.Deserialize<TenenciaResponse>(json,Json);return last is {Code:"ok",Rows:not null} && last.Province==province && last.ListVersion==listVersion?last:null;}
+            catch(JsonException){return null;}
+        });
     }
     private void Write(string path, byte[] content)
     {

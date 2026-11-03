@@ -11,7 +11,7 @@ public static class TenenciaArticleResolver
     public static Resolution Resolve(DbConnection connection, DbTransaction tx, TenenciaStockQuery.Schema schema, TenenciaList list, CancellationToken ct)
     {
         TenenciaRules.Validate(list);
-        if (schema.ArticleTable is not ("ARTICULOS" or "APPUL.AB_ARTICULOS")) throw new InvalidDataException("Tabla de artículos no válida.");
+        if (schema.ArticleTable is not ("ARTICULOS" or "APADMIN_AB_ARTICULOS" or "APADMIN.AB_ARTICULOS" or "APPUL.AB_ARTICULOS")) throw new InvalidDataException("Tabla de artículos no válida.");
         var identifiers = new[] { schema.ArticleCode, schema.Description }.Concat(schema.Atc is null ? [] : new[] { schema.Atc }).Concat(schema.AtcCandidates);
         if (identifiers.Any(x => !Regex.IsMatch(x, "^\"[A-Za-z][A-Za-z0-9_ ]{0,127}\"$"))) throw new InvalidDataException("Nombre de columna no válido.");
         var groups = list.Groups.ToDictionary(g => g.Id, g => g.Codes); var notes = new Dictionary<string, string>();

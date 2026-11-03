@@ -647,6 +647,25 @@ footer {
   font-size: var(--fs-xs);
   font-weight: 650;
 }
+.button-secondary,
+.button-danger,
+.button-ghost {
+  min-height: 40px;
+  border-radius: 8px;
+  padding: 10px 16px;
+  font-size: var(--fs-xs);
+  font-weight: 650;
+}
+.button-secondary {
+  border: 1px solid var(--line);
+  background: var(--surface);
+  color: var(--ink);
+}
+.button-secondary:hover { border-color: var(--green); background: var(--active); }
+.button-danger { border: 1px solid #bd3e38; background: #bd3e38; color: white; }
+.button-danger:hover { background: #a9322d; border-color: #a9322d; }
+.button-ghost { border: 1px solid transparent; background: transparent; color: var(--green); }
+.button-ghost:hover { background: var(--surface); }
 .settings .update-copy {
   font-size: var(--fs-sm);
   margin: 22px 0 18px;
@@ -752,6 +771,7 @@ details p {
   background: var(--overlay);
   backdrop-filter: blur(6px);
   padding: 25px;
+  animation: modal-overlay-in 0.16s ease-out;
 }
 .dialog {
   background: var(--paper);
@@ -762,6 +782,25 @@ details p {
   max-height: 90vh;
   overflow: auto;
   padding: 30px;
+  position: relative;
+  box-shadow: 0 24px 70px #0005;
+  animation: dialog-in 0.2s ease-out;
+}
+.dialog::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto;
+  height: 4px;
+  background: linear-gradient(90deg, var(--green), var(--lime));
+}
+@keyframes modal-overlay-in {
+  from { opacity: 0; }
+}
+@keyframes dialog-in {
+  from { opacity: 0; transform: translateY(10px) scale(.985); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .modal-overlay, .dialog { animation: none; }
 }
 .dialog-top {
   display: flex;
@@ -785,6 +824,21 @@ details p {
   height: 34px;
   width: 34px;
   flex: none;
+}
+.dialog h2 { margin: 0; font-size: var(--fs-xl); line-height: 1.2; letter-spacing: -0.5px; }
+.dialog-copy { margin: 0; color: var(--muted); font-size: var(--fs-sm); line-height: 1.55; }
+.dialog-question { margin: 0; color: var(--ink); font-size: var(--fs-sm); font-weight: 650; }
+.dialog-summary { display: grid; gap: 5px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--surface); }
+.dialog-summary span { color: var(--muted); font-size: var(--fs-xs); }
+.dialog-summary strong { font-size: var(--fs-sm); line-height: 1.35; }
+.dialog-actions { display: flex; justify-content: flex-end; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 6px; padding-top: 16px; border-top: 1px solid var(--line); }
+.dialog-actions .primary { min-height: 40px; }
+.confirm-dialog { display: grid; gap: 14px; max-width: 480px; }
+.update-progress-dialog { display: grid; gap: 14px; max-width: 520px; }
+.update-progress-dialog progress { width: 100%; }
+@media (max-width: 560px) {
+  .dialog-actions { display: grid; grid-template-columns: 1fr; }
+  .dialog-actions > button { width: 100%; }
 }
 .dialog ol {
   padding-left: 23px;
@@ -1695,22 +1749,24 @@ kbd {
 
 /* ——— Aplicaciones y favoritos ——— */
 .utility-card {
-  position: relative;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 48px;
+  gap: 6px;
+  align-items: stretch;
 }
 .utility-card .resource {
   width: 100%;
-  padding-right: 64px;
+  padding-right: 14px;
 }
 .favorite-toggle {
-  position: absolute;
-  top: 50%;
-  right: 44px;
-  transform: translateY(-50%);
-  border: 0;
-  background: none;
-  padding: 6px;
-  border-radius: 8px;
+  position: static;
+  transform: none;
+  border: 1px solid var(--line);
+  background: var(--card);
+  padding: 10px;
+  border-radius: 12px;
   color: var(--muted);
+  min-height: 44px;
 }
 .favorite-toggle:hover {
   background: var(--surface);
@@ -1851,4 +1907,39 @@ html[data-theme='dark'] .primary:hover:not(:disabled) {
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
+}
+
+/* Shared fields in the new settings and report flows. */
+.grants > label,
+.report-dialog > label,
+viteka-catalog-distribution label {
+  display: grid;
+  gap: 8px;
+  margin: 14px 0;
+}
+.grants select,
+.report-dialog select,
+viteka-catalog-distribution input,
+.audit-filters input,
+.audit-filters select {
+  font: inherit;
+  color: var(--ink);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 10px 12px;
+  min-height: 42px;
+  max-width: 100%;
+}
+.grants input[type='checkbox'],
+.declaration-candidates input[type='checkbox'] {
+  width: 18px;
+  height: 18px;
+  flex: none;
+  accent-color: var(--green);
+}
+.dialog progress {
+  width: 100%;
+  accent-color: var(--green);
+  margin: 12px 0;
 }

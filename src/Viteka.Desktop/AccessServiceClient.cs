@@ -136,23 +136,46 @@ internal sealed class AccessServiceClient : IDisposable
     {
         var path = command switch
         {
+            _ when command.StartsWith("catalog.data.",StringComparison.Ordinal) && command[13..] is "state" or "prepare" or "preview" or "apply" or "rollback" or "resolve" or "check" => "access/catalog-data/"+command[13..],
+            "review.identity"=>"access/review/identity",
+            "audit.settings"=>"access/audit/settings",
+            "audit.query" => "access/audit/query",
+            "activity.record" => "access/activity",
+            "declaration.state" => "access/declaration/state",
+            "declaration.save" => "access/declaration/save",
+            "cotejo.state" => "access/cotejo/state",
+            "cotejo.save" => "access/cotejo/save",
+            "cotejo.draft" => "access/cotejo/draft",
+            "cotejo.clear" => "access/cotejo/clear",
+            "cotejo.history" => "access/cotejo/history",
+            "cotejo.delete" => "access/cotejo/delete",
             "pharmacy.state" => "access/pharmacy/state",
             "pharmacy.save" => "access/pharmacy/save",
             "tenencia.state" => "access/tenencia/state",
             "tenencia.query" => "access/tenencia/query",
             "tenencia.schema" => "access/tenencia/schema",
-            _ when command.StartsWith("tenencia.catalog.", StringComparison.Ordinal) && command.Length <= 40 && command[17..] is "state" or "search" or "group.save" or "group.delete" or "codes.add" or "codes.remove" or "reset" => "access/tenencia-catalog/" + command[17..],
+            "tenencia.policy.state" => "access/tenencia-policy/state",
+            "tenencia.policy.save" => "access/tenencia-policy/save",
+            _ when command.StartsWith("tenencia.catalog.", StringComparison.Ordinal) && command.Length <= 40 && command[17..] is "state" or "search" or "group.save" or "group.delete" or "codes.add" or "codes.remove" or "import" or "reset" => "access/tenencia-catalog/" + command[17..],
             _ => throw new AccessDeniedException()
         };
         return RequestAsync(HttpMethod.Post, path, payload ?? JsonSerializer.SerializeToElement(new { }));
     }
     private async Task<JsonElement> RequestAsync(HttpMethod method, string path, JsonElement? body = null)
     {
-        using var request = new HttpRequestMessage(method, path);
-        if (token is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
-        if (body is not null) request.Content = JsonContent.Create(body.Value);
-        using var timeout = new CancellationTokenSource((path == "access/oracle/test" || path.StartsWith("access/tenencia/", StringComparison.Ordinal)) ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20));
-        using var response = await trust.Client.SendAsync(request, timeout.Token);
+        using var timeout = new CancellationTokenSource(path.StartsWith("access/tenencia/", StringComparison.Ordinal) ? TimeSpan.FromSeconds(100) : path == "access/oracle/test" ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20));
+        HttpResponseMessage response;
+        while (true)
+        {
+            using var request = new HttpRequestMessage(method, path);
+            if (token is not null) request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token);
+            if (body is not null) request.Content = JsonContent.Create(body.Value);
+            try { response = await trust.Client.SendAsync(request, timeout.Token); break; }
+            catch (HttpRequestException) when (trust.TryNextServer()) { }
+            catch (TaskCanceledException) when (!timeout.IsCancellationRequested && trust.TryNextServer()) { }
+        }
+        using (response)
+        {
         if (response.StatusCode == HttpStatusCode.TooManyRequests) throw new AccessDeniedException("Demasiados intentos. Espera un minuto antes de volver a intentarlo.");
         if (response.StatusCode == HttpStatusCode.Unauthorized) { token = null; throw new AccessSessionException(); }
         var text = await response.Content.ReadAsStringAsync(timeout.Token);
@@ -164,6 +187,7 @@ internal sealed class AccessServiceClient : IDisposable
             throw new AccessDeniedException(message ?? "No se pudo completar la operación de acceso.");
         }
         return document.RootElement.Clone();
+        }
     }
     public void Dispose() => trust.Dispose();
 }

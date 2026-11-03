@@ -29,7 +29,9 @@ internal static class AccessCertificates
         {
             var leafPath = Path.Combine(privateDirectory, "server-key.dat");
             X509Certificate2? leaf = File.Exists(leafPath) ? LoadProtected(leafPath, true) : null;
-            if (leaf is null || leaf.NotAfter.ToUniversalTime() < DateTime.UtcNow.AddDays(30) || !leaf.GetNameInfo(X509NameType.SimpleName, false).Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase))
+            // A server update refreshes the LAN leaf so its IP alternatives follow the current network.
+            // The private installation root remains unchanged, so existing clients keep the same trust anchor.
+            if (leaf is null || !ProductProfile.IsReview || leaf.NotAfter.ToUniversalTime() < DateTime.UtcNow.AddDays(30) || !leaf.GetNameInfo(X509NameType.SimpleName, false).Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase))
             {
                 leaf?.Dispose();
                 using var key = RSA.Create(2048);
@@ -39,6 +41,7 @@ internal static class AccessCertificates
                 request.CertificateExtensions.Add(new X509EnhancedKeyUsageExtension(new OidCollection { new("1.3.6.1.5.5.7.3.1") }, true));
                 var names = new SubjectAlternativeNameBuilder(); names.AddDnsName("localhost"); names.AddDnsName(Environment.MachineName);
                 names.AddIpAddress(IPAddress.Loopback); names.AddIpAddress(IPAddress.IPv6Loopback);
+                foreach (var address in LanAddresses()) names.AddIpAddress(address);
                 request.CertificateExtensions.Add(names.Build());
                 using var signed = request.Create(root, DateTimeOffset.UtcNow.AddMinutes(-5), DateTimeOffset.UtcNow.AddYears(1), RandomNumberGenerator.GetBytes(16));
                 leaf = signed.CopyWithPrivateKey(key); SaveProtected(leafPath, leaf);
@@ -47,10 +50,21 @@ internal static class AccessCertificates
                 leaf.Dispose(); leaf = LoadProtected(leafPath, true);
             }
             AtomicWrite(Path.Combine(publicDirectory, "access-root.cer"), root.Export(X509ContentType.Cert));
-            var metadata = new AccessBootstrap(1, $"https://{Environment.MachineName}:{port}/", Convert.ToHexString(SHA256.HashData(root.RawData)));
+            var alternatives = ProductProfile.IsReview ? null : LanAddresses().Select(address => $"https://{address}:{port}/").ToArray();
+            var metadata = new AccessBootstrap(1, $"https://{(ProductProfile.IsReview?"localhost":Environment.MachineName)}:{port}/", Convert.ToHexString(SHA256.HashData(root.RawData)), alternatives);
             AtomicWrite(Path.Combine(publicDirectory, "access-server.json"), JsonSerializer.SerializeToUtf8Bytes(metadata));
             return leaf;
         }
+    }
+    private static IPAddress[] LanAddresses()
+    {
+        try
+        {
+            return Dns.GetHostAddresses(Dns.GetHostName())
+                .Where(address => address.AddressFamily == System.Net.Sockets.AddressFamily.InterNetwork && !IPAddress.IsLoopback(address))
+                .Distinct().ToArray();
+        }
+        catch (System.Net.Sockets.SocketException) { return []; }
     }
     private static X509Certificate2 LoadProtected(string path, bool serverCredential = false)
     {

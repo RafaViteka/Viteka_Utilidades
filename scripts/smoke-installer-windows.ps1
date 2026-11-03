@@ -1,7 +1,8 @@
 $ErrorActionPreference='Stop'
 $root=Split-Path $PSScriptRoot -Parent
-$version=([xml](Get-Content (Join-Path $root 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version
-$setup=Join-Path $root "artifacts/installer/VitekaUtilidades-Setup-$version-win-x64-preview.exe"
+$version=([xml](Get-Content (Join-Path $root 'Directory.Build.props') -Raw)).SelectSingleNode('/Project/PropertyGroup/Version').InnerText
+$setup=Join-Path $root "artifacts/installer/VitekaUtilidades-Setup-$version-win-x64.exe"
+$clientSetup=Join-Path $root "artifacts/installer/VitekaConecta-Cliente-Setup-$version-win-x64.exe"
 $state=Join-Path $env:ProgramData 'Viteka/UtilidadesAccess'
 if((Get-Service VitekaUtilidadesAccess -ErrorAction SilentlyContinue) -or (Test-Path $state)){throw 'Refusing installer test over an existing authority.'}
 $directory=Join-Path $env:TEMP ('VitekaInstallerSmoke-'+[guid]::NewGuid().ToString('N'))
@@ -16,11 +17,20 @@ $previousBootstrap=$env:VITEKA_ACCESS_BOOTSTRAP
 try{
     Run-Owned -Exe $setup -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$install+'"'),('/LOG="'+(Join-Path $directory 'install.log')+'"'))
     $server=Join-Path $install 'Servidor/Viteka.Server.exe'
+    $firewall=Get-NetFirewallRule -DisplayName 'VitekaUtilidadesAccess-LAN' -ErrorAction Stop
+    $firewallProfiles=[string]$firewall.Profile
+    if($firewallProfiles -notmatch 'Any|Public'){throw "Client access firewall rule does not include Public networks: $firewallProfiles"}
+    $remote=$firewall|Get-NetFirewallAddressFilter
+    $remoteAddresses=[string]::Join(',',@($remote.RemoteAddress))
+    if(@($remote.RemoteAddress) -notcontains 'LocalSubnet'){throw "Client access firewall rule is not restricted to LocalSubnet: $remoteAddresses"}
     Run-Owned -Exe $server -Arguments @('--access-health',('"'+(Join-Path $install 'Cliente/access-server.json')+'"')) -Seconds 10
     $env:VITEKA_ACCESS_BOOTSTRAP=Join-Path $install 'Cliente/access-server.json'
     $env:VITEKA_UI_SMOKE_REPORT=Join-Path $directory 'installed-native.json'
     $env:VITEKA_UI_SMOKE_SCREENSHOT=Join-Path $directory 'installed-native.png'
     Run-Owned -Exe (Join-Path $install 'Cliente/Viteka.Desktop.exe') -Arguments @('--smoke-ui') -Seconds 90
+    $clientInstall=Join-Path $directory 'Puesto'
+    Run-Owned -Exe $clientSetup -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$clientInstall+'"'),('/SHAREDIR="'+(Join-Path $install 'Cliente')+'"'))
+    if(-not(Test-Path (Join-Path $clientInstall 'unins000.exe'))){throw 'Client shortcut installer did not complete.'}
     $report=Get-Content $env:VITEKA_UI_SMOKE_REPORT -Raw|ConvertFrom-Json
     if(-not $report.passed){throw "Installed native checks failed: $($report.stage) $($report.error)"}
     $profileHash=(Get-FileHash (Join-Path $state 'Private/pharmacy.dat') -Algorithm SHA256).Hash
@@ -32,11 +42,13 @@ try{
     Write-Output 'PASS: actual installer, installed native client with role guards, in-place upgrade and account preservation.'
 } catch {
     Get-Content (Join-Path $directory '*.log') -Tail 15 -ErrorAction SilentlyContinue
-    if(Test-Path $env:VITEKA_UI_SMOKE_REPORT){Get-Content $env:VITEKA_UI_SMOKE_REPORT}
+    if($env:VITEKA_UI_SMOKE_REPORT -and (Test-Path $env:VITEKA_UI_SMOKE_REPORT)){Get-Content $env:VITEKA_UI_SMOKE_REPORT}
     throw
 } finally {
     $env:VITEKA_ACCESS_BOOTSTRAP=$previousBootstrap
     $uninstaller=Join-Path $install 'unins000.exe'
+    $clientUninstaller=Join-Path $directory 'Puesto/unins000.exe'
+    if(Test-Path $clientUninstaller){Run-Owned -Exe $clientUninstaller -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Seconds 30}
     if(Test-Path $uninstaller){Run-Owned -Exe $uninstaller -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART') -Seconds 60}
     if(Get-Service VitekaUtilidadesAccess -ErrorAction SilentlyContinue){throw 'Installed access service was not removed.'}
     if(-not(Test-Path (Join-Path $state 'Private/access.dat'))){throw 'Uninstall must preserve the account authority.'}

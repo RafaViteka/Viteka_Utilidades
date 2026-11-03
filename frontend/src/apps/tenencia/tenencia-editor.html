@@ -1,3 +1,7 @@
+<button class="text-button" (click)="distributionOpen.set(!distributionOpen())">Versiones y distribución</button>
+@if (distributionOpen()) {
+  <viteka-catalog-distribution [province]="province()" (changed)="distributionChanged()" />
+}
 <section class="editor-bar" aria-label="Edición del listado">
   <div class="editor-title">
     <v-icon name="edit" />
@@ -9,6 +13,14 @@
       >
     </div>
   </div>
+  <label class="province-picker"
+    ><span>Provincia del listado</span
+    ><select [ngModel]="province()" (ngModelChange)="selectProvince($event)" [disabled]="busy()">
+      @for (p of provinces(); track p.code) {
+        <option [value]="p.code">{{ p.name }}</option>
+      }
+    </select></label
+  >
   <div class="editor-actions">
     <button class="text-button" (click)="newGroup()" [disabled]="busy()"><v-icon name="plus" />Añadir grupo</button
     ><button class="text-button" (click)="openImport()" [disabled]="busy()">
@@ -191,7 +203,7 @@
               />
             } @else {
               <p class="hint">
-                No se ha detectado en NixFarma la columna de agrupación homogénea. Revisa Configuración → Comprobar
+                No se ha detectado en Nixfarma la columna de agrupación homogénea. Revisa Configuración → Comprobar
                 tablas de tenencia.
               </p>
             }
@@ -201,7 +213,7 @@
             type="submit"
             [disabled]="searching() || !searchText().trim() || (mode() === 'homogeneous' && !homogeneous().length)"
           >
-            <v-icon name="search" />{{ searching() ? 'Buscando…' : 'Buscar en NixFarma' }}
+            <v-icon name="search" />{{ searching() ? 'Buscando…' : 'Buscar en Nixfarma' }}
           </button>
         </form>
         @if (searchMessage()) {
@@ -221,7 +233,7 @@
                     />
                   </th>
                   <th scope="col">CN</th>
-                  <th scope="col">Descripción en NixFarma</th>
+                  <th scope="col">Descripción en Nixfarma</th>
                   <th scope="col" class="center">Exist.</th>
                 </tr>
               </thead>
@@ -239,7 +251,7 @@
                     </td>
                     <td class="mono">{{ a.code }}</td>
                     <td>
-                      {{ a.issue === 'not_found' ? 'No dado de alta en NixFarma' : a.description }}
+                      {{ a.issue === 'not_found' ? 'No dado de alta en Nixfarma' : a.description }}
                       @if (g.codes.includes(a.code)) {
                         <small class="tag">Ya en el grupo</small>
                       }
@@ -252,9 +264,13 @@
           </div>
           <div class="add-footer">
             <span>{{ picked().length }} seleccionados</span>
-            <button class="primary" (click)="addPicked()" [disabled]="busy() || !picked().length">
-              <v-icon name="plus" />Añadir al grupo
-            </button>
+            <viteka-edit-actions
+              [submit]="false"
+              [busy]="busy()"
+              [saveDisabled]="!picked().length"
+              (save)="addPicked()"
+              (cancel)="pickAll(false)"
+            />
           </div>
         }
       </div>
@@ -265,7 +281,7 @@
 </div>
 
 @if (draft(); as d) {
-  <div class="modal-overlay" (click)="draft.set(null)">
+  <div class="modal-overlay" (click)="closeDraft()">
     <form
       class="dialog editor-dialog"
       role="dialog"
@@ -276,7 +292,7 @@
     >
       <div class="dialog-top">
         <h2>{{ d.id ? 'Editar grupo' : 'Nuevo grupo' }}</h2>
-        <button type="button" aria-label="Cerrar" (click)="draft.set(null)"><v-icon name="close" /></button>
+        <button type="button" aria-label="Cerrar" (click)="closeDraft()"><v-icon name="close" /></button>
       </div>
       <div class="draft-grid">
         <label
@@ -317,15 +333,12 @@
       @if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       }
-      <div class="dialog-actions">
-        <button type="button" class="text-button" (click)="draft.set(null)">Cancelar</button>
-        <button class="primary" type="submit" [disabled]="busy() || !d.name.trim()">Guardar</button>
-      </div>
+      <viteka-edit-actions [busy]="busy()" [saveDisabled]="!d.name.trim()" (cancel)="closeDraft()" />
     </form>
   </div>
 }
 @if (importing()) {
-  <div class="modal-overlay" (click)="importing.set(false)">
+  <div class="modal-overlay" (click)="closeImport()">
     <section
       class="dialog import-dialog"
       role="dialog"
@@ -335,12 +348,38 @@
     >
       <div class="dialog-top">
         <h2>Importar códigos</h2>
-        <button aria-label="Cerrar" (click)="importing.set(false)"><v-icon name="close" /></button>
+        <button aria-label="Cerrar" (click)="closeImport()"><v-icon name="close" /></button>
       </div>
-      <p class="hint">
-        Pega filas desde Excel con el formato exportado (Código grupo; Grupo; Mínimo; CN; Descripción) o filas cortas
-        «código o nombre del grupo; CN». Los grupos que no existan se crean con el formato completo.
-      </p>
+      <p class="hint">Pega las filas del Excel o CSV exportado (Código grupo; Grupo; Mínimo; CN; Descripción; Nota).</p>
+      <fieldset class="import-modes">
+        <legend>Cómo aplicar la importación</legend>
+        <label
+          ><input
+            type="radio"
+            name="importMode"
+            value="merge"
+            [ngModel]="importMode()"
+            (ngModelChange)="importMode.set($event)"
+          /><span
+            ><strong>Acumular y actualizar</strong
+            ><small
+              >Añade grupos y artículos nuevos, modifica los incluidos y conserva los que no aparecen en el
+              archivo.</small
+            ></span
+          ></label
+        ><label
+          ><input
+            type="radio"
+            name="importMode"
+            value="replace"
+            [ngModel]="importMode()"
+            (ngModelChange)="importMode.set($event)"
+          /><span
+            ><strong>Sustituir completamente</strong
+            ><small>Borra el listado provincial actual y usa exclusivamente el contenido importado.</small></span
+          ></label
+        >
+      </fieldset>
       <textarea
         rows="10"
         aria-label="Filas a importar"
@@ -354,12 +393,13 @@
       @if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
       }
-      <div class="dialog-actions">
-        <button class="text-button" (click)="importing.set(false)">Cerrar</button>
-        <button class="primary" (click)="runImport()" [disabled]="busy() || !importText().trim()">
-          {{ busy() ? 'Importando…' : 'Importar' }}
-        </button>
-      </div>
+      <viteka-edit-actions
+        [submit]="false"
+        [busy]="busy()"
+        [saveDisabled]="!importText().trim()"
+        (save)="runImport()"
+        (cancel)="closeImport()"
+      />
     </section>
   </div>
 }
@@ -372,10 +412,10 @@
       aria-label="Confirmar"
       (click)="$event.stopPropagation()"
     >
-      <p>{{ c.text }}</p>
+      <p class="dialog-copy">{{ c.text }}</p>
       <div class="dialog-actions">
-        <button class="text-button" (click)="confirming.set(null)">Cancelar</button>
-        <button class="primary danger" (click)="confirm()">{{ c.label }}</button>
+        <button class="button-secondary" (click)="confirming.set(null)">Cancelar</button>
+        <button class="button-danger" (click)="confirm()">{{ c.label }}</button>
       </div>
     </section>
   </div>

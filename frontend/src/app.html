@@ -6,7 +6,10 @@
       <img class="auth-brand" src="logotipo.png" alt="Viteka" />
       <div class="eyebrow">UTILIDADES PARA TU FARMACIA</div>
       <h1>Iniciar sesión</h1>
-      <p>Accede con tu cuenta de Viteka Utilidades.</p>
+      @if (reviewMode()) {
+        <p class="chip">PC de pruebas · Instalación independiente</p>
+      }
+      <p>Accede con tu cuenta de Viteka Conecta.</p>
       <form (ngSubmit)="login()" class="account-form">
         <label
           >Usuario<input
@@ -34,7 +37,7 @@
       @if (!bridge.native) {
         <p class="connection-help">El acceso con contraseña está disponible en la aplicación Windows.</p>
       }
-      <small class="auth-version">Viteka Utilidades · {{ version() }}</small>
+      <small class="auth-version">Viteka Conecta · {{ version() }}</small>
     </section>
   </div>
 } @else if (user()?.mustChangePassword) {
@@ -75,8 +78,7 @@
         @if (error()) {
           <p class="error" role="alert">{{ error() }}</p>
         }
-        <button class="primary" type="submit" [disabled]="busy()">Guardar contraseña</button
-        ><button class="text-button" type="button" (click)="logout()" [disabled]="busy()">Cerrar sesión</button>
+        <viteka-edit-actions [busy]="busy()" (cancel)="logout()" />
       </form>
     </section>
   </div>
@@ -299,10 +301,11 @@
               [initialSearch]="tenenciaSearch()"
               (summary)="onTenenciaSummary($event)"
               [canConfigure]="!!user()?.canConfigure"
+              [canConfigureTenencia]="!!user()?.canConfigureTenencia"
               (toast)="notify($event)"
               (back)="selectedUtility.set(null)"
             />
-          } @else if (page() === 'Aplicaciones' || page() === 'Favoritos' || page() === 'Auditoría') {
+          } @else if (page() === 'Aplicaciones' || page() === 'Favoritos') {
             @if (
               (page() === 'Aplicaciones' && utilities().length) ||
               (page() === 'Favoritos' && favoriteUtilities().length)
@@ -445,56 +448,65 @@
                   }}</small></span
                 ><v-icon name="arrow" />
               </button>
-              @if (user()?.role !== 'User') {
-                <button class="setting-row" (click)="openSetting('startup')">
-                  <v-icon name="star" /><span
-                    ><strong>Pantalla al iniciar</strong
-                    ><small>{{ openFavorites() ? 'Favoritos' : 'Inicio' }}</small></span
-                  ><v-icon name="arrow" />
-                </button>
-              }
+              @if (user()?.role !== 'User') {}
             </section>
           }
           @if (page() === 'Utilidades' && user()?.canManageUsers) {
             <section class="settings grants">
-              <h2>Utilidades por usuario</h2>
-              <p class="hint">
-                Los administradores y el superadministrador tienen todas las utilidades. Marca las que puede usar cada
-                usuario; el cambio se aplica en su próximo acceso a la utilidad.
-              </p>
-              <div class="grant-table" role="region" aria-label="Utilidades por usuario" tabindex="0">
-                <table>
-                  <thead>
-                    <tr>
-                      <th scope="col">Cuenta</th>
-                      @for (u of permissionCatalog(); track u.id) {
-                        <th scope="col" class="center">{{ u.name }}</th>
-                      }
-                    </tr>
-                  </thead>
-                  <tbody>
-                    @for (target of users(); track target.id) {
-                      <tr>
-                        <th scope="row">
-                          <strong>{{ target.name }}</strong
-                          ><small>{{ roleName(target.role) }}</small>
-                        </th>
-                        @for (u of permissionCatalog(); track u.id) {
-                          <td class="center">
-                            <input
-                              type="checkbox"
-                              [checked]="hasGrant(target, u.id)"
-                              [disabled]="target.role !== 'User' || !canEdit(target) || busy()"
-                              [attr.aria-label]="u.name + ' para ' + target.name"
-                              (change)="grant(target, u.id, $any($event.target).checked)"
-                            />
-                          </td>
-                        }
-                      </tr>
-                    }
-                  </tbody>
-                </table>
-              </div>
+              <h2>Acceso a aplicaciones</h2>
+              <label
+                >Usuario<select
+                  aria-label="Usuario para permisos"
+                  [ngModel]="grantUserId()"
+                  (ngModelChange)="selectGrantUser($event)"
+                >
+                  <option value="">Selecciona una cuenta</option>
+                  @for (target of users(); track target.id) {
+                    <option [value]="target.id">{{ target.name }} · {{ roleName(target.role) }}</option>
+                  }
+                </select></label
+              >
+              @if (grantTarget(); as target) {
+                @if (target.role === 'SuperAdministrator') {
+                  <p>El superadministrador tiene siempre activas todas las aplicaciones y funciones.</p>
+                } @else if (target.role === 'Administrator') {
+                  <p>El administrador solo accede a las aplicaciones y funciones que le conceda el superadministrador.</p>
+                }
+                @for (u of permissionCatalog(); track u.id) {
+                  <label class="setting-row"
+                    ><input
+                      type="checkbox"
+                      [checked]="target.role === 'SuperAdministrator' || grantIds().includes(u.id)"
+                      [disabled]="target.role === 'SuperAdministrator' || !canEdit(target) || busy()"
+                      [attr.aria-label]="u.name + ' para ' + target.name"
+                      (change)="draftGrant(u.id, $any($event.target).checked)"
+                    />{{ u.name }}</label
+                  >
+                }
+                @if (user()?.canConfigure) {
+                  @for (permission of capabilityCatalog(); track permission.id) {
+                    <label class="setting-row"
+                      ><input type="checkbox" [checked]="target.role === 'SuperAdministrator' || grantPermissionIds().includes(permission.id)" [disabled]="target.role === 'SuperAdministrator' || !canEdit(target) || busy()" [attr.aria-label]="permission.name + ' para ' + target.name" (change)="draftPermission(permission.id, $any($event.target).checked)" />{{ permission.name }}</label
+                    >
+                  }
+                }
+                @if (canEdit(target) && target.role !== 'SuperAdministrator') {
+                  <p class="hint">Al guardar se cerrarán sus sesiones anteriores. Los favoritos no conceden acceso.</p>
+                  <viteka-edit-actions [submit]="false" [busy]="busy()" (save)="saveGrants()" (cancel)="selectGrantUser(target.id)" />
+                }
+              }
+            </section>
+          }
+          @if (page() === 'Auditoría' && user()?.canManageUsers) {
+            <viteka-audit />
+          }
+          @if (inSettings() && reviewMode()) {
+            <section class="settings" aria-label="Identidad del PC de pruebas">
+              <h2>PC de pruebas</h2>
+              <p>Esta instalación utiliza su propio servicio local y canal de revisión.</p>
+              <label
+                >ID de este PC <code>{{ reviewDeviceId() }}</code></label
+              ><button class="text-button" (click)="copyReviewId()">Copiar identificador</button>
             </section>
           }
           @if (page() === 'Usuarios' && user()?.canManageUsers) {
@@ -604,7 +616,7 @@
               @if (user()?.canConfigure) {
                 <button class="setting-row" (click)="openSetting('connection')">
                   <v-icon name="leaf" /><span
-                    ><strong>Conexión a NixFarma</strong
+                    ><strong>Conexión a Nixfarma</strong
                     ><small
                       >{{ nixState()?.configured ? 'Configurada en el servidor' : 'Pendiente de configurar' }} · Solo
                       Viteka</small
@@ -615,14 +627,16 @@
             </section>
             <details>
               <summary>Información de la aplicación</summary>
-              <p>Viteka Utilidades · {{ version() }}</p>
+              <p><strong>Viteka Conecta</strong><br />Herramientas y servicios para tu farmacia</p>
+              <p>Versión {{ version() }}</p>
+              <p>Proveedor: Dinaro Partners, S.L. · NIF B72798168<br />Calle San Pedro, 35, 1.ª, 29200 Antequera (Málaga), España.<br />Contacto: conecta@viteka.es</p>
             </details>
           }
         }
       </main>
       @if (!inTenencia()) {
         <footer>
-          <span>Centro de atención y recursos</span><span>Viteka Utilidades · {{ version() }}</span>
+          <span>Centro de atención y recursos</span><span>Viteka Conecta · {{ version() }}</span>
         </footer>
       }
     </div>
@@ -649,10 +663,10 @@
         Se instala sola, sin asistente. Windows pedirá una confirmación de permisos y Viteka volverá a abrirse con tu
         sesión iniciada.
       </p>
-      <div class="actions">
-        <button class="primary" (click)="installFromPrompt()">Actualizar ahora</button
-        ><button class="text-button" (click)="laterUpdate()">Más tarde</button
-        ><button class="text-button" (click)="viewUpdate()">Ver detalles</button>
+      <div class="dialog-actions">
+        <button class="button-ghost" (click)="viewUpdate()">Ver detalles</button
+        ><button class="button-secondary" (click)="laterUpdate()">Más tarde</button
+        ><button class="primary" (click)="installFromPrompt()">Actualizar ahora</button>
       </div>
     </section>
   </div>
@@ -825,8 +839,8 @@
         }
         <fieldset>
           <legend>Acceso a aplicaciones</legend>
-          @if (editRole !== 'User') {
-            <p>Este rol tiene acceso a todas las aplicaciones publicadas.</p>
+          @if (editRole === 'SuperAdministrator') {
+            <p>El superadministrador tiene siempre activas todas las aplicaciones publicadas.</p>
           } @else {
             @for (app of permissionCatalog(); track app.id) {
               <label class="inline-check"
@@ -841,13 +855,18 @@
             }
           }
         </fieldset>
+        @if (user()?.canConfigure) {
+          <fieldset>
+            <legend>Permisos especiales</legend>
+            @for (permission of capabilityCatalog(); track permission.id) {
+              <label class="inline-check"><input type="checkbox" [checked]="editPermissionIds.includes(permission.id)" (change)="togglePermission(permission.id, $any($event.target).checked)" />{{ permission.name }}</label>
+            }
+          </fieldset>
+        }
         @if (error()) {
           <p class="error" role="alert">{{ error() }}</p>
         }
-        <div class="actions">
-          <button type="submit" class="primary" [disabled]="busy()">Guardar cuenta</button
-          ><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button>
-        </div>
+        <viteka-edit-actions [busy]="busy()" (cancel)="closeModals()" />
       </form>
     </section>
   </div>
@@ -883,7 +902,7 @@
         @if (error()) {
           <p class="error" role="alert">{{ error() }}</p>
         }
-        <button type="submit" class="primary" [disabled]="busy()">Restablecer contraseña</button>
+        <viteka-edit-actions [busy]="busy()" (cancel)="closeModals()" />
       </form>
     </section>
   </div>
@@ -903,7 +922,7 @@
               ? 'Pantalla al iniciar'
               : settingDialog() === 'pharmacy'
                 ? 'Datos de la farmacia'
-                : 'Conexión a NixFarma'
+                : 'Conexión a Nixfarma'
       "
       class="dialog settings-dialog"
       (click)="$event.stopPropagation()"
@@ -919,7 +938,7 @@
                   ? 'Pantalla al iniciar'
                   : settingDialog() === 'pharmacy'
                     ? 'Datos de la farmacia'
-                    : 'Conexión a NixFarma'
+                    : 'Conexión a Nixfarma'
           }}
         </h2>
         <button aria-label="Cerrar ajuste" (click)="closeModals()" [disabled]="busy()"><v-icon name="close" /></button>
@@ -953,8 +972,8 @@
               maxlength="128"
               required /></label
           ><small>Entre 3 y 128 caracteres.</small
-          ><button class="primary" type="submit" [disabled]="busy()">Cambiar mi contraseña</button
-          ><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button>
+          >
+          <viteka-edit-actions [busy]="busy()" (cancel)="closeModals()" />
         </form>
       }
       @if (settingDialog() === 'appearance' || settingDialog() === 'startup') {
@@ -983,21 +1002,18 @@
               />Abrir Favoritos al iniciar</label
             >
           }
-          <div class="actions">
-            <button type="submit" class="primary" [disabled]="busy()">Guardar cambios</button
-            ><button type="button" class="text-button" (click)="closeModals()" [disabled]="busy()">Cancelar</button>
-          </div>
+          <viteka-edit-actions [busy]="busy()" (cancel)="closeModals()" />
         </form>
       }
       @if (settingDialog() === 'pharmacy' && user()?.canManageUsers) {
-        <viteka-pharmacy-settings (working)="busy.set($event)" (cancel)="closeModals()" />
+        <viteka-pharmacy-settings (working)="busy.set($event)" (saved)="pharmacySaved()" (cancel)="closeModals()" />
       }
       @if (settingDialog() === 'connection' && user()?.canConfigure) {
-        <section class="settings nixfarma-settings" aria-label="Conexión a NixFarma">
+        <section class="settings nixfarma-settings" aria-label="Conexión a Nixfarma">
           <div class="card-head">
             <div class="tile"><v-icon name="leaf" /></div>
             <div>
-              <h2>Conexión a NixFarma</h2>
+              <h2>Conexión a Nixfarma</h2>
               <p>Solo lectura · Configura la conexión en el servidor de la farmacia.</p>
             </div>
           </div>
@@ -1017,7 +1033,7 @@
           </dl>
           @if (bridge.native && nixState() && !nixState()?.dsnAvailable) {
             <p class="connection-warning">
-              No se encuentra este DSN de sistema de 64 bits en este equipo. Compruébalo en el servidor de NixFarma.
+              No se encuentra este DSN de sistema de 64 bits en este equipo. Compruébalo en el servidor de Nixfarma.
             </p>
           }
           <div class="actions">
@@ -1072,6 +1088,29 @@
       }
       @if (error()) {
         <p class="error" role="alert">{{ error() }}</p>
+      }
+    </section>
+  </div>
+}
+
+@if (bridge.updatePhase()) {
+  <div class="modal-overlay">
+    <section class="dialog update-progress-dialog" role="dialog" aria-modal="true" aria-label="Progreso de actualización">
+      <h2>{{ bridge.updatePhase() === 'failed' ? 'No se pudo actualizar Viteka' : bridge.updatePhase() === 'cancelled' ? 'Actualización cancelada' : 'Actualizando Viteka' }}</h2>
+      @if (bridge.updatePhase() !== 'failed' && bridge.updatePhase() !== 'cancelled') {
+        <p class="dialog-copy" role="status">{{ phaseLabels[bridge.updatePhase()] || 'Actualizando' }}</p>
+      }
+      @if (bridge.updatePhase() === 'downloading' && bridge.progress() !== null) {
+        <progress max="100" [value]="bridge.progress()"></progress><strong>{{ bridge.progress() }} %</strong>
+      } @else if (bridge.updatePhase() !== 'failed' && bridge.updatePhase() !== 'cancelled') {
+        <progress></progress>
+      }
+      @if (['preparing', 'downloading', 'verifying'].includes(bridge.updatePhase())) {
+        <div class="dialog-actions"><button class="button-secondary" (click)="cancelUpdate()">Cancelar actualización</button></div>
+      }
+      @if (bridge.updatePhase() === 'failed' || bridge.updatePhase() === 'cancelled') {
+        <p class="dialog-copy" role="status">{{ error() || updateMessage() }}</p>
+        <div class="dialog-actions"><button class="primary" (click)="bridge.updatePhase.set('')">Cerrar</button></div>
       }
     </section>
   </div>

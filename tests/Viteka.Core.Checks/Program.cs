@@ -200,6 +200,46 @@ try
         : new HttpResponseMessage(System.Net.HttpStatusCode.OK) { Content = new ByteArrayContent(installerBody) }));
     var updater = new PreviewUpdater(updateHttp);
     PreviewUpdate? offer = null;
+    Check("Review updates are offered only to the exact test PC and never to the normal channel",()=>{
+        var id=new string('a',32);var other=new string('b',32);var tag="review-v0.19.0-pc-"+id;
+        var name="VitekaUtilidades-Test-Setup-0.19.0-win-x64.exe";
+        var releases=new[]{new{tag_name=tag,draft=false,prerelease=true,assets=new[]{new{name,browser_download_url="https://github.com/RafaViteka/Viteka_Utilidades/releases/download/"+tag+"/"+name,digest="sha256:"+new string('a',64),size=100}}}};
+        using var http=new HttpClient(new ReleaseStub(JsonSerializer.Serialize(releases),System.Net.HttpStatusCode.OK));
+        Require(new PreviewUpdater(http,id).FindAsync(new Version(0,18,0)).GetAwaiter().GetResult()?.Version==new Version(0,19,0));
+        Require(new PreviewUpdater(http,other).FindAsync(new Version(0,18,0)).GetAwaiter().GetResult() is null);
+        Require(new PreviewUpdater(http).FindAsync(new Version(0,17,0)).GetAwaiter().GetResult() is null);
+        Require(new PreviewUpdater(http,other).GetHistoryAsync().GetAwaiter().GetResult().Length==0);
+    });
+    Check("Review installer identity accepts Inno padding but never another product",()=>{
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas"));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas                         "));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas\0\0"));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas"));
+        Require(ProductProfile.IsReviewInstallerProduct("Viteka Utilidades - Pruebas                         "));
+        Require(!ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Vista previa local"));
+        Require(!ProductProfile.IsReviewInstallerProduct("Viteka Conecta - Pruebas modified"));
+        Require(!ProductProfile.IsReviewInstallerProduct(null));
+    });
+    Check("Review identity persists and corrupted identity is never replaced",()=>{
+        var directory=Path.Combine(root,"review-identity");var identity=new ReviewIdentity(directory,b=>b,b=>b);var id=identity.LoadOrCreate();
+        Require(ReviewIdentity.Valid(id)&&new ReviewIdentity(directory,b=>b,b=>b).LoadOrCreate()==id);
+        File.WriteAllText(Path.Combine(directory,"review-device.dat"),"damaged");
+        try{identity.LoadOrCreate();throw new Exception("Corruption reset the identity");}catch(JsonException){}
+        Require(File.ReadAllText(Path.Combine(directory,"review-device.dat"))=="damaged");
+        Require(ProductProfile.ServiceName==(ProductProfile.IsReview?"VitekaUtilidadesReviewAccess":"VitekaUtilidadesAccess"));
+        Require(ProductProfile.AccessPort==(ProductProfile.IsReview?7448:7447));
+    });
+    Check("Update diagnostics preserve phase and Windows code without exception secrets", () => {
+        const string secret="sensitive-session-and-connection-placeholder";
+        var failure=UpdateDiagnostics.Capture(new UnauthorizedAccessException(secret),"handoff");
+        Require(failure.Phase=="handoff"&&failure.Category=="PERMISSION"&&failure.Code.StartsWith("VU-UPD-HANDOFF-PERMISSION-"));
+        var folder=Path.Combine(root,"update-diagnostics");UpdateDiagnostics.Save(folder,failure);
+        Require(!File.ReadAllText(Path.Combine(folder,"Updates","last-error.json")).Contains(secret));
+        var wrapped=new UpdateOperationException(failure);
+        Require(!wrapped.Message.Contains(secret)&&wrapped.Message.Contains(failure.Code));
+        Require(UpdateDiagnostics.Capture(wrapped,"preparing")==failure);
+        Require(UpdateDiagnostics.Capture(new System.ComponentModel.Win32Exception(1223,secret),"handoff").Category=="CANCELLED");
+    });
     Check("Preview channel offers later verified installer", () =>
     {
         offer = updater.FindAsync(new Version(0, 5, 0)).GetAwaiter().GetResult();
@@ -210,6 +250,13 @@ try
     {
         using var verified = updater.DownloadAsync(offer!, Path.Combine(root, "downloads")).GetAwaiter().GetResult();
         Require(File.ReadAllBytes(verified.Path).SequenceEqual(installerBody));
+    });
+    Check("Verification phase is observable only after bytes have been downloaded", () =>
+    {
+        var verifying=false;
+        using var verified=updater.DownloadAsync(offer!,Path.Combine(root,"phase-download"),ct:default,verifying:()=>verifying=true).GetAwaiter().GetResult();Require(verifying);
+        using var cancelled=new CancellationTokenSource();cancelled.Cancel();
+        try{updater.DownloadAsync(offer!,Path.Combine(root,"cancel-download"),ct:cancelled.Token).GetAwaiter().GetResult();throw new Exception("cancel not observed");}catch(OperationCanceledException){}
     });
     Check("Digest mismatch deletes the downloaded executable", () =>
     {
@@ -384,7 +431,7 @@ try
         var store = new TenenciaCatalogStore(Path.Combine(root, "tenencia-custom"), packaged); Directory.CreateDirectory(Path.Combine(root, "tenencia-custom"));
         JsonElement J(object o) => JsonSerializer.SerializeToElement(o);
         Require(!store.IsCustomized("29") && store.Load("29")!.Groups.Length == 1);
-        var added = store.Apply("29", "group.save", J(new { name = "Grupo nuevo", code = "ah123", minimum = 2, note = "Nota" })); Require(store.IsCustomized("29") && added.Groups.Length == 2 && added.Version.StartsWith("Personalizada-") && added.Source.EndsWith("Editada en Viteka."));
+        var added = store.Apply("29", "group.save", J(new { name = "Grupo nuevo", code = "ah123", minimum = 2, note = "Nota" })); Require(store.IsCustomized("29") && added.Groups.Length == 2 && added.Version.StartsWith("Local-") && added.Source.EndsWith("Editada en Viteka."));
         var id = added.Groups[1].Id; Require(added.Groups[1] is { Name: "Grupo nuevo", Minimum: 2, ClassificationCode: "AH123", SelectionNote: "Nota" });
         var edited = store.Apply("29", "group.save", J(new { id, name = "Grupo editado", code = "A01AB", minimum = 4 })); Require(edited.Groups[1] is { Name: "Grupo editado", Minimum: 4, AtcPrefix: "A01AB", ClassificationCode: null });
         var withCodes = store.Apply("29", "codes.add", J(new { id, items = new[] { new { code = "650010", description = "Artículo diez" }, new { code = "650011", description = "" }, new { code = "650010", description = "Artículo diez" } } })); Require(withCodes.Groups[1].Codes.SequenceEqual(new[] { "650010", "650011" }) && withCodes.Groups[1].Descriptions!["650010"] == "Artículo diez");
@@ -400,6 +447,76 @@ try
         var reset = store.Apply("29", "reset", J(new { })); Require(!store.IsCustomized("29") && reset.Version == "fixture-v1" && store.LoadLast("29", last.ListVersion!) is null);
         try { store.Load("../29"); throw new Exception("Expected invalid province"); } catch (ArgumentException) { }
     });
+    Check("Tenencia catalogue imports merge or replace atomically", () =>
+    {
+        var packaged = Path.Combine(root, "tenencia-import-packaged"); Directory.CreateDirectory(packaged); File.WriteAllBytes(Path.Combine(packaged, "29.json"), JsonSerializer.SerializeToUtf8Bytes(tenenciaList));
+        var store = new TenenciaCatalogStore(Path.Combine(root, "tenencia-import-custom"), packaged); Directory.CreateDirectory(Path.Combine(root, "tenencia-import-custom"));
+        JsonElement J(object value) => JsonSerializer.SerializeToElement(value);
+        var merged = store.Apply("29", "import", J(new { mode = "merge", groups = new object[] { new { code = "", name = "Grupo ficticio", minimum = 5, note = "Importado", items = new[] { new { code = "650020", description = "Artículo nuevo" } } }, new { code = "B02BC", name = "Grupo añadido", minimum = 2, note = "", items = Array.Empty<object>() } } }));
+        Require(merged.Groups.Length == 2 && merged.Groups[0].Minimum == 5 && merged.Groups[0].Codes.Contains("650020") && merged.Groups[1].Name == "Grupo añadido");
+        var replaced = store.Apply("29", "import", J(new { mode = "replace", groups = new[] { new { code = "C01CA", name = "Lista sustitutiva", minimum = 3, note = "", items = new[] { new { code = "650030", description = "Único artículo" } } } } }));
+        Require(replaced.Groups.Length == 1 && replaced.Groups[0].Name == "Lista sustitutiva" && replaced.Groups[0].Codes.SequenceEqual(new[] { "650030" }));
+        try { store.Apply("29", "import", J(new { mode = "replace", groups = Array.Empty<object>() })); throw new Exception("Expected empty import rejection"); } catch (ArgumentException) { }
+    });
+    Check("Catalog deltas merge additions modifications and deletions once while retaining local fields", () =>
+    {
+        var db=new PharmacyDatabase(Path.Combine(root,"revision-merge"));var revisions=new CatalogRevisions(db);var actor=new AuditActor("fixture","Viteka");
+        var initial=tenenciaList with{Groups=[tenenciaList.Groups[0],tenenciaList.Groups[0] with{Id="removed",Name="Retirar"}]};
+        revisions.Ensure(initial);
+        var local=initial with{Version="local1",Groups=[initial.Groups[0] with{Name="Nombre local",Codes=[..initial.Groups[0].Codes,"650099"]},initial.Groups[1]]};
+        revisions.SaveLocal(local,initial.Version,actor,"catalog.group.save");
+        var remote=initial with{Groups=[initial.Groups[0] with{Minimum=9},initial.Groups[0] with{Id="new",Name="Alta",Codes=["650010"]}]};
+        var delta=CatalogRevisions.Build(initial,remote,"master2");var next=revisions.Apply(delta,local.Version,actor);
+        Require(next.Base.Version=="master2" && next.Effective.Groups.Length==2);
+        Require(next.Effective.Groups[0].Name=="Nombre local" && next.Effective.Groups[0].Minimum==9 && next.Effective.Groups[0].Codes.Contains("650099"));
+        var again=revisions.Apply(delta,"old-version",actor);Require(again.Effective.Version==next.Effective.Version&&again.Applied.Length==1);
+        Require(db.Query(new(Action:"catalog.update")).Length==1);
+        try{revisions.SaveLocal(local,"stale",actor,"catalog.group.save");throw new Exception("stale write accepted");}catch(InvalidOperationException){}
+        Require(revisions.Read("29")!.Effective.Version==next.Effective.Version);
+    });
+    Check("Master collisions and retired customized groups remain explicit conflicts", () =>
+    {
+        var original=tenenciaList;var mine=original with{Groups=[original.Groups[0] with{Name="Local",Codes=[..original.Groups[0].Codes,"650099"]}]};
+        var master=original with{Groups=[original.Groups[0] with{Name="Remoto"}]};
+        var merged=CatalogRevisions.Merge(original,mine,master);Require(merged.List.Groups[0].Name=="Local"&&merged.Conflicts.Any(x=>x.Field=="name"));
+        var retired=original with{Groups=[original.Groups[0] with{Id="replacement",Name="Nuevo"}]};
+        merged=CatalogRevisions.Merge(original,mine,retired);Require(merged.List.Groups.Any(x=>x.Id==original.Groups[0].Id)&&merged.Conflicts.Any(x=>x.Field=="group"));
+    });
+    Check("Signed catalog packages reject tampering unknown keys and incompatible app versions", () =>
+    {
+        using var key=System.Security.Cryptography.RSA.Create(2048);using var other=System.Security.Cryptography.RSA.Create(2048);
+        var delta=CatalogRevisions.Build(tenenciaList,tenenciaList with{Groups=[tenenciaList.Groups[0] with{Minimum=10}]},"master-signed");var package=CatalogRevisions.Sign(delta,key);
+        Require(CatalogRevisions.Verify(package,key,new Version(0,18,0)).ToVersion=="master-signed");
+        foreach(var bad in new[]{package with{Payload=Convert.ToBase64String("modified"u8)},package with{KeyId="wrong"}}){try{CatalogRevisions.Verify(bad,key,new Version(0,18,0));throw new Exception("bad signature accepted");}catch(System.IO.InvalidDataException){}}
+        try{CatalogRevisions.Verify(package,other,new Version(0,18,0));throw new Exception("foreign key accepted");}catch(System.IO.InvalidDataException){}
+        try{CatalogRevisions.Verify(package,key,new Version(0,17,0));throw new Exception("old application accepted");}catch(System.IO.InvalidDataException){}
+    });
+    Check("Interrupted catalog updates roll back and history recovery preserves master receipts", () =>
+    {
+        var db=new PharmacyDatabase(Path.Combine(root,"revision-atomic"));var revisions=new CatalogRevisions(db);var actor=new AuditActor("fixture","Viteka");revisions.Ensure(tenenciaList);
+        try{db.Transaction<bool>((c,tx)=>{PharmacyDatabase.Set(c,tx,"catalog.29",new{invalid=true});throw new IOException("interrupted");});}catch(IOException){}
+        Require(revisions.Read("29")!.Base.Version==tenenciaList.Version);
+        var delta=CatalogRevisions.Build(tenenciaList,tenenciaList with{Groups=[tenenciaList.Groups[0] with{Minimum=8}]},"m2");var next=revisions.Apply(delta,tenenciaList.Version,actor);
+        var history=db.Transaction((c,tx)=>{using var cmd=PharmacyDatabase.Command(c,tx,"SELECT MAX(id) FROM catalog_history");return Convert.ToInt64(cmd.ExecuteScalar());});
+        revisions.Rollback("29",history,next.Effective.Version,actor);var recovered=revisions.Read("29")!;
+        Require(recovered.Base.Version=="m2"&&recovered.Applied.Contains(delta.Id)&&recovered.Effective.Groups[0].Minimum==tenenciaList.Groups[0].Minimum);
+    });
+    Check("Audit is centralized idempotent filtered and paginated with stable cursors", () =>
+    {
+        var directory=Path.Combine(root,"audit");var db=new PharmacyDatabase(directory);var actor=new AuditActor("u1","Titular");
+        for(int i=0;i<60;i++)db.Record(actor,"tenencia.query","ok",i+" grupos",i.ToString(),"tenencia-obligatoria");
+        db.Record(actor,"tenencia.query","ok","duplicate","1","tenencia-obligatoria");
+        var other=new PharmacyDatabase(directory);var page=other.Query(new(User:"u1",Action:"tenencia.query",Result:"ok"));Require(page.Length==51);
+        var next=other.Query(new(User:"u1",Before:page[49].Id));Require(next.Length==10&&next.All(x=>x.Id<page[49].Id));
+        Require(other.Query(new(User:"unknown")).Length==0&&other.Query(new(Result:"error")).Length==0);
+    });
+    Check("Therapeutic search never assumes a missing link and audit intents finalize without duplicate events",()=>{
+        using var connection=new TenenciaFixture();
+        var result=TenenciaStockQuery.ReadOnly(connection,tx=>TenenciaArticleFinder.Search(connection,tx,TenenciaStockQuery.Inspect(connection,tx),"therapeutic.groups","paracetamol",null));Require(result.Code=="unavailable"&&result.Articles.Length==0);
+        var db=new PharmacyDatabase(Path.Combine(root,"audit-intent"));var who=new AuditActor("u","Viteka");db.Record(who,"users.modify","pending","Inicio","operation");
+        Require(db.Query(new(Result:"pending")).Length==1);db.Complete("operation",who,"ok","Cuenta modificada");Require(db.Query(new(Result:"pending")).Length==0&&db.Query(new(Result:"ok")).Length==1);
+        db.Complete("operation",who,"error","Retry");Require(db.Query(new(Result:"ok")).Length==1);
+    });
     Check("Tenencia article finder validates input before querying NixFarma", () =>
     {
         using var c = new TenenciaFixture();
@@ -411,6 +528,7 @@ try
             Require(TenenciaArticleFinder.Search(c, tx, schema, "homogeneous", "1234", "COLUMNA_INVENTADA").Code == "unavailable");
             try { TenenciaArticleFinder.Search(c, tx, schema, "sql", "x", null); throw new Exception("Expected invalid mode"); } catch (ArgumentException) { }
             var found = TenenciaArticleFinder.Search(c, tx, schema, "code", "650001, 650002 y 650001", null); Require(found.Code == "ok" && found.Articles.Length == 2);
+            var dotted = TenenciaArticleFinder.Search(c, tx, schema with { ArticleTable = "APADMIN.AB_ARTICULOS" }, "code", "650001", null); Require(dotted.Code == "ok" && dotted.Articles.Length == 1);
             return true;
         });
         Require(c.Steps.Last() == "rollback");
@@ -419,6 +537,14 @@ try
     {
         var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "A", 1) }, { "650002", new("650002", "B", 1) } };
         var row = TenenciaRules.Evaluate(tenenciaList, stocks).Single(); Require(row.Stock == 2 && row.Missing == 1 && row.Status == "shortfall"); stocks["650001"] = new("650001", "A", 3); Require(TenenciaRules.Evaluate(tenenciaList, stocks).Single().Status == "covered");
+    });
+    Check("Expired stock follows the shared pharmacy policy", () =>
+    {
+        var stocks = new Dictionary<string, Viteka.Contracts.StockArticle> { { "650001", new("650001", "A", 3) { Expiry = new DateOnly(2026, 10, 31) } }, { "650002", new("650002", "B", 1) { Expiry = new DateOnly(2027, 12, 31) } } };
+        var excluded = TenenciaRules.Evaluate(tenenciaList, stocks, null, null, 3, false, new DateOnly(2026, 11, 1)).Single();
+        Require(excluded.Stock == 1 && excluded.Missing == 2 && excluded.Articles.Single(a => a.Code == "650001").EffectiveStock == 0);
+        var included = TenenciaRules.Evaluate(tenenciaList, stocks, null, null, 3, true, new DateOnly(2026, 11, 1)).Single();
+        Require(included.Stock == 4 && included.Status == "covered" && included.Articles.Single(a => a.Code == "650001").EffectiveStock == 3);
     });
     Check("Articles missing from NixFarma count as zero so no stock stays pending", () =>
     {
@@ -440,9 +566,19 @@ try
     Check("Confirmed NixFarma tables read descriptions and current stock by explicit CN without ATC", () =>
     {
         using var c = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES" };
-        var stocks = TenenciaStockQuery.ReadOnly(c, tx => { var schema = TenenciaStockQuery.Inspect(c, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APPUL.AB_ARTICULOS" && schema.StockTable == "APPUL.AB_ARTICULOS_FICHA_E" && schema.Stock == "\"EXI_ACTUALES\""); return TenenciaStockQuery.Read(c, tx, schema, ["650001", "650002"]); });
+        var stocks = TenenciaStockQuery.ReadOnly(c, tx => { var schema = TenenciaStockQuery.Inspect(c, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APADMIN_AB_ARTICULOS" && schema.StockTable == "AC1_EXISTENCIAS" && schema.Stock == "\"EXI_ACTUALES\""); return TenenciaStockQuery.Read(c, tx, schema, ["650001", "650002"]); });
         Require(stocks["650001"].Description == "Artículo ficticio 650001" && stocks["650001"].Stock == 2 && stocks["650002"].Stock == 1 && c.Steps.Last() == "rollback");
-        Require(c.Steps.Any(s => s.Contains("FROM APPUL.AB_ARTICULOS WHERE")) && c.Steps.Any(s => s.Contains("FROM APPUL.AB_ARTICULOS_FICHA_E WHERE")) && !c.Steps.Any(s => s.Contains("LIKE ?")));
+        Require(c.Steps.Any(s => s.Contains("FROM APADMIN_AB_ARTICULOS WHERE")) && c.Steps.Any(s => s.Contains("FROM AC1_EXISTENCIAS WHERE")) && !c.Steps.Any(s => s.Contains("LIKE ?")));
+        using var enriched = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES", AuxiliaryNativeTables = true, ApadminStockTable = true };
+        var enrichedStocks = TenenciaStockQuery.ReadOnly(enriched, tx => TenenciaStockQuery.Read(enriched, tx, TenenciaStockQuery.Inspect(enriched, tx, nativeNixFarma: true), ["650001", "650002"]));
+        Require(enrichedStocks["650001"] is { MinimumStock: 3, LastSupplier: "Proveedor de prueba", Laboratory: "Laboratorio de prueba", Classification: "A", Pvp: 12.34m, Homogeneous: "Conjunto homogéneo de prueba", Barcode: "847000650001" } && enrichedStocks["650001"].LastPurchase == new DateOnly(2026,10,1) && enrichedStocks["650001"].LastSale == new DateOnly(2026,10,20) && enrichedStocks["650002"].Inactive);
+        Require(enriched.Steps.Any(s => s.Contains("FROM APADMIN_AC_EXISTENCIAS WHERE", StringComparison.Ordinal)));
+        using var nativeWithLegacyStock = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES", AmbiguousColumns = true };
+        TenenciaStockQuery.ReadOnly(nativeWithLegacyStock, tx => { Require(TenenciaStockQuery.Inspect(nativeWithLegacyStock, tx, nativeNixFarma: true).Stock == "\"EXI_ACTUALES\""); return true; });
+        using var nativeActuales = new TenenciaFixture { NativeSchema = true, StockColumn = "ACTUALES" };
+        TenenciaStockQuery.ReadOnly(nativeActuales, tx => { Require(TenenciaStockQuery.Inspect(nativeActuales, tx, nativeNixFarma: true).Stock == "\"ACTUALES\""); return true; });
+        using var legacy = new TenenciaFixture { NativeSchema = true, StockColumn = "EXI_ACTUALES", LegacyNativeTables = true };
+        TenenciaStockQuery.ReadOnly(legacy, tx => { var schema = TenenciaStockQuery.Inspect(legacy, tx, nativeNixFarma: true); Require(schema.ArticleTable == "APPUL.AB_ARTICULOS" && schema.StockTable == "APPUL.AB_ARTICULOS_FICHA_E"); return true; });
     });
     Check("NixFarma stock reading stops before SELECT when read-only fails", () =>
     {
@@ -505,7 +641,7 @@ try
         Require(!AccessPolicy.CanConfigure(authority.Current(adminTicket)) && !AccessPolicy.CanConfigure(authority.Current(normalTicket)));
         Require(AccessPolicy.CanInstallUpdates(authority.Current(adminTicket)) && !AccessPolicy.CanInstallUpdates(authority.Current(normalTicket)));
         Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Usuarios"));
-        Require(!AccessPolicy.CanUse(authority.Current(normalTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items) && AccessPolicy.CanUse(authority.Current(adminTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items));
+        Require(!AccessPolicy.CanUse(authority.Current(normalTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items) && !AccessPolicy.CanUse(authority.Current(adminTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items) && AccessPolicy.CanUse(authority.Current(superTicket), Viteka.Contracts.UtilityCatalog.TenenciaId, Viteka.Contracts.UtilityCatalog.Items));
         Require(!AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Auditoría") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Auditoría") && AccessPolicy.CanOpenPage(authority.Current(superTicket), "Auditoría"));
         Require(AccessPolicy.CanOpenPage(authority.Current(normalTicket), "Configuración") && AccessPolicy.CanOpenPage(authority.Current(adminTicket), "Configuración"));
     });
@@ -529,7 +665,7 @@ try
         var staff = authority.Current(staffTicket);
         Require(AccessPolicy.CanUse(staff, "fixture-a", accessCatalog) && !AccessPolicy.CanUse(staff, "fixture-b", accessCatalog));
         Require(!AccessPolicy.CanUse(staff, "unknown", accessCatalog) && !AccessPolicy.CanUse(authority.Current(superTicket), "unknown", accessCatalog));
-        Require(AccessPolicy.CanUse(authority.Current(adminTicket), "fixture-b", accessCatalog));
+        Require(!AccessPolicy.CanUse(authority.Current(adminTicket), "fixture-b", accessCatalog) && AccessPolicy.CanUse(authority.Current(superTicket), "fixture-b", accessCatalog));
     });
     Check("Changing grants immediately invalidates the previous session", () =>
     {

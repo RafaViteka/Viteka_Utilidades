@@ -1,4 +1,4 @@
-# Instalación y actualizaciones de Viteka Utilidades
+# Instalación y actualizaciones de Viteka Conecta
 
 ## Entrega prevista
 

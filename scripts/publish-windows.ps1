@@ -17,6 +17,8 @@ try {
         & npm run build
         if ($LASTEXITCODE -ne 0) { throw 'Angular production build failed.' }
     } finally { Pop-Location }
+    & node scripts/check-report.mts
+    if ($LASTEXITCODE -ne 0) { throw 'Report selection checks failed.' }
     & python scripts/build-tenencia-catalog.py --check
     if ($LASTEXITCODE -ne 0) { throw 'Catalog transcription check failed.' }
     & python scripts/copy-ui.py
@@ -39,9 +41,11 @@ try {
         $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
         $iscc = if ($compiler) { $compiler.Source } else { Join-Path ${env:ProgramFiles(x86)} 'Inno Setup 6/ISCC.exe' }
         if (-not (Test-Path $iscc)) { throw 'Install Inno Setup 6 on Windows to build the installer.' }
-        $version = ([xml](Get-Content 'Directory.Build.props' -Raw)).Project.PropertyGroup.Version
+        $version = ([xml](Get-Content 'Directory.Build.props' -Raw)).SelectSingleNode('/Project/PropertyGroup/Version').InnerText
         & $iscc "/DAppVersion=$version" 'packaging/windows/Viteka.Utilidades.iss'
         if ($LASTEXITCODE -ne 0) { throw 'Installer compilation failed.' }
+        & $iscc "/DAppVersion=$version" 'packaging/windows/Viteka.Cliente.iss'
+        if ($LASTEXITCODE -ne 0) { throw 'Client installer compilation failed.' }
     }
 }
 finally { Pop-Location }

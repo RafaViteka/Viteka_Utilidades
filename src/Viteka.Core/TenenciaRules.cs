@@ -32,17 +32,24 @@ public static class TenenciaRules
         return list.Groups.Select(g => Decorate(g, new TenenciaRow(g.Id, g.Name, g.Minimum, null, null, "not_checked", g.Codes.Select(c => new StockArticle(c, g.Descriptions?.GetValueOrDefault(c) ?? ("Artículo CN " + c), null, "not_checked")).ToArray()))).ToArray();
     }
     public static TenenciaRow[] Evaluate(TenenciaList list, IReadOnlyDictionary<string, StockArticle> stocks) => Evaluate(list, stocks, null, null);
-    public static TenenciaRow[] Evaluate(TenenciaList list, IReadOnlyDictionary<string, StockArticle> stocks, IReadOnlyDictionary<string, string[]>? resolved, IReadOnlyDictionary<string, string>? notes)
+    public static TenenciaRow[] Evaluate(TenenciaList list, IReadOnlyDictionary<string, StockArticle> stocks, IReadOnlyDictionary<string, string[]>? resolved, IReadOnlyDictionary<string, string>? notes, int expiryReviewMonths = 3, bool countExpiredStock = false, DateOnly? today = null)
     {
         Validate(list);
+        if (expiryReviewMonths is < 1 or > 24) throw new ArgumentException("Periodo de caducidad no válido.");
+        var referenceDay = today ?? DateOnly.FromDateTime(DateTime.UtcNow);
         return list.Groups.Select(g =>
         {
             var codes = resolved?.GetValueOrDefault(g.Id) ?? g.Codes;
             var articles = codes.Select(c => stocks.TryGetValue(c, out var a) ? a with { Description = a.Description == "Artículo no identificado" ? g.Descriptions?.GetValueOrDefault(c) ?? a.Description : a.Description } : new StockArticle(c, g.Descriptions?.GetValueOrDefault(c) ?? "Artículo no identificado", null, "not_found")).ToArray();
             // Todo artículo consultado tiene existencias: si no está en NixFarma, cuenta como 0.
             // Los CN que no están dados de alta en NixFarma no se muestran (no aportan existencias).
-            articles = articles.Where(a => a.Issue != "not_found").Select(a => a.Stock is null ? a with { Stock = 0 } : a).ToArray();
-            decimal total = articles.Sum(a => a.Stock!.Value);
+            articles = articles.Where(a => a.Issue != "not_found").Select(a =>
+            {
+                var actual = a.Stock ?? 0;
+                var effective = !countExpiredStock && a.Expiry is { } expiry && expiry < referenceDay ? 0 : actual;
+                return (a.Stock is null ? a with { Stock = 0 } : a) with { EffectiveStock = effective };
+            }).ToArray();
+            decimal total = articles.Sum(a => a.EffectiveStock ?? 0);
             // Solo dos estados: correcto o falta. La nota de selección del grupo se conserva como información.
             var status = total < g.Minimum ? "shortfall" : "covered";
             var row = Decorate(g, new TenenciaRow(g.Id, g.Name, g.Minimum, total, Math.Max(0, g.Minimum - total), status, articles));

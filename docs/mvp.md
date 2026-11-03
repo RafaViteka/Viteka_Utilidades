@@ -2,7 +2,7 @@
 
 ## Alcance confirmado
 
-El usuario aprobó Angular dentro de WebView2 para acercar la aplicación al HTML elegido. El anfitrión .NET mantiene únicamente las funciones nativas. No se añaden aplicaciones ni vínculos a NixFarma hasta revisar el MVP.
+El usuario aprobó Angular dentro de WebView2 para acercar la aplicación al HTML elegido. El anfitrión .NET mantiene únicamente las funciones nativas. No se añaden aplicaciones ni vínculos a Nixfarma hasta revisar el MVP.
 
 La navegación, iconos, estados vacíos, preferencias y actualizaciones se implementan en componentes Angular. Los archivos se empaquetan localmente bajo Web. WebView2 usa una carpeta de usuario bajo LocalAppData para su caché: no escribe en la carpeta compartida del ejecutable. No hace falta una conexión ni un servidor para abrir la interfaz una vez disponible el runtime.
 

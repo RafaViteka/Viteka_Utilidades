@@ -6,12 +6,14 @@ using System.Text.Json;
 
 namespace Viteka.Core;
 
-public sealed record AccessBootstrap(int Schema, string ServerUrl, string RootSha256);
+public sealed record AccessBootstrap(int Schema, string ServerUrl, string RootSha256, string[]? ServerUrls = null);
 public sealed class AccessServiceTrust : IDisposable
 {
     private readonly X509Certificate2 root;
-    public Uri Server { get; }
-    public HttpClient Client { get; }
+    private readonly List<HttpClient> clients = [];
+    private int current;
+    public Uri Server => clients[current].BaseAddress!;
+    public HttpClient Client => clients[current];
     public string? ValidationFailure { get; private set; }
     public AccessServiceTrust(string bootstrapPath)
     {
@@ -23,9 +25,12 @@ public sealed class AccessServiceTrust : IDisposable
         root = X509CertificateLoader.LoadCertificateFromFile(certPath);
         if (!CryptographicOperations.FixedTimeEquals(SHA256.HashData(root.RawData), Convert.FromHexString(settings.RootSha256)))
             throw new InvalidDataException("La identidad del servidor no coincide con la configurada.");
-        // Local bootstrap remains on loopback, even when the public hostname resolves to a LAN address.
-        Server = uri.Host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase)
-            ? new UriBuilder(uri) { Host = "localhost" }.Uri : uri;
+        var destinations = new[] { settings.ServerUrl }.Concat(settings.ServerUrls ?? [])
+            .Select(value => Uri.TryCreate(value, UriKind.Absolute, out var parsed) ? parsed : null)
+            .Where(value => value is not null && value.Scheme == "https" && value.Port == uri.Port && value.UserInfo.Length == 0 && value.AbsolutePath == "/" && string.IsNullOrEmpty(value.Query) && string.IsNullOrEmpty(value.Fragment))
+            .Select(value => value!.Host.Equals(Environment.MachineName, StringComparison.OrdinalIgnoreCase) ? new UriBuilder(value) { Host = "localhost" }.Uri : value)
+            .DistinctBy(value => value.AbsoluteUri, StringComparer.OrdinalIgnoreCase).ToArray();
+        if(ProductProfile.IsReview && (destinations.Length != 1 || !destinations[0].IsLoopback || destinations[0].Port!=ProductProfile.AccessPort))throw new InvalidDataException("La edición de pruebas solo conecta con su servicio local de pruebas.");
         var policy = new X509ChainPolicy
         {
             TrustMode = X509ChainTrustMode.CustomRootTrust,
@@ -37,18 +42,23 @@ public sealed class AccessServiceTrust : IDisposable
         policy.ApplicationPolicy.Add(new Oid("1.3.6.1.5.5.7.3.1"));
         // Configure the chain before SslStream validation, rather than rebuilding it
         // after the OS has tried to discover this private installation's issuer.
-        var handler = new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = false };
-        handler.SslOptions.CertificateChainPolicy = policy;
-        handler.SslOptions.RemoteCertificateValidationCallback = (_, certificate, chain, errors) =>
+        foreach (var destination in destinations)
         {
-            if (certificate is null || errors != SslPolicyErrors.None)
+            var handler = new SocketsHttpHandler { AllowAutoRedirect = false, UseCookies = false, UseProxy = false, ConnectTimeout = TimeSpan.FromSeconds(3) };
+            handler.SslOptions.CertificateChainPolicy = policy;
+            handler.SslOptions.RemoteCertificateValidationCallback = (_, certificate, chain, errors) =>
             {
-                ValidationFailure = errors + "; " + string.Join(",", chain?.ChainStatus.Select(s => s.Status.ToString()) ?? []);
-                return false;
-            }
-            return true;
-        };
-        Client = new HttpClient(handler) { BaseAddress = Server, Timeout = TimeSpan.FromSeconds(20) };
+                if (certificate is null || errors != SslPolicyErrors.None)
+                {
+                    ValidationFailure = errors + "; " + string.Join(",", chain?.ChainStatus.Select(s => s.Status.ToString()) ?? []);
+                    return false;
+                }
+                return true;
+            };
+            clients.Add(new HttpClient(handler) { BaseAddress = destination, Timeout = TimeSpan.FromSeconds(20) });
+        }
+        if (clients.Count == 0) throw new InvalidDataException("No hay destinos válidos para el servicio de usuarios.");
     }
-    public void Dispose() { Client.Dispose(); root.Dispose(); }
+    public bool TryNextServer() { if (current + 1 >= clients.Count) return false; current++; return true; }
+    public void Dispose() { foreach (var client in clients) client.Dispose(); root.Dispose(); }
 }

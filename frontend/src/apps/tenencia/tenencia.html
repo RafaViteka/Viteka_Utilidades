@@ -1,6 +1,6 @@
 <header class="utility-heading">
   <div class="utility-title">
-    <button class="back-button" (click)="back.emit()" aria-label="Volver a Aplicaciones" title="Volver a Aplicaciones">
+    <button class="back-button" (click)="requestBack()" aria-label="Volver a Aplicaciones" title="Volver a Aplicaciones">
       <v-icon name="arrow" />
     </button>
     <div>
@@ -21,47 +21,43 @@
     </div>
   </div>
   <div class="actions">
-    @if (hasStock()) {
-      <span
-        class="checked-at"
-        [class.cached]="result()?.cached"
-        title="Fecha y hora de la última consulta de existencias"
-        ><v-icon name="clock" />Última consulta: {{ checkedTime() }}</span
-      >
+    @if (hasStock() || (view() === 'cotejo' && cotejo() && cotejoUnits(cotejo()!) > 0)) {
+      @if (hasStock()) {
+        <span class="checked-at" [class.cached]="result()?.cached" title="Fecha y hora de la última consulta de existencias"><v-icon name="clock" />Última consulta: {{ checkedTime() }}</span>
+      }
       <details class="export-menu">
         <summary class="text-button" aria-label="Exportar" title="Exportar el informe de faltas">
           <v-icon name="download" />{{ exporting() ? 'Exportando…' : 'Exportar' }}
         </summary>
         <div class="export-options" role="menu">
           <button role="menuitem" (click)="exportExcel()" [disabled]="exporting()">
-            <v-icon name="sheet" /><span
-              ><strong>Excel</strong><small>Faltas con logo y todos los grupos</small></span
-            ></button
+            <v-icon name="sheet" /><span><strong>Excel</strong></span></button
           ><button role="menuitem" (click)="exportCsv()" [disabled]="exporting()">
-            <v-icon name="sheet" /><span
-              ><strong>CSV</strong><small>Faltas, una fila por medicamento</small></span
-            ></button
+            <v-icon name="sheet" /><span><strong>CSV</strong></span></button
           ><button role="menuitem" (click)="exportPdf()" [disabled]="exporting()">
-            <v-icon name="file" /><span><strong>PDF</strong><small>Informe de faltas con logo</small></span></button
+            <v-icon name="file" /><span><strong>PDF</strong></span></button
+          ><button role="menuitem" (click)="openReport('doc')" [disabled]="exporting()">
+            <v-icon name="file" /><span><strong>Word</strong></span></button
+          ><button role="menuitem" (click)="openReport('txt')" [disabled]="exporting()">
+            <v-icon name="file" /><span><strong>TXT</strong></span></button
           ><button role="menuitem" (click)="print()">
-            <v-icon name="printer" /><span><strong>Imprimir</strong><small>Mismo informe en papel</small></span>
+            <v-icon name="printer" /><span><strong>Imprimir</strong></span>
           </button>
         </div>
       </details>
     }
-    @if (canConfigure() && result()?.province) {
+    @if (canConfigureTenencia() && result()?.province) {
       <button
         class="text-button"
         [class.on]="editing()"
         (click)="editing() ? finishEditing(true) : editing.set(true)"
-        title="Añadir o editar grupos y artículos (solo Viteka)"
+        title="Gestionar los listados provinciales autorizados"
       >
         <v-icon name="edit" />{{ editing() ? 'Terminar edición' : 'Editar listado' }}
       </button>
     }
     @if (!editing()) {
-      <button class="text-button" (click)="state()" [disabled]="busy()">Revisar disponibilidad</button
-      ><button class="primary" (click)="query()" [disabled]="!canQuery()">
+      <button class="primary" (click)="query()" [disabled]="!canQuery()">
         {{ busy() ? 'Espera…' : 'Consultar existencias' }}
       </button>
     }
@@ -70,12 +66,98 @@
 @if (error()) {
   <p class="error" role="alert">{{ error() }}</p>
 }
+@if (!editing()) {
+  <nav class="tenencia-tabs" aria-label="Vista de tenencia">
+    <button [class.active]="view() === 'query'" [attr.aria-current]="view() === 'query' ? 'page' : null" (click)="setView('query')">Consulta</button>
+    <button [class.active]="view() === 'cotejo'" [attr.aria-current]="view() === 'cotejo' ? 'page' : null" (click)="setView('cotejo')">Cotejo</button>
+    @if (canConfigureTenencia()) {
+      <button [class.active]="view() === 'expiry'" [attr.aria-current]="view() === 'expiry' ? 'page' : null" (click)="setView('expiry')">Configuración</button>
+    }
+  </nav>
+}
 @if (editing()) {
   <viteka-tenencia-editor
     [fields]="result()?.fields ?? null"
     (done)="finishEditing($event)"
     (toast)="toast.emit($event)"
   />
+} @else if (view() === 'expiry') {
+  <section class="tenencia-policy-page" aria-label="Configuración de caducidades">
+    <header><div><h2>Configuración</h2><p>Define cómo debe tratar la farmacia los artículos próximos a caducar.</p></div></header>
+    @if (policyBusy() && !policy()) {
+      <p>Cargando la configuración compartida…</p>
+    } @else if (policy(); as profile) {
+      <form (ngSubmit)="savePolicy()">
+        <label>Revisar artículos que caduquen en los próximos meses
+          <input name="expiryReviewMonths" type="number" min="1" max="24" required
+            [ngModel]="profile.expiryReviewMonths"
+            (ngModelChange)="setExpiryReviewMonths($event)"
+            />
+        </label>
+        <label class="policy-check"><input name="countExpiredStock" type="checkbox"
+          [ngModel]="profile.countExpiredStock"
+          (ngModelChange)="setCountExpiredStock($event)"
+          />Contabilizar los artículos caducados como existencias efectivas</label>
+        <p class="tenencia-count-warning">Para evitar incumplimientos, revisa visualmente las unidades disponibles y su caducidad antes de confirmar la tenencia mínima.</p>
+        <div class="policy-actions"><button type="button" (click)="loadPolicy()" [disabled]="policyBusy()">Cancelar</button><button class="primary" type="submit" [disabled]="policyBusy()">{{ policyBusy() ? 'Guardando…' : 'Guardar' }}</button></div>
+      </form>
+    }
+  </section>
+} @else if (view() === 'cotejo') {
+  <section class="cotejo" aria-label="Cotejo de existencias mínimas">
+    <header class="cotejo-toolbar">
+      <div class="cotejo-heading"><div class="cotejo-heading-line"><h2>Cotejo</h2><input class="cotejo-inline-title" aria-label="Título del cotejo" [(ngModel)]="cotejoTitle" (focus)="$any($event.target).select()" (blur)="cotejoTitle = cotejoTitle.trim() || 'Sin título'" (ngModelChange)="cotejoDirty.set(true); cotejoDraftSaved.set(false)" maxlength="120" /></div><p>{{ cotejoCompletedGroups() }} de {{ rows().length }} grupos completos · {{ cotejoMissingUnits() }} unidades pendientes</p></div>
+      <label class="cotejo-scan"><span class="scan-field"><v-icon name="search" /><input type="search" aria-label="CN o código de barras" [ngModel]="scanCode()" (ngModelChange)="scanCode.set($event)" (keydown.enter)="scanCotejo()" placeholder="Escanea o escribe el CN o código de barras" autocomplete="off" /><button type="button" (click)="scanCotejo()" aria-label="Añadir código al cotejo" title="Añadir código"><v-icon name="enter" /></button></span></label>
+    </header>
+    @if (cotejoBusy() && !cotejo()) {
+      <p class="group-empty">Cargando el cotejo compartido…</p>
+    } @else {
+      <div class="cotejo-workspace">
+        <section class="cotejo-groups" aria-label="Grupos del cotejo">
+          <div class="panel-heading"><h2>Grupos de tenencia</h2><small>{{ rows().length }} grupos</small></div>
+          <div class="cotejo-table-scroll"><table><thead><tr><th>Código</th><th>Grupo</th><th>Mín.</th><th>Cotejado</th><th>Faltan</th></tr></thead><tbody>
+            @for (row of rows(); track row.id) {
+              <tr [class.chosen]="cotejoActiveRow().id === row.id" [class.complete]="cotejoMissing(row) === 0" [class.just-completed]="cotejoCompleted() === row.id">
+                <td>{{ row.classification || '—' }}</td><td><button class="cotejo-group-button" (click)="chooseCotejoGroup(row)">{{ row.name }}</button></td><td class="center">{{ row.minimum }}</td><td class="center">{{ cotejoTotal(row) }}</td><td class="center"><span class="cotejo-state" [attr.data-complete]="cotejoMissing(row) === 0">@if (cotejoMissing(row) === 0) { <v-icon name="check" /> } @else { {{ cotejoMissing(row) }} }</span></td>
+              </tr>
+            }
+          </tbody></table></div>
+        </section>
+        <section class="cotejo-articles" aria-label="Artículos del grupo seleccionado">
+          @if (cotejoActiveRow(); as row) {
+            <header><div><strong>{{ row.classification ? row.classification + ' · ' : '' }}{{ row.name }}</strong><small>Existencias mínimas: {{ row.minimum }} · Cotejadas: {{ cotejoTotal(row) }} · Pendientes: {{ cotejoMissing(row) }}</small></div></header>
+            <div class="cotejo-table-scroll"><table><thead><tr><th>C.N.</th><th>Descripción</th><th>Stock</th><th>Cotejado</th></tr></thead><tbody>
+              @for (article of sortedArticles(row); track article.code) {
+                <tr [class.article-inactive]="article.inactive"><td>{{ article.code }}</td><td><button class="cotejo-article-button" (click)="adjustCotejo(row, article, 1)">{{ article.description }}</button></td><td class="center">{{ article.stock == null ? '—' : number(article.stock) }}</td><td><div class="counter"><button (click)="adjustCotejo(row, article, -1)" [disabled]="cotejoCount(row, article) === 0" [attr.aria-label]="'Restar ' + article.code">−</button><strong>{{ cotejoCount(row, article) }}</strong><button (click)="adjustCotejo(row, article, 1)" [attr.aria-label]="'Sumar ' + article.code">+</button></div></td></tr>
+              }
+            </tbody></table></div>
+          }
+        </section>
+      </div>
+      <footer class="cotejo-footer" [class.collapsed]="!documentationOpen()">
+        <button type="button" class="documentation-heading" (click)="documentationOpen.set(!documentationOpen())" [attr.aria-expanded]="documentationOpen()" [attr.aria-label]="documentationOpen() ? 'Contraer documentación' : 'Desplegar documentación'" [title]="documentationOpen() ? 'Contraer documentación' : 'Desplegar documentación'">
+          <v-icon [name]="documentationOpen() ? 'chevron-down' : 'chevron-up'" />
+        </button>
+        @if (documentationOpen()) {
+          <div class="documentation-body">
+            <section class="observation-pane" aria-label="Edición de observaciones">
+              <div class="observation-label">Observaciones</div>
+              <textarea class="plain-observation" aria-label="Observaciones" [ngModel]="cotejoObservation" (ngModelChange)="updateObservation($event)" maxlength="20000" placeholder="Anota incidencias observadas durante el recuento"></textarea>
+            </section>
+            <aside class="documentation-side" aria-label="Documentación y acciones del cotejo">
+              <div class="documentation-side-head"><div><strong>Documentación</strong><small>{{ cotejoAttachments.length }} de 8 archivos</small></div>@if (cotejoAttachments.length) { <button type="button" class="view-attachments" (click)="viewCurrentAttachments()" aria-label="Visualizar adjuntos" title="Visualizar adjuntos"><v-icon name="eye" /></button> }</div>
+              <label class="attachment-button"><v-icon name="upload" />Añadir imágenes o archivos<input type="file" multiple (change)="addCotejoFiles($event)" /></label>
+              <div class="cotejo-attachments">
+                @if (cotejoAttachments.length) { <div class="attachment-list">@for (file of cotejoAttachments; track file.id) { <span><button type="button" class="attachment-name" (click)="viewCurrentAttachments(file)" [attr.aria-label]="'Previsualizar ' + file.name"><v-icon [name]="file.mime.startsWith('image/') ? 'file' : 'sheet'" />{{ file.name }}</button><button type="button" (click)="removeCotejoFile(file.id)" [attr.aria-label]="'Quitar ' + file.name">×</button></span> }</div> }
+              </div>
+              <div class="cotejo-save-state">@if (cotejo()?.checkedAt) { <strong>Guardado</strong><span>{{ stamp(cotejo()?.checkedAt ?? undefined) }} · {{ cotejo()?.userName }}</span> } @else if (cotejoDirty()) { <strong>Cambios pendientes</strong><span>Guarda un borrador o finaliza el cotejo.</span> } @else { <strong>Borrador preparado</strong><span>Sin cambios pendientes.</span> }</div>
+              <div class="cotejo-actions"><button class="history-button" (click)="toggleCotejoHistory()"><v-icon name="clock" />Historial</button><button class="discard-button" (click)="clearCotejo()" [disabled]="cotejoBusy()">Descartar</button><button class="draft-button" (click)="saveCotejoDraft()" [disabled]="cotejoBusy()">Guardar borrador</button><button class="primary" (click)="saveCotejo()" [disabled]="cotejoBusy()">{{ cotejoBusy() ? 'Guardando…' : 'Finalizar y guardar' }}</button></div>
+            </aside>
+          </div>
+        }
+      </footer>
+    }
+  </section>
 } @else if (rows().length) {
   <div class="tenencia-commandbar">
     <div class="tenencia-filters">
@@ -94,7 +176,7 @@
           (ngModelChange)="status.set($event); filter()"
         >
           <option value="all">Todos</option>
-          <option value="not_checked">Sin consultar</option>
+          <option value="expiry">Revisar caducidad</option>
           <option value="shortfall">Falta</option>
           <option value="covered">Correcto</option>
         </select></label
@@ -147,6 +229,7 @@
       </div>
       <div class="group-list" tabindex="0" aria-label="Lista de grupos">
         <table class="groups-table">
+          <colgroup><col class="code-column" /><col /><col class="minimum-column" /><col class="status-column" /></colgroup>
           <thead>
             <tr>
               <th scope="col" class="group-code" [attr.aria-sort]="groupOrder('classification')">
@@ -193,10 +276,14 @@
                     class="row-state"
                     role="img"
                     [attr.data-status]="row.status"
-                    [title]="label(row.status)"
-                    [attr.aria-label]="label(row.status)"
-                    ><i [class]="'status-dot ' + row.status" aria-hidden="true"></i
-                  ></span>
+                    [title]="groupStateLabel(row)"
+                    [attr.aria-label]="groupStateLabel(row)"
+                    >@if (row.status === 'shortfall') {
+                      <i class="missing-count" [attr.data-missing]="(row.missing ?? row.minimum) >= row.minimum ? 'all' : 'partial'" aria-hidden="true">{{ number(row.missing ?? row.minimum) }}</i>
+                    } @else {
+                      <i [class]="'status-dot ' + row.status" aria-hidden="true"></i>
+                    }</span
+                  >
                 </td>
               </tr>
             } @empty {
@@ -211,18 +298,16 @@
     <section class="tenencia-medications" aria-label="Medicamentos del grupo">
       @if (activeRow(); as row) {
         <div class="panel-heading">
-          <div>
-            <h2>
+          <div class="panel-title">
+            <h2 [title]="(row.classification ? row.classification + ' · ' : '') + row.name">
               @if (row.classification) {
                 <span class="classification-code">{{ row.classification }} · </span>
               }
               {{ row.name }}
             </h2>
-            <p>
-              {{ row.articles.length }} medicamentos asociados
-              @if (row.articles.length > visibleArticles(row).length) {
-                · se muestran {{ visibleArticles(row).length }}: con existencias y últimas compras o ventas
-              }
+            <p [title]="row.articles.length + ' medicamentos asociados'">
+              @if (row.articles.length > visibleArticles(row).length) { {{ visibleArticles(row).length }} de }
+              {{ row.articles.length }} artículos
             </p>
           </div>
           <button class="text-button" (click)="detail(row)" [attr.aria-label]="'Ver detalle de ' + row.name">
@@ -231,16 +316,17 @@
         </div>
         <div class="tenencia-table" tabindex="0" aria-label="Lista de medicamentos asociados">
           <table>
+            <colgroup><col class="article-code-column" /><col /><col class="stock-column" />@if (showExpiry()) { <col class="expiry-column" /> }</colgroup>
             <thead>
               <tr>
                 <th scope="col" [attr.aria-sort]="articleOrder('code')">
                   <button (click)="sortArticles('code')">
-                    Código nacional {{ articleOrder('code') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
+                    C.N. {{ articleOrder('code') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
                   </button>
                 </th>
                 <th scope="col" [attr.aria-sort]="articleOrder('description')">
                   <button (click)="sortArticles('description')">
-                    Medicamento {{ articleOrder('description') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
+                    Descripción {{ articleOrder('description') === 'none' ? '↕' : articleDescending() ? '↓' : '↑' }}
                   </button>
                 </th>
                 <th scope="col" class="center" [attr.aria-sort]="articleOrder('stock')">
@@ -255,11 +341,18 @@
             </thead>
             <tbody>
               @for (a of visibleArticles(row); track a.code) {
-                <tr [class.article-chosen]="activeArticle()?.code === a.code">
+                <tr
+                  [class.article-chosen]="activeArticle()?.code === a.code"
+                  [class.article-inactive]="a.inactive"
+                  [class.expiry-muted]="status() === 'expiry' && !requiresExpiryAttention(a)"
+                  [title]="a.inactive ? 'Artículo de baja' + (a.inactiveOn ? ' desde ' + movementDate(a.inactiveOn) : '') : null"
+                >
                   <td class="article-code">{{ a.code }}</td>
-                  <td>
+                  <td class="article-description">
+                    <div class="article-caption">
                     <button
                       class="article-select"
+                      [title]="a.description"
                       [attr.aria-label]="'Seleccionar artículo ' + a.code"
                       [attr.aria-pressed]="activeArticle()?.code === a.code"
                       (click)="chooseArticle(a)"
@@ -268,9 +361,12 @@
                     >
                       {{ a.description }}
                     </button>
-                    @if (a.issue && a.issue !== 'not_checked') {
-                      <small>{{ issue(a) }}</small>
+                    @if (a.issue === 'stock_not_found') {
+                      <span class="article-unworked" role="img" title="No trabajado" aria-label="No trabajado"><v-icon name="packageOff" /></span>
+                    } @else if (a.issue && a.issue !== 'not_checked') {
+                      <span class="article-warning" role="img" [title]="issue(a)" [attr.aria-label]="issue(a)"><v-icon name="warning" /></span>
                     }
+                    </div>
                   </td>
                   <td class="center drug-stock" [attr.title]="issue(a) || null">
                     {{ row.status === 'not_checked' ? 'Sin consultar' : number(a.stock) }}
@@ -300,71 +396,37 @@
             }
           }
         </div>
+        @if (activeArticle(); as article) {
+          <section class="article-information" aria-label="Información del artículo seleccionado">
+            <header>
+              <div>
+                <small>Artículo seleccionado · CN {{ article.code }}</small>
+                <h3>{{ article.description }}</h3>
+              </div>
+              @if (article.issue === 'stock_not_found') {
+                <span class="unworked-label"><v-icon name="packageOff" />No trabajado</span>
+              }
+            </header>
+            <dl>
+              <div><dt>Stock actual</dt><dd>{{ number(article.stock) }}</dd></div>
+              <div><dt>Stock mín.</dt><dd>{{ article.minimumStock === null || article.minimumStock === undefined ? '' : number(article.minimumStock) }}</dd></div>
+              <div><dt>Última compra</dt><dd>{{ detailDate(article.lastPurchase) }}</dd></div>
+              <div><dt>Última venta</dt><dd>{{ detailDate(article.lastSale) }}</dd></div>
+              <div><dt>Laboratorio</dt><dd>{{ article.laboratory || '' }}</dd></div>
+              <div><dt>Último proveedor</dt><dd>{{ article.lastSupplier || '' }}</dd></div>
+              <div><dt>Fecha de caducidad</dt><dd>@if (expiryState(article); as e) { <span class="expiry" [attr.data-expiry]="e" [title]="expiryTitle(article)">{{ expiryText(article) }}</span> }</dd></div>
+              <div><dt>PVP</dt><dd>{{ article.pvp === null || article.pvp === undefined ? 'Sin precio' : pvp(article.pvp) }}</dd></div>
+              <div><dt>Agrupación homogénea (AH)</dt><dd>{{ article.homogeneous || '' }}</dd></div>
+              <div><dt>Código de barras</dt><dd>{{ article.barcode || '' }}</dd></div>
+              <div><dt>Clasificación</dt><dd><span class="abc-badge" [attr.data-abc]="article.classification?.toUpperCase() || '-'">{{ article.classification?.toUpperCase() || '-' }}</span></dd></div>
+            </dl>
+          </section>
+        }
       } @else {
         <p class="group-empty">Selecciona un grupo para ver sus medicamentos asociados.</p>
       }
     </section>
   </div>
-  <section class="tenencia-information" aria-label="Información de la selección">
-    <div class="selection-information">
-      <div class="information-heading">
-        <h2>Información</h2>
-        <span>{{ hasStock() ? 'Consulta · ' + date(result()?.checkedAt) : 'Existencias sin consultar' }}</span>
-      </div>
-      @if (activeRow(); as row) {
-        <div class="information-values">
-          <div>
-            <small>Grupo seleccionado</small
-            ><strong>{{ row.classification ? row.classification + ' · ' : '' }}{{ row.name }}</strong>
-          </div>
-          <div>
-            <small>Clasificación de referencia</small
-            ><strong>{{ row.classification || 'Productos sanitarios' }}</strong>
-          </div>
-          @if (activeArticle(); as article) {
-            <div>
-              <small>Artículo · CN {{ article.code }}</small
-              ><strong>{{ article.description }}</strong>
-            </div>
-            @if (article.lastPurchase || article.lastSale) {
-              <div>
-                <small>Movimientos</small
-                ><strong
-                  >Compra {{ movementDate(article.lastPurchase) }} · Venta {{ movementDate(article.lastSale) }}</strong
-                >
-              </div>
-            }
-          }
-        </div>
-        @if (row.selectionNote) {
-          <p class="selection-note">{{ row.selectionNote }}</p>
-        } @else {
-          <p class="reference-help">
-            Nombres iniciales abreviados. La descripción completa y las existencias se leen de NixFarma al consultar.
-          </p>
-        }
-      }
-    </div>
-    <div class="group-totals" aria-label="Resumen del grupo seleccionado">
-      @if (activeRow(); as row) {
-        <span class="row-state" [attr.data-status]="row.status">{{ label(row.status) }}</span>
-        <dl>
-          <div>
-            <dt>Mínimo</dt>
-            <dd>{{ row.minimum }}</dd>
-          </div>
-          <div>
-            <dt>Existencias</dt>
-            <dd>{{ row.status === 'not_checked' ? '—' : number(row.stock) }}</dd>
-          </div>
-          <div>
-            <dt>Faltan</dt>
-            <dd>{{ row.status === 'not_checked' ? '—' : number(row.missing) }}</dd>
-          </div>
-        </dl>
-      }
-    </div>
-  </section>
 } @else {
   <section class="tenencia-empty settings">
     <v-icon name="grid" />
@@ -378,12 +440,11 @@
     </p>
   </section>
 }
-@if (result()?.listVersion) {
-  <details class="tenencia-source">
-    <summary>Fuente y versión del listado · {{ result()?.listVersion }}</summary>
-    <p>Fuente: {{ result()?.source }}</p>
-    <p>Un dato ausente o ambiguo no se cuenta como cero. No se importan existencias de los vídeos.</p>
-  </details>
+@if (result()?.listVersion && view() === 'query') {
+  <p class="tenencia-count-warning">
+    Recuenta visualmente las unidades disponibles y confirma que alcanzan el mínimo exigido antes de dar por cumplida
+    la tenencia obligatoria. Esta consulta sirve de apoyo y no sustituye la comprobación física del stock.
+  </p>
 }
 @if (selected(); as row) {
   <div class="modal-overlay" (click)="close()">
@@ -458,12 +519,12 @@
   </div>
 }
 
-@if (hasStock() && !editing()) {
+@if ((hasStock() || reportMode().startsWith('cotejo')) && !editing()) {
   <section class="tenencia-print" aria-hidden="true">
     <header class="print-head">
       <img src="logotipo.png" alt="Viteka" />
       <div>
-        <h1>Tenencia obligatoria · informe de faltas</h1>
+        <h1>{{ reportTitle() }}</h1>
         <p>
           {{ result()?.provinceName || 'Provincia ' + result()?.province }} · Última consulta {{ checkedTime() }} ·
           Listado {{ result()?.listVersion }}
@@ -495,7 +556,7 @@
           <th class="c">Caducidad</th>
         </tr>
       </thead>
-      @for (r of shortfallsByMissing(); track r.id) {
+      @for (r of reportRows(); track r.id) {
         <tbody class="print-group">
           <tr class="group-line">
             <td>{{ r.classification || '—' }}</td>
@@ -505,10 +566,16 @@
             <td class="c missing">{{ number(r.missing) }}</td>
             <td></td>
           </tr>
-          @for (a of visibleArticles(r); track a.code) {
+          @for (a of reportArticles(r); track a.code) {
             <tr class="article-line">
               <td>{{ a.code }}</td>
-              <td>{{ a.description }}</td>
+              <td>
+                {{ a.description }}
+                @if (reportMode().startsWith('cotejo')) {
+                  <strong> · {{ (reportCotejo() || cotejo())?.counts?.[r.id]?.[a.code] || 0 }} cotejadas</strong>
+                }
+                <small> · Última compra: {{ movementDate(a.lastPurchase) }}</small>
+              </td>
               <td></td>
               <td class="c">{{ number(a.stock ?? 0) }}</td>
               <td></td>
@@ -516,15 +583,6 @@
                 @if (showExpiry() && expiryState(a); as e) {
                   <span class="expiry" [attr.data-expiry]="e">{{ expiryText(a) }}</span>
                 }
-              </td>
-            </tr>
-          }
-          @if (r.articles.length > visibleArticles(r).length) {
-            <tr class="article-line">
-              <td></td>
-              <td colspan="5" class="more">
-                {{ r.articles.length - visibleArticles(r).length }} artículos más sin existencias ni movimientos
-                recientes
               </td>
             </tr>
           }
@@ -537,9 +595,98 @@
         </tbody>
       }
     </table>
+    <p>{{ reportCriteria() }}</p>
+    @if (reportMode().startsWith('cotejo') && (reportCotejo() || cotejo()); as document) {
+      @if (document.observationHtml || document.observation) { <section class="print-observation"><h2>Observaciones</h2><div [innerHTML]="trustedObservation(document.observationHtml || document.observation)"></div></section> }
+      @if (document.attachments; as attachments) { @if (attachments.length) { <section class="print-attachments"><h2>Adjuntos</h2>@for (file of attachments; track file.id) { @if (file.mime.startsWith('image/')) { <figure><img [src]="attachmentUrl(file)" [alt]="file.name" /><figcaption>{{ file.name }}</figcaption></figure> } @else { <p>{{ file.name }}</p> } }</section> } }
+    }
     <footer>
-      Viteka Utilidades · {{ checkedTime() }} · Caducidad: verde más de 6 meses, amarillo 6 meses o menos, rojo
+      Viteka Conecta · {{ checkedTime() }} · Caducidad: verde más de 6 meses, amarillo 6 meses o menos, rojo
       caducado, gris sin fecha.
     </footer>
   </section>
+}
+
+@if (historyOpen()) {
+  <div class="modal-overlay" (click)="historyOpen.set(false)">
+    <section class="dialog cotejo-history-dialog" role="dialog" aria-modal="true" aria-label="Historial de cotejos" (click)="$event.stopPropagation()">
+      <div class="dialog-top"><div><h2>Historial de cotejos</h2><p>Consulta, recupera o exporta las revisiones guardadas.</p></div><button aria-label="Cerrar historial" (click)="historyOpen.set(false)"><v-icon name="close" /></button></div>
+      <div class="history-commandbar"><label><span>Buscar</span><input type="search" aria-label="Buscar cotejos" [ngModel]="historySearch()" (ngModelChange)="historySearch.set($event)" placeholder="Título, usuario u observaciones" /></label><label><span>Estado</span><select aria-label="Filtrar historial" [ngModel]="historyFilter()" (ngModelChange)="historyFilter.set($event)"><option value="all">Todos</option><option value="complete">Completos</option><option value="pending">Con faltas</option><option value="draft">Borradores</option></select></label></div>
+      <div class="history-list">
+        @for (item of filteredCotejoHistory(); track item.id || item.checkedAt) {
+          <article class="history-card">
+            <div class="history-card-head"><div><h3>{{ item.title || 'Sin título' }}</h3><p>{{ item.checkedAt ? stamp(item.checkedAt) : 'Borrador guardado' }} · {{ item.userName || 'Usuario' }}</p></div><span class="history-status" [class.complete]="!!item.checkedAt && cotejoMissingUnits(item) === 0" [class.draft]="!item.checkedAt">{{ !item.checkedAt ? 'Borrador' : cotejoMissingUnits(item) === 0 ? 'Completo' : 'Con faltas' }}</span></div>
+            <div class="history-kpis"><span><strong>{{ cotejoCompletedGroups(item) }}</strong> de {{ rows().length }} grupos</span><span><strong>{{ cotejoMissingUnits(item) }}</strong> unidades pendientes</span><span><strong>{{ cotejoUnits(item) }}</strong> unidades cotejadas</span></div>
+            @if (item.observationHtml || item.observation) { <div class="history-observation" [innerHTML]="trustedObservation(item.observationHtml || item.observation)"></div> }
+            @if (item.attachments?.length) { <small>{{ item.attachments.length }} archivos adjuntos</small> }
+            <div class="history-actions"><button class="icon-action" aria-label="Abrir y editar cotejo" title="Abrir y editar" (click)="openHistoryItem(item)"><v-icon name="edit" /></button>@if (item.attachments?.length) { <button class="icon-action" aria-label="Visualizar adjuntos del cotejo" title="Visualizar adjuntos" (click)="viewAttachments(item)"><v-icon name="eye" /></button> }<details class="history-export"><summary aria-label="Exportar cotejo" title="Exportar"><v-icon name="download" /></summary><div><button (click)="exportHistoryItem(item,'xlsx')"><v-icon name="sheet" />Excel</button><button (click)="exportHistoryItem(item,'csv')"><v-icon name="sheet" />CSV</button><button (click)="exportHistoryItem(item,'pdf')"><v-icon name="file" />PDF</button><button (click)="exportHistoryItem(item,'doc')"><v-icon name="file" />Word</button><button (click)="exportHistoryItem(item,'txt')"><v-icon name="file" />TXT</button><button (click)="exportHistoryItem(item,'print')"><v-icon name="printer" />Imprimir</button></div></details><button class="icon-action danger-text" aria-label="Eliminar cotejo" title="Eliminar" (click)="historyDelete.set(item)"><v-icon name="trash" /></button></div>
+          </article>
+        } @empty { <div class="empty-history"><v-icon name="clock" /><p>No hay cotejos que coincidan con los filtros.</p></div> }
+      </div>
+    </section>
+  </div>
+}
+@if (scanError()) {
+  <div class="modal-overlay scan-error-overlay" (document:keydown.enter)="scanError.set('')"><section class="dialog scan-error-dialog" role="alertdialog" aria-modal="true" aria-label="Código no encontrado"><div class="scan-error-icon"><v-icon name="warning" /></div><h2>Código no encontrado</h2><p class="dialog-copy">{{ scanError() }}</p><div class="dialog-actions"><button class="primary" (click)="scanError.set('')" autofocus>Aceptar</button></div></section></div>
+}
+@if (overagePrompt(); as pending) {
+  <div class="modal-overlay"><section class="dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-label="Superar existencias mínimas"><h2>Grupo completo</h2><p class="dialog-copy">Ya has cotejado las {{ pending.row.minimum }} unidades mínimas de {{ pending.row.name }}.</p><div class="dialog-summary"><span>Unidad adicional</span><strong>{{ pending.article.description }}</strong></div><p class="dialog-question">¿Quieres añadirla igualmente?</p><div class="dialog-actions"><button class="button-secondary" (click)="overagePrompt.set(null)" autofocus>Cancelar</button><button class="primary" (click)="confirmCotejoOverage()">Añadir unidad</button></div></section></div>
+}
+@if (attachmentViewer(); as viewer) {
+  <div class="modal-overlay" (click)="closeAttachments()"><section class="dialog attachment-viewer" role="dialog" aria-modal="true" aria-label="Adjuntos del cotejo" (click)="$event.stopPropagation()"><div class="dialog-top"><div><h2>Adjuntos</h2><p>{{ viewer.title }} · {{ viewer.attachments.length }} archivos</p></div><button aria-label="Cerrar adjuntos" (click)="closeAttachments()"><v-icon name="close" /></button></div><div class="attachment-browser"><div class="attachment-gallery">@for (file of viewer.attachments; track file.id) { <button type="button" [class.selected]="attachmentPreview()?.id === file.id" (click)="attachmentPreview.set(file)" [title]="'Previsualizar ' + file.name">@if (file.mime.startsWith('image/')) { <img [src]="attachmentUrl(file)" [alt]="file.name" /> } @else { <v-icon name="file" /> }<span>{{ file.name }}</span><small>{{ number(file.size / 1024) }} KB</small></button> }</div>@if (attachmentPreview(); as file) { <section class="attachment-preview"><div class="attachment-preview-body">@if (file.mime.startsWith('image/')) { <img [src]="attachmentUrl(file)" [alt]="file.name" /> } @else { <v-icon name="file" /><p>Este tipo de archivo se puede descargar para abrirlo con su aplicación habitual.</p> }</div><div class="attachment-preview-actions"><div><strong>{{ file.name }}</strong><small>{{ number(file.size / 1024) }} KB</small></div><a class="primary" [href]="attachmentUrl(file)" [download]="file.name"><v-icon name="download" />Descargar</a></div></section> }</div></section></div>
+}
+@if (historyDelete(); as item) {
+  <div class="modal-overlay" (click)="historyDelete.set(null)"><section class="dialog confirm-dialog" role="alertdialog" aria-modal="true" aria-label="Eliminar cotejo" (click)="$event.stopPropagation()"><h2>Eliminar cotejo</h2><p class="dialog-copy">Vas a eliminar este documento del historial.</p><div class="dialog-summary"><span>Documento</span><strong>{{ item.title || 'Cotejo sin título' }}</strong></div><p class="dialog-question">Esta acción no se puede deshacer.</p><div class="dialog-actions"><button class="button-secondary" (click)="historyDelete.set(null)">Cancelar</button><button class="button-danger" (click)="deleteHistoryItem()">Eliminar</button></div></section></div>
+}
+@if (leaveCotejo()) {
+  <div class="modal-overlay"><section class="dialog confirm-dialog leave-cotejo-dialog" role="dialog" aria-modal="true" aria-label="Guardar cambios del cotejo"><h2>Guardar antes de salir</h2><p class="dialog-copy">Este cotejo tiene cambios pendientes. Puedes guardarlo como borrador para continuarlo más tarde.</p><div class="dialog-actions"><button class="button-ghost" (click)="discardAndLeave()" [disabled]="cotejoBusy()">Descartar cambios</button><button class="button-secondary" (click)="leaveCotejo.set(null)">Seguir editando</button><button class="primary" (click)="saveCotejoDraft()" [disabled]="cotejoBusy()">Guardar borrador y salir</button></div></section></div>
+}
+
+@if (queryProgress() !== null) {
+  <div class="modal-overlay query-progress-overlay">
+    <section class="dialog query-progress-dialog" role="dialog" aria-modal="true" aria-label="Progreso de la consulta" aria-live="polite">
+      <div class="query-progress-icon"><v-icon name="search" /></div>
+      <h2>Consultando existencias</h2>
+      <p>{{ queryProgress() === 100 ? 'Consulta completada' : 'Leyendo y consolidando los datos de NixFarma…' }}</p>
+      <div class="query-progress-ring" role="progressbar" aria-label="Progreso de la consulta" aria-valuemin="0" aria-valuemax="100" [attr.aria-valuenow]="queryProgress()" [style.--progress]="queryProgress() + '%'">
+        <strong>{{ queryProgress() }}</strong><span>%</span>
+      </div>
+      <small>{{ queryProgress() === 100 ? 'Los resultados ya están preparados.' : 'Mantén Viteka abierta hasta finalizar.' }}</small>
+    </section>
+  </div>
+}
+
+@if (reportOpen()) {
+  <div class="modal-overlay">
+    <section class="dialog report-dialog" role="dialog" aria-modal="true" aria-label="Preparar exportación">
+      <div class="dialog-top">
+        <h2>Preparar {{ reportKind() === 'print' ? 'impresión' : reportKind().toUpperCase() }}</h2>
+        <button aria-label="Cerrar exportación" (click)="reportOpen.set(false)"><v-icon name="close" /></button>
+      </div>
+      <label
+        >Modalidad<select
+          aria-label="Modalidad de exportación"
+          [ngModel]="reportMode()"
+          (ngModelChange)="reportMode.set($event)"
+        >
+          @if (view() === 'cotejo' || reportMode().startsWith('cotejo')) {
+            <option value="cotejo">Solo cotejados</option>
+            <option value="cotejo-shortfalls">Solo faltas y sugerencias</option>
+            <option value="cotejo-all">Todos: cotejados, faltas y sugerencias</option>
+          } @else {
+            <option value="complete">Listado completo</option>
+            <option value="shortfalls">Solo faltas</option>
+            <option value="expiry">Solo revisar caducidad</option>
+          }
+        </select></label
+      >
+      <p>{{ reportCriteria() }}</p>
+      <p>{{ reportRows().length }} grupos · Consulta: {{ checkedTime() }} · Listado: {{ result()?.listVersion }}</p>
+      <div class="dialog-actions">
+        <button class="button-secondary" (click)="reportOpen.set(false)">Cancelar</button
+        ><button class="primary" (click)="generateReport()" [disabled]="exporting()">
+          {{ reportKind() === 'print' ? 'Imprimir' : 'Generar archivo' }}</button>
+      </div>
+    </section>
+  </div>
 }

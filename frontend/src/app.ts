@@ -11,6 +11,8 @@ import {
   NixFarmaState,
   NixFarmaResponse,
 } from './bridge';
+import { AuditComponent } from './settings/audit';
+import { EditActionsComponent } from './edit-actions';
 import { IconComponent } from './icon';
 import { PharmacySettingsComponent } from './settings/pharmacy';
 import { TenenciaComponent } from './apps/tenencia/tenencia';
@@ -32,7 +34,7 @@ const SETTINGS_PAGES: Page[] = ['Configuración', 'Mi cuenta', 'Usuarios', 'Util
 @Component({
   selector: 'viteka-app',
   standalone: true,
-  imports: [IconComponent, FormsModule, PharmacySettingsComponent, TenenciaComponent],
+  imports: [IconComponent, FormsModule, PharmacySettingsComponent, TenenciaComponent, AuditComponent, EditActionsComponent],
   templateUrl: './app.html',
 })
 export class AppComponent {
@@ -40,6 +42,16 @@ export class AppComponent {
   readonly user = this.bridge.user;
   readonly page = signal<Page>('Inicio');
   readonly version = signal('');
+  readonly reviewMode = signal(false);
+  readonly reviewDeviceId = signal('');
+  async copyReviewId() {
+    try {
+      await this.bridge.call('review.copyId');
+      this.notify('Identificador del PC copiado.');
+    } catch (e) {
+      this.error.set(this.message(e));
+    }
+  }
   readonly loading = signal(true);
   readonly error = signal('');
   readonly busy = signal(false);
@@ -74,7 +86,7 @@ export class AppComponent {
     ...(this.user()?.canManageUsers
       ? [
           { label: 'Usuarios', page: 'Usuarios' as Page },
-          { label: 'Utilidades', page: 'Utilidades' as Page },
+          { label: 'Acceso a aplicaciones', page: 'Utilidades' as Page },
           { label: 'Auditoría', page: 'Auditoría' as Page },
         ]
       : []),
@@ -145,7 +157,7 @@ export class AppComponent {
     });
     if (u.canConfigure)
       list.push({
-        label: 'Conexión a NixFarma',
+        label: 'Conexión a Nixfarma',
         hint: 'Solo Viteka',
         icon: 'leaf',
         run: () => {
@@ -200,6 +212,7 @@ export class AppComponent {
   readonly users = signal<UserView[]>([]);
   readonly remoteReady = signal(true);
   readonly permissionCatalog = signal<Utility[]>([]);
+  readonly capabilityCatalog = signal<Utility[]>([]);
   readonly dialog = signal<'ticket' | 'remote' | null>(null);
   readonly toast = signal('');
   readonly historyOpen = signal(false);
@@ -244,6 +257,7 @@ export class AppComponent {
   editPassword = '';
   editRepeat = '';
   editUtilityIds: string[] = [];
+  editPermissionIds: string[] = [];
   resetId = '';
   resetName = '';
   resetPassword = '';
@@ -360,15 +374,24 @@ export class AppComponent {
       if (sessionStorage.getItem(this.promptKey(state.version)) === '1') return;
       this.updatePrompt.set(true);
     });
-    effect(() => {
-      // Recuerda la última pantalla por usuario para volver a ella al abrir.
-      const u = this.user(),
-        page = this.page(),
-        utility = this.selectedUtility();
-      if (u && this.ready()) this.store('last.' + u.id, { page, utility });
-    });
     this.tenenciaSummary.set(this.read<TenenciaSummary>('tenencia.summary'));
     void this.initialize();
+  }
+  readonly phaseLabels: Record<string, string> = {
+    preparing: 'Preparando actualización',
+    downloading: 'Descargando paquete',
+    verifying: 'Verificando integridad',
+    handoff: 'Preparando instalación y permiso de Windows',
+    installing: 'Instalando; Viteka volverá a abrirse en Inicio',
+    cancelled: 'Actualización cancelada',
+    failed: 'No se pudo completar la actualización',
+  };
+  async cancelUpdate() {
+    try {
+      await this.bridge.call('update.cancel');
+    } catch (e) {
+      this.error.set(this.message(e));
+    }
   }
   private promptKey(version: string) {
     return 'viteka.update-prompt.' + this.user()?.id + '.' + version;
@@ -497,6 +520,8 @@ export class AppComponent {
     try {
       const s = await this.bridge.call<AppState>('app.state');
       this.version.set(s.version);
+      this.reviewMode.set(s.reviewMode ?? false);
+      this.reviewDeviceId.set(s.reviewDeviceId ?? '');
       this.theme.set(s.theme || 'auto');
       this.collapsed.set(s.sidebarCollapsed ?? false);
       this.openFavorites.set(s.openFavorites);
@@ -524,12 +549,8 @@ export class AppComponent {
     if (this.user()?.canConfigure) await this.loadNixFarma();
     const id = this.user()?.id;
     this.favorites.set(this.read<string[]>('favorites.' + id) ?? []);
-    const last = this.read<{ page: Page; utility: string | null }>('last.' + id);
-    if (this.openFavorites() && this.user()?.role !== 'User') this.page.set('Favoritos');
-    else if (last && this.canGo(last.page)) {
-      this.go(last.page);
-      if (last.utility) this.openUtility(last.utility);
-    }
+    this.selectedUtility.set(null);
+    this.page.set('Inicio');
     this.ready.set(true);
   }
   async login() {
@@ -622,12 +643,13 @@ export class AppComponent {
   }
   async loadUsers() {
     try {
-      const r = await this.bridge.call<{ users: UserView[]; utilities: Utility[]; remoteAccessReady?: boolean }>(
+      const r = await this.bridge.call<{ users: UserView[]; utilities: Utility[]; permissions?: Utility[]; remoteAccessReady?: boolean }>(
         'users.list',
       );
       this.users.set(r.users);
       this.remoteReady.set(r.remoteAccessReady !== false);
       this.permissionCatalog.set(r.utilities);
+      this.capabilityCatalog.set(r.permissions ?? []);
     } catch (e) {
       this.error.set(this.message(e));
     }
@@ -638,6 +660,7 @@ export class AppComponent {
     this.editRole = target?.role ?? 'User';
     this.editActive = target?.active ?? true;
     this.editUtilityIds = [...(target?.utilityIds ?? [])];
+    this.editPermissionIds = [...(target?.permissionIds ?? [])];
     this.editPassword = '';
     this.editRepeat = '';
     this.error.set('');
@@ -647,6 +670,11 @@ export class AppComponent {
     this.editUtilityIds = enabled
       ? [...new Set([...this.editUtilityIds, id])]
       : this.editUtilityIds.filter((x) => x !== id);
+  }
+  togglePermission(id: string, enabled: boolean) {
+    this.editPermissionIds = enabled
+      ? [...new Set([...this.editPermissionIds, id])]
+      : this.editPermissionIds.filter((x) => x !== id);
   }
   async saveUser() {
     if (!this.editId && this.editPassword !== this.editRepeat) {
@@ -663,6 +691,7 @@ export class AppComponent {
           role: this.editRole,
           active: this.editActive,
           utilityIds: this.editUtilityIds,
+          permissionIds: this.editPermissionIds,
         });
         this.user.set(r.user);
       } else
@@ -671,6 +700,7 @@ export class AppComponent {
           role: this.editRole,
           password: this.editPassword,
           utilityIds: this.editUtilityIds,
+          permissionIds: this.editPermissionIds,
         });
       this.editorOpen.set(false);
       await this.loadUsers();
@@ -684,12 +714,26 @@ export class AppComponent {
     }
   }
   hasGrant(target: UserView, id: string) {
-    return target.role !== 'User' || target.utilityIds.includes(id);
+    return target.role === 'SuperAdministrator' || target.utilityIds.includes(id);
   }
-  /** Habilita o retira una utilidad a una cuenta desde Configuración → Utilidades. */
-  async grant(target: UserView, id: string, enabled: boolean) {
-    if (!this.canEdit(target) || target.role !== 'User' || this.busy()) return;
-    const utilityIds = enabled ? [...new Set([...target.utilityIds, id])] : target.utilityIds.filter((x) => x !== id);
+  readonly grantUserId = signal('');
+  readonly grantIds = signal<string[]>([]);
+  readonly grantPermissionIds = signal<string[]>([]);
+  readonly grantTarget = computed(() => this.users().find((u) => u.id === this.grantUserId()) ?? null);
+  selectGrantUser(id: string) {
+    this.grantUserId.set(id);
+    this.grantIds.set([...(this.users().find((u) => u.id === id)?.utilityIds ?? [])]);
+    this.grantPermissionIds.set([...(this.users().find((u) => u.id === id)?.permissionIds ?? [])]);
+  }
+  draftGrant(id: string, enabled: boolean) {
+    this.grantIds.update((ids) => (enabled ? [...new Set([...ids, id])] : ids.filter((x) => x !== id)));
+  }
+  draftPermission(id: string, enabled: boolean) {
+    this.grantPermissionIds.update((ids) => (enabled ? [...new Set([...ids, id])] : ids.filter((x) => x !== id)));
+  }
+  async saveGrants() {
+    const target = this.grantTarget();
+    if (!target || !this.canEdit(target) || target.role === 'SuperAdministrator' || this.busy()) return;
     this.busy.set(true);
     this.error.set('');
     try {
@@ -698,13 +742,13 @@ export class AppComponent {
         name: target.name,
         role: target.role,
         active: target.active,
-        utilityIds,
+        utilityIds: this.grantIds(),
+        permissionIds: this.grantPermissionIds(),
       });
       this.user.set(r.user);
       await this.loadUsers();
-      this.notify(
-        enabled ? 'Utilidad habilitada para ' + target.name + '.' : 'Utilidad retirada a ' + target.name + '.',
-      );
+      this.selectGrantUser(target.id);
+      this.notify('Acceso a aplicaciones guardado para ' + target.name + '. Se han cerrado sus sesiones anteriores.');
     } catch (e) {
       this.error.set(this.message(e));
     } finally {
@@ -808,6 +852,10 @@ export class AppComponent {
       this.busy.set(false);
     }
   }
+  pharmacySaved() {
+    this.closeModals(true);
+    this.notify('Datos de la farmacia guardados.');
+  }
   async setStart(e: Event) {
     const enabled = (e.target as HTMLInputElement).checked;
     try {
@@ -889,6 +937,8 @@ export class AppComponent {
   }
   async install() {
     this.updating.set(true);
+    this.error.set('');
+    this.updateMessage.set('');
     this.bridge.progress.set(null);
     try {
       const r = await this.bridge.call<{ cancelled?: boolean }>('update.install');
@@ -970,6 +1020,10 @@ export class AppComponent {
             ? 'Conexión guardada. Pulsa Probar conexión para verificarla.'
             : 'Se ha eliminado la conexión guardada en el servidor.',
         );
+      }
+      if (action === 'configure' && r.state?.configured && !r.busy) {
+        if (this.settingDialog() === 'connection') this.closeModals(true);
+        this.notify('Conexión guardada.');
       }
     } catch (e) {
       this.nixMessage.set(this.message(e));

@@ -13,3 +13,6 @@ src/Viteka.Desktop/Web/
 
 **/__pycache__/
 *.pyc
+
+**/obj-review/
+**/bin-review/

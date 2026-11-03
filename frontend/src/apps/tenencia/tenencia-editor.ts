@@ -1,7 +1,9 @@
 import { Component, computed, inject, input, OnInit, output, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DesktopBridge } from '../../bridge';
+import { CatalogDistributionComponent } from './catalog-distribution';
 import { IconComponent } from '../../icon';
+import { EditActionsComponent } from '../../edit-actions';
 import { buildXlsx, Cell, loadLogo, toBase64 } from './xlsx';
 import type { TenenciaFields } from './tenencia';
 
@@ -23,7 +25,10 @@ interface CatalogList {
 interface CatalogResponse {
   list: CatalogList | null;
   customized: boolean;
+  province?: string;
+  currentProvince?: string;
   provinceName?: string;
+  provinces?: { code: string; name: string }[];
 }
 interface FoundArticle {
   code: string;
@@ -51,7 +56,7 @@ const CHUNK = 50;
 @Component({
   selector: 'viteka-tenencia-editor',
   standalone: true,
-  imports: [FormsModule, IconComponent],
+  imports: [FormsModule, IconComponent, CatalogDistributionComponent, EditActionsComponent],
   templateUrl: './tenencia-editor.html',
   styleUrl: './tenencia-editor.css',
 })
@@ -63,6 +68,8 @@ export class TenenciaEditorComponent implements OnInit {
   readonly list = signal<CatalogList | null>(null);
   readonly customized = signal(false);
   readonly provinceName = signal('');
+  readonly province = signal('');
+  readonly provinces = signal<{ code: string; name: string }[]>([]);
   readonly busy = signal(false);
   readonly error = signal('');
   readonly filterText = signal('');
@@ -78,7 +85,13 @@ export class TenenciaEditorComponent implements OnInit {
   readonly confirming = signal<{ text: string; label: string; run: () => Promise<void> } | null>(null);
   readonly importing = signal(false);
   readonly importText = signal('');
+  readonly importMode = signal<'merge' | 'replace'>('merge');
   readonly importReport = signal('');
+  readonly distributionOpen = signal(false);
+  async distributionChanged() {
+    await this.call('state');
+    this.changed = true;
+  }
   private changed = false;
   private collator = new Intl.Collator('es', { numeric: true, sensitivity: 'base' });
   readonly groups = computed(() => {
@@ -118,12 +131,27 @@ export class TenenciaEditorComponent implements OnInit {
     return g.descriptions?.[code] || 'CN ' + code;
   }
   private async call(action: string, payload?: unknown) {
-    const r = await this.bridge.call<CatalogResponse>('tenencia.catalog.' + action, payload ?? {});
+    const r = await this.bridge.call<CatalogResponse>('tenencia.catalog.' + action, {
+      ...((payload as object) ?? {}),
+      province: this.province() || undefined,
+      ...(action === 'state' ? {} : { expectedVersion: this.list()?.version }),
+    });
     this.list.set(r.list);
     this.customized.set(r.customized);
     this.provinceName.set(r.provinceName ?? '');
+    if (r.province) this.province.set(r.province);
+    if (r.provinces) this.provinces.set(r.provinces);
     if (action !== 'state') this.changed = true;
     return r;
+  }
+  selectProvince(province: string) {
+    if (this.busy() || province === this.province()) return;
+    this.province.set(province);
+    this.chosenId.set(null);
+    this.distributionOpen.set(false);
+    void this.guard(async () => {
+      await this.call('state');
+    });
   }
   private async guard(task: () => Promise<void>) {
     if (this.busy()) return;
@@ -244,7 +272,7 @@ export class TenenciaEditorComponent implements OnInit {
             .map((a) => a.code),
         );
       })
-      .catch((e) => this.error.set(e instanceof Error ? e.message : 'No se pudo buscar en NixFarma.'))
+      .catch((e) => this.error.set(e instanceof Error ? e.message : 'No se pudo buscar en Nixfarma.'))
       .finally(() => this.searching.set(false));
   }
   isPicked(code: string) {
@@ -350,73 +378,94 @@ export class TenenciaEditorComponent implements OnInit {
   openImport() {
     this.importText.set('');
     this.importReport.set('');
+    this.importMode.set('merge');
     this.importing.set(true);
     setTimeout(() => document.querySelector<HTMLTextAreaElement>('.import-dialog textarea')?.focus(), 0);
+  }
+  closeDraft() {
+    if (!this.busy()) this.draft.set(null);
+  }
+  closeImport() {
+    if (!this.busy()) this.importing.set(false);
   }
   /**
    * Importación masiva. Admite el formato exportado (Código grupo; Grupo; Mínimo; CN; Descripción)
    * o líneas cortas «grupo; CN; descripción», donde grupo es su código o su nombre.
    */
   runImport() {
-    return this.guard(async () => {
-      const groups = () => this.list()?.groups ?? [];
-      const find = (ref: string, name = '') => {
-        const r = ref.trim().toUpperCase(),
-          n = (name || ref).trim().toLocaleLowerCase('es');
-        return (
-          groups().find(
-            (g) => r && this.code(g).toUpperCase() === r && (!name || g.name.toLocaleLowerCase('es') === n),
-          ) ??
-          groups().find((g) => r && this.code(g).toUpperCase() === r) ??
-          groups().find((g) => g.name.toLocaleLowerCase('es') === n)
+    if (this.importMode() === 'replace') {
+      this.confirming.set({
+        text: `Se borrará por completo el listado de ${this.provinceName()} y se sustituirá por el contenido importado.`,
+        label: 'Sustituir listado',
+        run: () => this.applyImport(),
+      });
+      return;
+    }
+    return this.guard(() => this.applyImport());
+  }
+  private async applyImport() {
+    const parsed = new Map<
+      string,
+      { code: string; name: string; minimum: number; note: string; items: { code: string; description: string }[] }
+    >();
+    let skipped = 0;
+    for (const raw of this.importText().split(/\r?\n/)) {
+      if (!raw.trim()) continue;
+      const cells = raw.split(/[;\t]/).map((c) => c.trim().replace(/^"|"$/g, ''));
+      if (/^c[oó]digo/i.test(cells[0] ?? '')) continue;
+      if (cells.length < 4) {
+        const [reference, cn, description] = cells;
+        const normalized = reference?.toLocaleUpperCase('es');
+        const current = (this.list()?.groups ?? []).find(
+          (group) =>
+            this.code(group).toLocaleUpperCase('es') === normalized ||
+            group.name.toLocaleUpperCase('es') === normalized,
         );
-      };
-      const pending = new Map<string, { code: string; description: string }[]>();
-      let skipped = 0,
-        created = 0;
-      for (const raw of this.importText().split(/\r?\n/)) {
-        const line = raw.trim();
-        if (!line) continue;
-        const cells = line.split(/[;\t]/).map((c) => c.trim().replace(/^"|"$/g, ''));
-        const long = cells.length >= 4;
-        const [ref, name, minimum, cn, description] = long ? cells : [cells[0], '', '', cells[1] ?? '', cells[2] ?? ''];
-        if (/^c[oó]digo/i.test(ref) && !/^\d/.test(cn)) continue;
-        let group = find(ref, name);
-        if (!group && long && name) {
-          const before = new Set(groups().map((g) => g.id));
-          await this.call('group.save', {
-            name,
-            code: ref,
-            minimum: Math.max(1, parseInt(minimum, 10) || 1),
-            note: '',
-          });
-          group = groups().find((g) => !before.has(g.id));
-          created++;
-        }
-        if (!group || (cn && !/^\d{6,7}$/.test(cn))) {
+        if (!current || !/^\d{6,7}$/.test(cn ?? '')) {
           skipped++;
           continue;
         }
-        if (!cn) continue;
-        const items = pending.get(group.id) ?? [];
-        if (!group.codes.includes(cn) && !items.some((i) => i.code === cn))
-          items.push({ code: cn, description: description ?? '' });
-        pending.set(group.id, items);
+        const key = (this.code(current) || current.name).toLocaleUpperCase('es');
+        const group = parsed.get(key) ?? {
+          code: this.code(current),
+          name: current.name,
+          minimum: current.minimum,
+          note: current.selectionNote ?? '',
+          items: [],
+        };
+        if (!group.items.some((item) => item.code === cn))
+          group.items.push({ code: cn, description: description ?? '' });
+        parsed.set(key, group);
+        continue;
       }
-      let added = 0;
-      for (const [id, items] of pending) {
-        if (!items.length) continue;
-        await this.addItems(id, items);
-        added += items.length;
+      const [code, name, minimumText, cn, description, note] = cells;
+      if (!name?.trim()) {
+        skipped++;
+        continue;
       }
-      const touched = [...pending.values()].filter((i) => i.length).length;
-      this.importReport.set(
-        `${added} códigos añadidos en ${touched} grupos` +
-          (created ? ` · ${created} grupos nuevos` : '') +
-          (skipped ? ` · ${skipped} líneas no reconocidas` : '') +
-          '.',
-      );
-      if (added || created) this.toast.emit('Importación completada.');
-    });
+      const minimum = Number.parseInt(minimumText, 10);
+      if (!Number.isInteger(minimum) || minimum < 1 || minimum > 10000 || (cn && !/^\d{6,7}$/.test(cn))) {
+        skipped++;
+        continue;
+      }
+      const key = (code || name).trim().toLocaleUpperCase('es');
+      const group = parsed.get(key) ?? { code, name, minimum, note: note ?? '', items: [] };
+      group.name = name;
+      group.minimum = minimum;
+      group.note = note ?? group.note;
+      if (cn && !group.items.some((item) => item.code === cn))
+        group.items.push({ code: cn, description: description ?? '' });
+      parsed.set(key, group);
+    }
+    if (!parsed.size) throw new Error('No hay filas válidas. Usa el formato completo exportado por la aplicación.');
+    if (skipped && this.importMode() === 'replace')
+      throw new Error(`${skipped} filas no son válidas. Corrígelas antes de sustituir el listado.`);
+    await this.call('import', { mode: this.importMode(), groups: [...parsed.values()] });
+    const items = [...parsed.values()].reduce((sum, group) => sum + group.items.length, 0);
+    this.importing.set(false);
+    this.importReport.set(
+      `${parsed.size} grupos y ${items} artículos importados en ${this.provinceName()}${skipped ? ` · ${skipped} filas omitidas` : ''}.`,
+    );
+    this.toast.emit(this.importReport());
   }
 }

@@ -20,7 +20,7 @@ Estado 0.12.2: esta es una propuesta para revisar con el usuario. El catálogo s
 | Angular | Componente propio bajo frontend/src/apps/<id>/, estados de pantalla y navegación desde Aplicaciones. Evitar seguir acumulando cada utilidad en app.html. |
 | Puente nativo | Acción explícita y limitada a esa utilidad, reutilizando sesión nativa. Nada de SQL ni credenciales Oracle desde la interfaz. |
 | Servicio | Operación autenticada por utilidad; revalidar en el servidor el permiso de su ID antes de consultar. Publicarla en el catálogo no sustituye proteger la operación. |
-| NixFarma | Lector específico en el servidor, reutilizando el perfil Oracle central protegido. Consultas parametrizadas con transacción de solo lectura, timeout, cancelación y límites de filas/concurrencia. |
+| Nixfarma | Lector específico en el servidor, reutilizando el perfil Oracle central protegido. Consultas parametrizadas con transacción de solo lectura, timeout, cancelación y límites de filas/concurrencia. |
 | Permisos | Registrar el ID en el catálogo para que el titular/Viteka pueda asignarlo. Los usuarios normales no reciben acceso automático. Los roles privilegiados acceden al catálogo conocido. |
 | Pruebas | Datos ficticios representativos, permiso concedido/denegado, filtros/límites y resultados vacíos/errores; luego prueba de lectura en el servidor real. |
 
@@ -32,16 +32,16 @@ La actividad de negocio tampoco está implementada. Si se necesita, acordar qué
 
 1. Problema que resuelve y ejemplo concreto del resultado esperado.
 2. Quién la usará y qué perfiles/usuarios tendrán permiso.
-3. Datos de NixFarma necesarios, campos, relaciones y versión/esquema real. No inferir tablas por su nombre.
+3. Datos de Nixfarma necesarios, campos, relaciones y versión/esquema real. No inferir tablas por su nombre.
 4. Filtros iniciales, columnas, orden, volumen habitual y máximo razonable.
 5. Qué se hace con el resultado: consulta, detalle, impresión o exportación.
 6. Criterio de aceptación con un caso conocido de la farmacia.
 
-Recomendación: empezar por una consulta de solo lectura, acotada y útil en el trabajo diario. Cualquier modificación de NixFarma se define y autoriza por separado para esa utilidad.
+Recomendación: empezar por una consulta de solo lectura, acotada y útil en el trabajo diario. Cualquier modificación de Nixfarma se define y autoriza por separado para esa utilidad.
 
 ## Primera utilidad solicitada · 0.12.3
 
-Consulta de existencias mínimas, con referencia Unycop y estilo NixFarma/Viteka. Requisitos pendientes y límite del vídeo documentados en [existencias-minimas.md](existencias-minimas.md). No implementar reglas ni SQL supuesto antes de confirmar los datos necesarios.
+Consulta de existencias mínimas, con referencia Unycop y estilo Nixfarma/Viteka. Requisitos pendientes y límite del vídeo documentados en [existencias-minimas.md](existencias-minimas.md). No implementar reglas ni SQL supuesto antes de confirmar los datos necesarios.
 
 ## Implementación · 0.13.0
 

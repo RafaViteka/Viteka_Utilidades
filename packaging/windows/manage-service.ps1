@@ -66,7 +66,7 @@ switch ($Action) {
         if ($LASTEXITCODE -ne 0) { throw 'Could not protect the service state directory.' }
         # Parent Program Files and executable permissions must remain read/execute for ordinary users.
         Invoke-ServiceControl -Arguments @('create', $serviceName, 'binPath=', $expectedCommand, 'start=', 'auto',
-            'obj=', 'NT AUTHORITY\LocalService', 'DisplayName=', 'Viteka Utilidades - Servidor de vista previa')
+            'obj=', 'NT AUTHORITY\LocalService', 'DisplayName=', 'Viteka Conecta - Servidor')
         try {
             Invoke-ServiceControl -Arguments @('description', $serviceName, 'Servidor local de demostracion. Sin conexion Oracle ni acceso LAN.')
             Start-Service -Name $serviceName
