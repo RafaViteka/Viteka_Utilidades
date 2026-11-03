@@ -18,9 +18,11 @@ try{
     Run-Owned -Exe $setup -Arguments @('/VERYSILENT','/SUPPRESSMSGBOXES','/NORESTART',('/DIR="'+$install+'"'),('/LOG="'+(Join-Path $directory 'install.log')+'"'))
     $server=Join-Path $install 'Servidor/Viteka.Server.exe'
     $firewall=Get-NetFirewallRule -DisplayName 'VitekaUtilidadesAccess-LAN' -ErrorAction Stop
-    if(@($firewall.Profile) -notcontains 'Any' -and @($firewall.Profile) -notcontains 'Public'){throw 'Client access firewall rule does not include Public networks.'}
+    $firewallProfiles=[string]$firewall.Profile
+    if($firewallProfiles -notmatch 'Any|Public'){throw "Client access firewall rule does not include Public networks: $firewallProfiles"}
     $remote=$firewall|Get-NetFirewallAddressFilter
-    if(@($remote.RemoteAddress) -notcontains 'LocalSubnet'){throw 'Client access firewall rule is not restricted to LocalSubnet.'}
+    $remoteAddresses=[string]::Join(',',@($remote.RemoteAddress))
+    if(@($remote.RemoteAddress) -notcontains 'LocalSubnet'){throw "Client access firewall rule is not restricted to LocalSubnet: $remoteAddresses"}
     Run-Owned -Exe $server -Arguments @('--access-health',('"'+(Join-Path $install 'Cliente/access-server.json')+'"')) -Seconds 10
     $env:VITEKA_ACCESS_BOOTSTRAP=Join-Path $install 'Cliente/access-server.json'
     $env:VITEKA_UI_SMOKE_REPORT=Join-Path $directory 'installed-native.json'
@@ -40,7 +42,7 @@ try{
     Write-Output 'PASS: actual installer, installed native client with role guards, in-place upgrade and account preservation.'
 } catch {
     Get-Content (Join-Path $directory '*.log') -Tail 15 -ErrorAction SilentlyContinue
-    if(Test-Path $env:VITEKA_UI_SMOKE_REPORT){Get-Content $env:VITEKA_UI_SMOKE_REPORT}
+    if($env:VITEKA_UI_SMOKE_REPORT -and (Test-Path $env:VITEKA_UI_SMOKE_REPORT)){Get-Content $env:VITEKA_UI_SMOKE_REPORT}
     throw
 } finally {
     $env:VITEKA_ACCESS_BOOTSTRAP=$previousBootstrap
